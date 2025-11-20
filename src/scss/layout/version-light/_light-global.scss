@@ -1,0 +1,113 @@
+@import "./../../abstracts/variable";
+
+[data-theme-version="light"]{
+	p, span, label, div {
+		color: $body-color;
+	}
+	
+	.card {
+        background-color: $white;
+		box-shadow: 0rem 0.25rem 0.25rem rgba(0, 0, 0, 0.1);
+    }
+	
+	.card-title {
+		color: $heading !important;
+	}
+	
+	.card-header {
+		background-color: transparent;
+		border-color: $l-border;
+	}
+	
+	.dropdown-menu {
+        background-color: $white;
+		box-shadow: 0rem 0rem 0rem 0.0625rem rgba(0, 0, 0,0.1);
+		.dropdown-item {
+			color: $body-color;
+			&.selected,
+			&.selected.active,
+			&.active,
+			&:hover, 
+			&:focus {
+				background-color: $l-bg;
+				color: $heading;
+			}
+		}
+    }
+	
+	a{
+		color: $body-color;
+	}
+	
+	.form-control {
+        background-color: $white;
+        border-color: $l-border;
+        color: $heading;
+    }
+	
+	.modal-content{
+		background: $white;
+	}
+	
+	.modal-footer,
+	.modal-header{
+		border-color: $l-border;
+	}
+	
+	.input-group-text{
+		background: $white;
+		color: $body-color;
+		border-color: $l-border;
+	}
+	
+	.table {
+		background-color: $white;
+		color: $body-color;
+		
+		thead th{
+			border-color: $l-border !important;
+			background-color: $l-bg;
+			color: $heading !important;
+		}
+		
+		tbody td {
+			border-color: $l-border;
+			color: $body-color;
+		}
+		
+		tbody th {
+			color: $heading;
+		}
+		
+		&.table-striped tbody tr:nth-of-type(odd) {
+			background-color: lighten($l-bg, 2%);
+		}
+		
+		&.table-dark {
+			thead th,
+			tbody td,
+			tbody th {
+				background-color: #343a40;
+				color: $white !important;
+			}
+		}
+	}
+	
+	.dataTables_wrapper .dataTables_length, 
+	.dataTables_wrapper .dataTables_filter, 
+	.dataTables_wrapper .dataTables_info, 
+	.dataTables_wrapper .dataTables_processing, 
+	.dataTables_wrapper .dataTables_paginate{
+		color: $body-color;	
+	}
+	
+	// Header user info
+	.header .user-info {
+		font-family: 'Poppins', sans-serif;
+		
+		span {
+			color: $heading !important;
+		}
+	}
+}
+

@@ -1,0 +1,159 @@
+// Print-safe theme overrides
+// This prevents theme colors from affecting pages meant for printing
+// Add the class 'print-safe-page' to any component that should maintain
+// print-friendly colors regardless of theme
+
+.print-safe-page {
+	background: #ffffff !important;
+	color: #000000 !important;
+	
+	*, *::before, *::after {
+		background: transparent !important;
+		color: #000000 !important;
+	}
+	
+	.card {
+		background-color: #ffffff !important;
+		box-shadow: none !important;
+		
+		&-header {
+			background-color: #ffffff !important;
+			border-color: #dee2e6 !important;
+		}
+		
+		&-body {
+			background-color: #ffffff !important;
+		}
+		
+		&-title {
+			color: #000000 !important;
+		}
+	}
+	
+	.table {
+		background-color: #ffffff !important;
+		color: #000000 !important;
+		
+		thead th {
+			background-color: #f8f9fa !important;
+			color: #000000 !important;
+			border-color: #dee2e6 !important;
+		}
+		
+		tbody td,
+		tbody th {
+			background-color: #ffffff !important;
+			color: #000000 !important;
+			border-color: #dee2e6 !important;
+		}
+		
+		tfoot th,
+		tfoot td {
+			background-color: #f8f9fa !important;
+			color: #000000 !important;
+			border-color: #dee2e6 !important;
+		}
+		
+		&.table-striped tbody tr:nth-of-type(odd) {
+			background-color: #f8f9fa !important;
+		}
+		
+		&.table-dark,
+		&-dark {
+			thead th,
+			tbody td,
+			tfoot th {
+				background-color: #343a40 !important;
+				color: #ffffff !important;
+			}
+		}
+	}
+	
+	.form-control,
+	.form-select {
+		background-color: #ffffff !important;
+		color: #000000 !important;
+		border-color: #dee2e6 !important;
+	}
+	
+	h1, h2, h3, h4, h5, h6,
+	p, span, label, div,
+	.text-muted {
+		color: #000000 !important;
+	}
+	
+	.btn {
+		&-primary {
+			background-color: #0d6efd !important;
+			border-color: #0d6efd !important;
+			color: #ffffff !important;
+		}
+		
+		&-secondary {
+			background-color: #6c757d !important;
+			border-color: #6c757d !important;
+			color: #ffffff !important;
+		}
+		
+		&-success {
+			background-color: #198754 !important;
+			border-color: #198754 !important;
+			color: #ffffff !important;
+		}
+		
+		&-danger {
+			background-color: #dc3545 !important;
+			border-color: #dc3545 !important;
+			color: #ffffff !important;
+		}
+		
+		&-warning {
+			background-color: #ffc107 !important;
+			border-color: #ffc107 !important;
+			color: #000000 !important;
+		}
+		
+		&-info {
+			background-color: #0dcaf0 !important;
+			border-color: #0dcaf0 !important;
+			color: #000000 !important;
+		}
+	}
+	
+	// Override dark theme specifically for print pages
+	[data-theme-version="dark"] & {
+		background: #ffffff !important;
+		color: #000000 !important;
+	}
+}
+
+// Media query for actual printing
+@media print {
+	.print-safe-page,
+	body {
+		background: #ffffff !important;
+		color: #000000 !important;
+	}
+	
+	.card {
+		background-color: #ffffff !important;
+		box-shadow: none !important;
+	}
+	
+	.table {
+		background-color: #ffffff !important;
+		color: #000000 !important;
+	}
+	
+	// Hide print buttons during actual printing
+	.no-print {
+		display: none !important;
+	}
+}
+
+
+
+
+
+
+
