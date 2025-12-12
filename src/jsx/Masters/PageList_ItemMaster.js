@@ -33,9 +33,6 @@ export const PageList_ItemMaster = () => {
 	const dispatch = useDispatch();
 	const navigate = useNavigate();
 	const API_URL = API_WEB_URLS.MASTER + "/0/token/ItemMaster";
-	const API_URL_WIDTH = API_WEB_URLS.MASTER + "/0/token/ItemWidth";
-	const API_URL_DEPTH = API_WEB_URLS.MASTER + "/0/token/ItemDepth";
-	const API_URL_HEIGHT = API_WEB_URLS.MASTER + "/0/token/ItemHeight";
 	const rtPage_Add = "/AddItem";
 	const rtPage_Edit = "/AddItem";
 	const [isUploading, setIsUploading] = useState(false);
@@ -52,43 +49,6 @@ export const PageList_ItemMaster = () => {
 	const [itemUploadError, setItemUploadError] = useState(null);
 	const [isSavingItemDetails, setIsSavingItemDetails] = useState(false);
 	const API_URL_SAVE = "ProductMasterExcel/0/token";
-	const [savingCells, setSavingCells] = useState({});
-
-	// Function to handle saving cell data on Enter press
-	const handleCellSave = useCallback(async (event, rowId, columnId) => {
-		if (event.key === 'Enter') {
-		  event.preventDefault(); // Prevent default form submission if applicable
-		  const { value } = event.target;
-		  const cellKey = `${rowId}-${columnId}`; // Unique key for the cell
-
-		  console.log(`Save Triggered: Row ID=${rowId}, Column=${columnId}, New Value=${value}`);
-		  setSavingCells(prev => ({ ...prev, [cellKey]: true })); // Set loading true for this cell
-
-		  try {
-				let savePromise;
-				if(columnId === "ItemWidth"){
-					savePromise = Fn_FillListData(dispatch, setState, "FillArray2", API_URL_WIDTH + "/"+value+"/"+rowId);
-				} else if(columnId === "ItemDepth"){
-					savePromise = Fn_FillListData(dispatch, setState, "FillArray3", API_URL_DEPTH + "/"+value+"/"+rowId);
-				} else if(columnId === "ItemHeight"){
-					savePromise = Fn_FillListData(dispatch, setState, "FillArray4", API_URL_HEIGHT + "/"+value+"/"+rowId);
-				}
-
-				if (savePromise) {
-					await savePromise; // Wait for the specific save to complete
-				}
-
-				// Refresh the entire grid data after individual save
-				await Fn_FillListData(dispatch, setGridData, "gridData", API_URL + "/Id/0");
-
-		  } catch (error) {
-				console.error(`Error saving cell ${cellKey}:`, error);
-				// Optionally show an error message to the user
-		  } finally {
-				setSavingCells(prev => ({ ...prev, [cellKey]: false })); // Set loading false for this cell
-		  }
-		}
-	  }, [dispatch, setState, setGridData, API_URL, API_URL_WIDTH, API_URL_DEPTH, API_URL_HEIGHT, setSavingCells]);
 
 	// Calculate counts based on IsDataUploaded status
 	const { uploadedCount, pendingCount } = useMemo(() => {
@@ -411,76 +371,24 @@ export const PageList_ItemMaster = () => {
 			accessor: 'ItemCode',
 			Filter: ColumnFilter,
 		},
-		{
-			Header : 'ItemWidth',
-			Footer : 'ItemWidth',
-			accessor: 'ItemWidth',
-			Filter: ColumnFilter,
-			Cell: ({ value, row, column }) => {
-				const cellKey = `${row.original.Id}-${column.id}`;
-				const isSavingThisCell = savingCells[cellKey];
-				return isSavingThisCell ? (
-				  <Spinner animation="border" size="sm" />
-				) : (
-				  <input
-					type="number"
-					defaultValue={value}
-					onKeyDown={(e) => handleCellSave(e, row.original.Id, column.id)}
-					style={{ width: '80px', fontStyle: 'normal' }}
-					className="form-control form-control-sm"
-					disabled={isSavingThisCell}
-				  />
-				);
-			  },
-		},
-		{
-			Header : 'ItemDepth',
-			Footer : 'ItemDepth',
-			accessor: 'ItemDepth',
-			Filter: ColumnFilter,
-			Cell: ({ value, row, column }) => {
-				const cellKey = `${row.original.Id}-${column.id}`;
-				const isSavingThisCell = savingCells[cellKey];
-				return isSavingThisCell ? (
-				  <Spinner animation="border" size="sm" />
-				) : (
-				  <input
-					type="number"
-					defaultValue={value}
-					onKeyDown={(e) => handleCellSave(e, row.original.Id, column.id)}
-					style={{ width: '80px', fontStyle: 'normal' }}
-					className="form-control form-control-sm"
-					disabled={isSavingThisCell}
-				  />
-				);
-			  },
-		},
-		{
-			Header : 'ItemHeight',
-			Footer : 'ItemHeight',
-			accessor: 'ItemHeight',
-			Filter: ColumnFilter,
-			Cell: ({ value, row, column }) => {
-				const cellKey = `${row.original.Id}-${column.id}`;
-				const isSavingThisCell = savingCells[cellKey];
-				return isSavingThisCell ? (
-				  <Spinner animation="border" size="sm" />
-				) : (
-				  <input
-					type="number"
-					defaultValue={value}
-					onKeyDown={(e) => handleCellSave(e, row.original.Id, column.id)}
-					style={{ width: '80px', fontStyle: 'normal' }}
-					className="form-control form-control-sm"
-					disabled={isSavingThisCell}
-				  />
-				);
-			  },
-		},
 		
 
 		  {
-			Header: "Status",
+			Header: () => (
+				<div>
+					Status
+					<br />
+					<a 
+						href={`${process.env.PUBLIC_URL}/TEMPLATE_Item_Upload.xlsm`}
+						download="TEMPLATE_Item_Upload.xlsm"
+						className="badge bg-info text-decoration-none mt-1"
+						style={{ fontSize: '0.75rem', cursor: 'pointer' }}
+					>
+						📥 Download Template
+					</a>
+				</div>
+			),
+			id: 'uploadStatus',
 			accessor: row => {
 			  if (row.IsDataUploaded === 0) return 'Upload';
 			  if (row.IsDataUploaded === 1) return 'Uploaded';
@@ -556,7 +464,7 @@ export const PageList_ItemMaster = () => {
 			},
 		  }, 
 
-	], [btnUploadOnClick, handleCellSave, savingCells, btnEditOnClick]);
+	], [btnUploadOnClick, btnEditOnClick]);
 
 	const data = useMemo( () => gridData, [gridData] )
 	const tableInstance = useTable({
@@ -581,7 +489,6 @@ export const PageList_ItemMaster = () => {
 		canPreviousPage,
 		setGlobalFilter,
 	} = tableInstance
-	
 	
 	const {globalFilter, pageIndex} = state
 	
@@ -734,7 +641,17 @@ export const PageList_ItemMaster = () => {
 				</Col>
 				<Col md="3">
 					<div>
-						<label htmlFor="fileInput" className="form-label mb-1 small">Upload Excel</label>
+						<label htmlFor="fileInput" className="form-label mb-1 small">
+							Upload Excel
+							<a 
+								href={`${process.env.PUBLIC_URL}/ITEM_LIST.xlsx`}
+								download="ITEM_LIST.xlsx"
+								className="badge bg-info text-decoration-none ms-2"
+								style={{ fontSize: '0.7rem', cursor: 'pointer' }}
+							>
+								📥 Template
+							</a>
+						</label>
 						<FormControl
 							type="file"
 							accept=".xlsx, .xlsm"

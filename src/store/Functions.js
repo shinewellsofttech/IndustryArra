@@ -143,6 +143,14 @@ export const Fn_DeleteData = (dispatch, setState, id, apiURL, apiURL_Display) =>
             arguList: arguList,
             apiURL: apiURL,
             callback: response => {
+                // Handle error response with success: false and id: -2
+                if (response?.data?.success === false && (response?.data?.data?.id === -2 || response?.data?.id === -2 || response?.data?.id === -1)) {
+                    const errorMessage = response.data.message || 'Add details first.';
+                    alert(errorMessage);
+                    reject(errorMessage);
+                    return; // stop further code
+                }
+
                 if (response && response.status === 200) {
                     console.log('arguList', arguList);
 

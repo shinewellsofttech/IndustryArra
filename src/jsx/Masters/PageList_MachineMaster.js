@@ -39,12 +39,12 @@ export const PageList_MachineMaster = () => {
 	  };
 
 	const COLUMNS = [
+		
 		{
-			Header : 'Sr. No.',
-			Footer : 'Sr. No.',
-			accessor: 'serialNumber',
-			Cell: ({ row }) => row.index + 1,
-			disableFilters: true,
+			Header : 'MachineNo',
+			Footer : 'MachineNo',
+			accessor: 'MachineNo',
+			Filter: ColumnFilter,
 		},
 		{
 			Header : 'Name',

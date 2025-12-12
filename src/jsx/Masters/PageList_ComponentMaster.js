@@ -220,6 +220,26 @@ export const PageList_ComponentMaster = () => {
 			</div>
 		);
 	  };
+
+	  // Custom dropdown filter for Photo Status
+	  const PhotoStatusDropdownFilter = ({ column }) => {
+		const { filterValue, setFilter } = column;
+		
+		return (
+			<div>
+				<FormControl
+					as="select"
+					className="form-control input-search"
+					value={filterValue || ''}
+					onChange={(e) => setFilter(e.target.value || undefined)}
+				>
+					<option value="">All</option>
+					<option value="Uploaded">Uploaded</option>
+					<option value="Pending">Pending</option>
+				</FormControl>
+			</div>
+		);
+	  };
 	
 	const COLUMNS = [
 		{
@@ -246,6 +266,34 @@ export const PageList_ComponentMaster = () => {
 			Footer : 'Category',
 			accessor: 'CategoryName',
 			Filter: ColumnFilter,
+		},
+		{
+			Header : 'L1',
+			Footer : 'L1',
+			accessor: 'L1',
+			Filter: ColumnFilter,
+			Cell: ({ value }) => value || '-',
+		},
+		{
+			Header : 'W1',
+			Footer : 'W1',
+			accessor: 'W1',
+			Filter: ColumnFilter,
+			Cell: ({ value }) => value || '-',
+		},
+		{
+			Header : 'T1',
+			Footer : 'T1',
+			accessor: 'T1',
+			Filter: ColumnFilter,
+			Cell: ({ value }) => value || '-',
+		},
+		{
+			Header : 'Qty1',
+			Footer : 'Qty1',
+			accessor: 'Qty1',
+			Filter: ColumnFilter,
+			Cell: ({ value }) => value || '-',
 		},
 	
 		{
@@ -277,21 +325,17 @@ export const PageList_ComponentMaster = () => {
 			Header : 'Photo Status',
 			Footer : 'Photo Status',
 			accessor: row => row.PhotoCount > 0 ? 'Uploaded' : 'Pending',
-			Filter: ColumnFilter,
+			Filter: PhotoStatusDropdownFilter,
+			filter: (rows, id, filterValue) => {
+				if (!filterValue || filterValue === '') return rows;
+				return rows.filter(row => {
+					const rowValue = row.values[id];
+					return rowValue === filterValue;
+				});
+			},
 			Cell: ({ row }) => (
 				<span className={`badge ${row.original.PhotoCount > 0 ? 'bg-success' : 'bg-warning'}`}>
 					{row.original.PhotoCount > 0 ? 'Uploaded' : 'Pending'}
-				</span>
-			),
-		},
-		{
-			Header : 'Photo Count',
-			Footer : 'Photo Count',
-			accessor: 'PhotoCount',
-			Filter: ColumnFilter,
-			Cell: ({ value }) => (
-				<span className="badge bg-info">
-					{value || 0}
 				</span>
 			),
 		},

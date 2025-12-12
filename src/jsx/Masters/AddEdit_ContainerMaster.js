@@ -32,6 +32,7 @@ const AddEdit_ContainerMaster = () => {
       InspectionDate: "",
       ContainerNumber: "",
       ItemName: "",
+      ShipmentQty: "",
       Quantity: "",
       JobCardInitial: "",
       ContractNo: "",
@@ -41,6 +42,7 @@ const AddEdit_ContainerMaster = () => {
   const [errors, setErrors] = useState({});
   const [focusedCell, setFocusedCell] = useState({ row: 0, col: 0 });
   const inputRefs = useRef({});
+  const [isSampleContainer, setIsSampleContainer] = useState(false);
   
   const dispatch = useDispatch()
   const location = useLocation()
@@ -205,6 +207,7 @@ const AddEdit_ContainerMaster = () => {
       InspectionDate: "",
       ContainerNumber: "",
       ItemName: "",
+      ShipmentQty: "",
       Quantity: "",
       JobCardInitial: "",
       ContractNo: "",
@@ -239,7 +242,7 @@ const AddEdit_ContainerMaster = () => {
 
   // Enhanced keyboard navigation
   const handleKeyDown = (e, rowIndex, colIndex) => {
-    const fields = ['InspectionDate', 'ContainerNumber', 'ItemName', 'Quantity', 'JobCardInitial', 'ContractNo'];
+    const fields = ['InspectionDate', 'ContainerNumber', 'ItemName', 'ShipmentQty', 'Quantity', 'JobCardInitial', 'ContractNo'];
     
     if (e.key === 'Enter') {
       e.preventDefault();
@@ -278,7 +281,7 @@ const AddEdit_ContainerMaster = () => {
   };
 
   const focusCell = (rowIndex, colIndex) => {
-    const fields = ['InspectionDate', 'ContainerNumber', 'ItemName', 'Quantity', 'JobCardInitial', 'ContractNo'];
+    const fields = ['InspectionDate', 'ContainerNumber', 'ItemName', 'ShipmentQty', 'Quantity', 'JobCardInitial', 'ContractNo'];
     const fieldName = fields[colIndex];
     const refKey = `${rowIndex}-${fieldName}`;
     
@@ -301,9 +304,27 @@ const AddEdit_ContainerMaster = () => {
     const newErrors = {};
     let isValid = true;
     
+    // Create conditional validation schema based on checkbox state
+    let validationSchema;
+    if (isSampleContainer) {
+      // When Sample Container is checked, only validate: ContainerNumber, ItemName, Quantity
+      validationSchema = Yup.object().shape({
+        ContainerNumber: Yup.string().required("Container Number is required"),
+        ItemName: Yup.string().required("Item Name is required"),
+        Quantity: Yup.number().required("Quantity is required").positive().integer(),
+        InspectionDate: Yup.date(),
+        ShipmentQty: Yup.number(),
+        JobCardInitial: Yup.string(),
+        ContractNo: Yup.string(),
+      });
+    } else {
+      // When checkbox is off, all validations apply
+      validationSchema = ContainerMasterSchema;
+    }
+    
     gridData.forEach((row, index) => {
       try {
-        ContainerMasterSchema.validateSync(row, { abortEarly: false });
+        validationSchema.validateSync(row, { abortEarly: false });
       } catch (validationErrors) {
         newErrors[index] = {};
         validationErrors.inner.forEach((error) => {
@@ -338,6 +359,7 @@ const AddEdit_ContainerMaster = () => {
           ContainerNumber: row.ContainerNumber,
           ItemName: Name,
           ItemCode: itemCode,
+          ShipmentQty: row.ShipmentQty,
           Quantity: row.Quantity,
           JobCardInitial: row.JobCardInitial,
           ContractNo: row.ContractNo,
@@ -403,7 +425,7 @@ const AddEdit_ContainerMaster = () => {
                     <thead>
                       <tr>
                         <th style={{...styles.tableHeader, minWidth: '160px'}}>
-                          📅 Inspection Date *
+                          📅 Inspection Date {isSampleContainer ? '' : '*'}
                         </th>
                         <th style={{...styles.tableHeader, minWidth: '180px'}}>
                           📦 Container Number *
@@ -412,13 +434,16 @@ const AddEdit_ContainerMaster = () => {
                           🏷️ Item Name *
                         </th>
                         <th style={{...styles.tableHeader, minWidth: '120px'}}>
+                          📊 Shipment Qty
+                        </th>
+                        <th style={{...styles.tableHeader, minWidth: '120px'}}>
                           🔢 Quantity *
                         </th>
                         <th style={{...styles.tableHeader, minWidth: '160px'}}>
-                          📋 Job Card Initial *
+                          📋 Job Card Initial {isSampleContainer ? '' : '*'}
                         </th>
                         <th style={{...styles.tableHeader, minWidth: '160px'}}>
-                          📄 Contract No *
+                          📄 Contract No {isSampleContainer ? '' : '*'}
                         </th>
                         <th style={{...styles.tableHeader, minWidth: '100px'}}>
                           ⚡ Actions
@@ -516,15 +541,36 @@ const AddEdit_ContainerMaster = () => {
                           
                           <td style={styles.tableCell}>
                             <input
+                              ref={getInputRef(index, 'ShipmentQty')}
+                              type="number"
+                              value={row.ShipmentQty}
+                              onChange={(e) => updateGridRow(index, 'ShipmentQty', e.target.value)}
+                              onKeyDown={(e) => handleKeyDown(e, index, 3)}
+                              style={{
+                                ...styles.input,
+                                ...(errors[index]?.ShipmentQty ? styles.inputError : {}),
+                                ...(focusedCell.row === index && focusedCell.col === 3 ? styles.inputFocused : {})
+                              }}
+                              placeholder="Enter shipment quantity"
+                            />
+                            {errors[index]?.ShipmentQty && (
+                              <small style={{ color: '#ef4444', fontSize: '12px', marginTop: '4px', display: 'block' }}>
+                                {errors[index].ShipmentQty}
+                              </small>
+                            )}
+                          </td>
+                          
+                          <td style={styles.tableCell}>
+                            <input
                               ref={getInputRef(index, 'Quantity')}
                               type="number"
                               value={row.Quantity}
                               onChange={(e) => updateGridRow(index, 'Quantity', e.target.value)}
-                              onKeyDown={(e) => handleKeyDown(e, index, 3)}
+                              onKeyDown={(e) => handleKeyDown(e, index, 4)}
                               style={{
                                 ...styles.input,
                                 ...(errors[index]?.Quantity ? styles.inputError : {}),
-                                ...(focusedCell.row === index && focusedCell.col === 3 ? styles.inputFocused : {})
+                                ...(focusedCell.row === index && focusedCell.col === 4 ? styles.inputFocused : {})
                               }}
                               placeholder="Enter quantity"
                             />
@@ -541,7 +587,7 @@ const AddEdit_ContainerMaster = () => {
                               type="text"
                               value={row.JobCardInitial}
                               onChange={(e) => updateGridRow(index, 'JobCardInitial', e.target.value)}
-                              onKeyDown={(e) => handleKeyDown(e, index, 4)}
+                              onKeyDown={(e) => handleKeyDown(e, index, 5)}
                               style={{
                                 ...styles.input,
                                 ...(errors[index]?.JobCardInitial ? styles.inputError : {}),
@@ -562,7 +608,7 @@ const AddEdit_ContainerMaster = () => {
                               type="text"
                               value={row.ContractNo}
                               onChange={(e) => updateGridRow(index, 'ContractNo', e.target.value)}
-                              onKeyDown={(e) => handleKeyDown(e, index, 5)}
+                              onKeyDown={(e) => handleKeyDown(e, index, 6)}
                               style={{
                                 ...styles.input,
                                 ...(errors[index]?.ContractNo ? styles.inputError : {}),
@@ -605,6 +651,53 @@ const AddEdit_ContainerMaster = () => {
                       ))}
                     </tbody>
                   </table>
+                </div>
+                
+                {/* Sample Container Checkbox */}
+                <div style={{ 
+                  padding: '16px 24px', 
+                  background: '#ffffff',
+                  borderTop: '1px solid #e5e7eb',
+                  borderBottom: '1px solid #e5e7eb'
+                }}>
+                  <label style={{ 
+                    display: 'flex', 
+                    alignItems: 'center', 
+                    gap: '10px',
+                    cursor: 'pointer',
+                    fontFamily: 'Times New Roman',
+                    fontSize: '14px',
+                    fontWeight: '500',
+                    color: '#374151'
+                  }}>
+                    <input
+                      type="checkbox"
+                      checked={isSampleContainer}
+                      onChange={(e) => {
+                        setIsSampleContainer(e.target.checked);
+                        // Clear errors when checkbox state changes to re-validate
+                        setErrors({});
+                      }}
+                      style={{
+                        width: '18px',
+                        height: '18px',
+                        cursor: 'pointer',
+                        accentColor: '#374151'
+                      }}
+                    />
+                    <span>Sample Container</span>
+                  </label>
+                  {isSampleContainer && (
+                    <div style={{ 
+                      marginTop: '8px', 
+                      fontSize: '12px', 
+                      color: '#6b7280',
+                      fontStyle: 'italic',
+                      paddingLeft: '28px'
+                    }}>
+                      ℹ️ Sample Container mode: Only Container Number, Item Name, and Quantity are required.
+                    </div>
+                  )}
                 </div>
                 
                 <div style={{ 

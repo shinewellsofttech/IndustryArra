@@ -11,9 +11,9 @@ import { Col, Row } from "react-bootstrap";
 const NameSchema = Yup.object().shape({
   Name: Yup.string().required("Name is required"),
   ItemCode: Yup.string().nullable(),
-  ItemWidth: Yup.number().nullable(),
-  ItemDepth: Yup.number().nullable(),
-  ItemHeight: Yup.number().nullable(),
+  // ItemWidth: Yup.number().nullable(),
+  // ItemDepth: Yup.number().nullable(),
+  // ItemHeight: Yup.number().nullable(),
 });
 
 const AddEdit_ItemMaster = () => {
@@ -22,9 +22,9 @@ const AddEdit_ItemMaster = () => {
     formData: {
       Name: "",
       ItemCode: "",
-      ItemWidth: "",
-      ItemDepth: "",
-      ItemHeight: "",
+      // ItemWidth: "",
+      // ItemDepth: "",
+      // ItemHeight: "",
     },
     isProgress: true,
   });
@@ -57,9 +57,9 @@ const AddEdit_ItemMaster = () => {
       const formData = new FormData();
       formData.append("Name", values.Name);
       formData.append("ItemCode", values.ItemCode);
-      formData.append("ItemWidth", values.ItemWidth || 0);
-      formData.append("ItemDepth", values.ItemDepth || 0);
-      formData.append("ItemHeight", values.ItemHeight || 0);
+      // formData.append("ItemWidth", values.ItemWidth || 0);
+      // formData.append("ItemDepth", values.ItemDepth || 0);
+      // formData.append("ItemHeight", values.ItemHeight || 0);
 
       Fn_AddEditData(
         dispatch,
@@ -134,7 +134,7 @@ const AddEdit_ItemMaster = () => {
                         </Col>
                       </Row>
 
-                      <Row className="mt-3">
+                      {/* <Row className="mt-3">
                         <Col lg="2">
                           <label className="text-label" style={{ fontFamily: 'Times New Roman' }}>Item Width</label>
                         </Col>
@@ -189,7 +189,7 @@ const AddEdit_ItemMaster = () => {
                           />
                           {errors.ItemHeight && <div className="text-danger" style={{ fontFamily: 'Times New Roman' }}>{errors.ItemHeight}</div>}
                         </Col>
-                      </Row>
+                      </Row> */}
 
                       <button type="submit" className="btn me-2 btn-primary" disabled={isSubmitting} style={{ fontFamily: 'Times New Roman' }}>
                         Submit

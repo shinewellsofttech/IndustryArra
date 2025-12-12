@@ -1,4 +1,4 @@
-import React,{ useEffect, useMemo, useState } from 'react';
+import React,{ useEffect, useMemo, useState, useRef } from 'react';
 import PageTitle from "../layouts/PageTitle";
 import { useTable, useGlobalFilter, useFilters, usePagination } from 'react-table';
 import MOCK_DATA from '../components/table/FilteringTable/MOCK_DATA_2.json';
@@ -13,6 +13,8 @@ import { useNavigate } from 'react-router-dom';
 import { API_WEB_URLS } from '../../constants/constAPI';
 import { Fn_FillListData, Fn_AddEditData } from '../../store/Functions';
 import * as XLSX from "xlsx";
+import { ToastContainer, toast } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
 
 
 export const PageList_ContainerMaster = () => {
@@ -29,6 +31,8 @@ export const PageList_ContainerMaster = () => {
 	const dispatch = useDispatch();
 	const navigate = useNavigate();
 	const API_URL = API_WEB_URLS.MASTER + "/0/token/Container";
+	const API_URL_UpdateQuantity = API_WEB_URLS.MASTER + "/0/token/UpdateQuantityContainer";
+	const API_URL_UpdateInspectionDate = API_WEB_URLS.MASTER + "/0/token/UpdateDateContainer";
 	const API_URL_BREAK = API_WEB_URLS.MASTER + "/0/token/ContainerMaster";
 	const rtPage_Add = "/AddContainer";
 	const rtPage_Edit = "/AddContainer";
@@ -41,6 +45,7 @@ export const PageList_ContainerMaster = () => {
 	const [selRow, setSelRow] = useState(0);
 	const [showModal, setShowModal] = useState(false);
 	const [breakUpArray, setBreakUpArray] = useState([]);
+	const fileInputRef = useRef(null);
 
 	
 	useEffect(() => {
@@ -191,6 +196,49 @@ export const PageList_ContainerMaster = () => {
 		handleCloseModal();
 	  };
 
+	  // Validation function to check if Quantity sum matches ShipmentQty for each ContractNo
+	  const validateQuantityByContract = (data) => {
+		const contractGroups = {};
+		const errors = [];
+
+		// Group data by ContractNo
+		data.forEach((row) => {
+			if (row.ContractNo && row.ShipmentQty && row.Quantity) {
+				const contractNo = row.ContractNo.toString().trim();
+				if (!contractGroups[contractNo]) {
+					contractGroups[contractNo] = {
+						shipmentQty: parseFloat(row.ShipmentQty) || 0,
+						totalQuantity: 0,
+						containers: []
+					};
+				}
+				const quantity = parseFloat(row.Quantity) || 0;
+				contractGroups[contractNo].totalQuantity += quantity;
+				contractGroups[contractNo].containers.push({
+					containerName: row.ContainerNumber || 'N/A',
+					quantity: quantity
+				});
+			}
+		});
+
+		// Check if sum matches ShipmentQty
+		Object.keys(contractGroups).forEach((contractNo) => {
+			const group = contractGroups[contractNo];
+			if (Math.abs(group.totalQuantity - group.shipmentQty) > 0.01) { // Allow small floating point differences
+				const containerNames = group.containers.map(c => c.containerName).join(', ');
+				errors.push({
+					contractNo: contractNo,
+					shipmentQty: group.shipmentQty,
+					totalQuantity: group.totalQuantity,
+					containers: containerNames,
+					containerList: group.containers
+				});
+			}
+		});
+
+		return errors;
+	  };
+
 	  const handleFileUpload = (event) => {
 		const file = event.target.files[0];
 	  
@@ -268,6 +316,7 @@ export const PageList_ContainerMaster = () => {
 				ContractNo: obj["CONTRACT NO."],
 				ContainerNumber: obj["CONT \r\nNO."] || obj["CONT NO."],
 				ItemCode: obj["ITEM NO."],
+				ShipmentQty: obj["ShipmentQty"],
 				Quantity: obj["ITEM \r\nQTY"] || obj["ITEM QTY"],
 				JobCardInitial: obj["JOB CARD CODE"],
 			  }));
@@ -278,9 +327,35 @@ export const PageList_ContainerMaster = () => {
 				obj.ItemName !== undefined &&
 				obj.ContainerNumber !== undefined &&
 				obj.ItemCode !== undefined &&
-				obj.Quantity !== undefined &&
-				obj.JobCardInitial !== undefined
+				obj.Quantity !== undefined 
+
 			);
+	  
+			// Validate Quantity sum matches ShipmentQty for each ContractNo
+			const validationErrors = validateQuantityByContract(finalFilteredData);
+			if (validationErrors.length > 0) {
+				let errorMessage = "Quantity validation failed:\n\n";
+				validationErrors.forEach((error, index) => {
+					errorMessage += `${index + 1}. Contract No: ${error.contractNo}\n`;
+					errorMessage += `   ShipmentQty: ${error.shipmentQty}\n`;
+					errorMessage += `   Total Quantity: ${error.totalQuantity}\n`;
+					errorMessage += `   Difference: ${Math.abs(error.shipmentQty - error.totalQuantity)}\n`;
+					errorMessage += `   Container(s): ${error.containers}\n`;
+					errorMessage += `   Details:\n`;
+					error.containerList.forEach((container, idx) => {
+						errorMessage += `      - ${container.containerName}: Quantity ${container.quantity}\n`;
+					});
+					errorMessage += "\n";
+				});
+				alert(errorMessage);
+				setExcelData(null);
+				setUploadedRowCount(0);
+				// Clear file input
+				if (fileInputRef.current) {
+					fileInputRef.current.value = '';
+				}
+				return;
+			}
 	  
 			console.log(finalFilteredData);
 			setExcelData(finalFilteredData);
@@ -300,6 +375,26 @@ export const PageList_ContainerMaster = () => {
 			   alert("Please upload and process an Excel file first.");
 			   return;
 			 }
+
+			 // Validate Quantity sum matches ShipmentQty for each ContractNo before saving
+			 const validationErrors = validateQuantityByContract(excelData);
+			if (validationErrors.length > 0) {
+				let errorMessage = "Cannot save! Quantity validation failed:\n\n";
+				validationErrors.forEach((error, index) => {
+					errorMessage += `${index + 1}. Contract No: ${error.contractNo}\n`;
+					errorMessage += `   ShipmentQty: ${error.shipmentQty}\n`;
+					errorMessage += `   Total Quantity: ${error.totalQuantity}\n`;
+					errorMessage += `   Difference: ${Math.abs(error.shipmentQty - error.totalQuantity)}\n`;
+					errorMessage += `   Container(s): ${error.containers}\n`;
+					errorMessage += `   Details:\n`;
+					error.containerList.forEach((container, idx) => {
+						errorMessage += `      - ${container.containerName}: Quantity ${container.quantity}\n`;
+					});
+					errorMessage += "\n";
+				});
+				alert(errorMessage);
+				return;
+			}
 		
 			 setIsSaving(true);
 			 
@@ -351,9 +446,68 @@ export const PageList_ContainerMaster = () => {
 			Header: 'InspectionDate',
 			Footer: 'InspectionDate',
 			accessor: 'InspectionDate',
-			Cell: ({ value }) => {
-			  const date = new Date(value);
-			  return date.toLocaleDateString('en-GB'); // Converts to dd/mm/yyyy format
+			Cell: ({ row }) => {
+				const { ParentIds } = row.original;
+				const handleDateChange = async (e, rowData) => {
+					const inspectionDateValue = e.target.value; // Already in YYYY-MM-DD format (SQL Server format)
+					console.log('Row data on change:', rowData);
+					console.log('InspectionDate value:', inspectionDateValue);
+
+					if (inspectionDateValue) {
+						await Fn_FillListData(dispatch, setState, "no", API_URL_UpdateInspectionDate + "/"+inspectionDateValue+"/"+rowData.F_ContainerMasterL);
+						toast.success("Updated", {
+							position: "top-right",
+							autoClose: 3000,
+							hideProgressBar: false,
+							closeOnClick: true,
+							pauseOnHover: true,
+							draggable: true,
+						});
+					}
+				};
+
+				// Format date for input (YYYY-MM-DD) - avoid timezone issues
+				const formatDateForInput = (dateValue) => {
+					if (!dateValue) return '';
+					// If already in YYYY-MM-DD format, return as is
+					if (typeof dateValue === 'string' && /^\d{4}-\d{2}-\d{2}/.test(dateValue)) {
+						return dateValue.split('T')[0]; // Remove time part if present
+					}
+					// Parse date and format without timezone conversion
+					const date = new Date(dateValue);
+					if (isNaN(date.getTime())) return '';
+					// Use UTC methods to avoid timezone shift
+					const year = date.getUTCFullYear();
+					const month = String(date.getUTCMonth() + 1).padStart(2, '0');
+					const day = String(date.getUTCDate()).padStart(2, '0');
+					return `${year}-${month}-${day}`;
+				};
+
+				// Format date for display (dd/mm/yyyy)
+				const formatDateForDisplay = (dateValue) => {
+					if (!dateValue) return '';
+					// If already in YYYY-MM-DD format, parse it directly
+					if (typeof dateValue === 'string' && /^\d{4}-\d{2}-\d{2}/.test(dateValue)) {
+						const [year, month, day] = dateValue.split('T')[0].split('-');
+						return `${day}/${month}/${year}`;
+					}
+					const date = new Date(dateValue);
+					if (isNaN(date.getTime())) return '';
+					return date.toLocaleDateString('en-GB');
+				};
+
+				if (ParentIds === null || ParentIds === undefined || ParentIds === '') {
+					return (
+						<FormControl
+							type="date"
+							defaultValue={formatDateForInput(row.original.InspectionDate)}
+							onChange={(e) => handleDateChange(e, row.original)}
+							style={{ width: '150px' }}
+						/>
+					);
+				} else {
+					return <span>{formatDateForDisplay(row.original.InspectionDate)}</span>;
+				}
 			},
 			Filter: DateFilter,
 			filter: (rows, id, filterValue) => {
@@ -396,6 +550,42 @@ export const PageList_ContainerMaster = () => {
 			Footer : 'Quantity',
 			accessor: 'Quantity',
 			Filter: ColumnFilter,
+			Cell: ({ row }) => {
+				const { ParentIds } = row.original;
+				const handleEnterKeyPress = async (e, rowData) => {
+					if (e.key === 'Enter') {
+						const quantityValue = e.target.value;
+						console.log('Row data on Enter:', rowData);
+						console.log('Quantity value:', quantityValue);
+
+						
+						await Fn_FillListData(dispatch, setState, "no", API_URL_UpdateQuantity + "/"+quantityValue+"/"+rowData.F_ContainerMasterL);
+						toast.success("Updated", {
+							position: "top-right",
+							autoClose: 3000,
+							hideProgressBar: false,
+							closeOnClick: true,
+							pauseOnHover: true,
+							draggable: true,
+						});
+						// You can call your function here
+						// handleQuantityEnter(rowData, quantityValue);
+					}
+				};
+
+				if (ParentIds === null || ParentIds === undefined || ParentIds === '') {
+					return (
+						<FormControl
+							type="number"
+							defaultValue={row.original.Quantity || ''}
+							onKeyDown={(e) => handleEnterKeyPress(e, row.original)}
+							style={{ width: '100px' }}
+						/>
+					);
+				} else {
+					return <span>{row.original.Quantity}</span>;
+				}
+			},
 		},
 
 		{
@@ -585,9 +775,20 @@ export const PageList_ContainerMaster = () => {
 
 			<Col md="4">
 				<div>
-					<label htmlFor="fileInput" className="form-label mb-1 small">Upload Excel of Container (shipment)</label>
+					<label htmlFor="fileInput" className="form-label mb-1 small">
+						Upload Excel of Container (shipment)
+						<a 
+							href={`${process.env.PUBLIC_URL}/Container_Sheet.xlsx`}
+							download="Container_Sheet.xlsx"
+							className="badge bg-info text-decoration-none ms-2"
+							style={{ fontSize: '0.7rem', cursor: 'pointer' }}
+						>
+							📥 Template
+						</a>
+					</label>
 					<div className="d-flex align-items-center">
 						<FormControl
+							ref={fileInputRef}
 							type="file"
 							accept=".xlsx, .xlsm"
 							onChange={handleFileUpload}
@@ -669,7 +870,8 @@ export const PageList_ContainerMaster = () => {
 									return(
 										<tr {...row.getRowProps()}>
 											{row.cells.map((cell) => {
-												return <td {...cell.getCellProps()}> {cell.render('Cell')} </td>
+												const { key, ...cellProps } = cell.getCellProps();
+												return <td key={key} {...cellProps}> {cell.render('Cell')} </td>
 											})}
 										</tr>
 									)
@@ -865,6 +1067,7 @@ export const PageList_ContainerMaster = () => {
 					</Modal.Footer>
 				</Modal>
 			)}
+			<ToastContainer position="top-right" autoClose={3000} />
 		</>
 	)
 	

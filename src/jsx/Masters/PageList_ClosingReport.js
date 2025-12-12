@@ -5,7 +5,7 @@ import { API_WEB_URLS } from "../../constants/constAPI";
 import { useDispatch } from "react-redux";
 import { useNavigate } from "react-router-dom";
 import jsPDF from 'jspdf';
-import 'jspdf-autotable';
+import autoTable from 'jspdf-autotable';
 import html2canvas from 'html2canvas';
 import ExcelJS from 'exceljs';
 import MetalJobCard from "./MetalJobCard";
@@ -323,27 +323,64 @@ const PageList_ClosingReport = ({F_ContainerMasterL: propF_ContainerMasterL, F_I
       item.ContainerNumber || '',
       item.ItemMaster || '',
       item.ComponentName || '',
+      item.Length || '',
+      item.Width || '',
+      item.Thickness || '',
       item.ComponentQty || ''
     ]);
 
-    // Add table using autoTable
-    pdf.autoTable({
-      head: [['S.No', 'Job Card No', 'Container Number', 'Item Name', 'Component Name', 'Component Qty']],
+    // Calculate approximate table width based on content (9 columns with padding)
+    // Landscape A4 width is ~297mm, leaving margins: ~277mm available
+    const tableWidth = 260; // Fixed width that fits content without extending
+    
+    // Add table using autoTable with proper borders - only where data exists
+    autoTable(pdf, {
+      head: [['S.No', 'Job Card No', 'Container Number', 'Item Name', 'Component Name', 'Length', 'Width', 'Thickness', 'Component Qty']],
       body: tableData,
       startY: 25,
+      tableWidth: tableWidth,
       styles: {
         fontSize: 8,
-        cellPadding: 2
+        cellPadding: 3,
+        lineColor: [0, 0, 0],
+        lineWidth: 0.1,
+        textColor: [0, 0, 0],
+        overflow: 'linebreak'
       },
       headStyles: {
         fillColor: [44, 62, 80],
         textColor: [255, 255, 255],
-        fontStyle: 'bold'
+        fontStyle: 'bold',
+        lineColor: [0, 0, 0],
+        lineWidth: 0.2,
+        halign: 'center',
+        valign: 'middle'
+      },
+      bodyStyles: {
+        lineColor: [0, 0, 0],
+        lineWidth: 0.1,
+        halign: 'left',
+        valign: 'middle'
       },
       alternateRowStyles: {
-        fillColor: [245, 246, 248]
+        fillColor: [245, 246, 248],
+        lineColor: [0, 0, 0],
+        lineWidth: 0.1
       },
-      margin: { top: 25 }
+      columnStyles: {
+        0: { halign: 'center', cellWidth: 15 }, // S.No
+        1: { cellWidth: 30 }, // Job Card No
+        2: { cellWidth: 30 }, // Container Number
+        3: { cellWidth: 35 }, // Item Name
+        4: { cellWidth: 40 }, // Component Name
+        5: { halign: 'center', cellWidth: 20 }, // Length
+        6: { halign: 'center', cellWidth: 20 }, // Width
+        7: { halign: 'center', cellWidth: 20 }, // Thickness
+        8: { halign: 'center', cellWidth: 20 }  // Component Qty
+      },
+      margin: { top: 25, left: 10, right: 10 },
+      tableLineColor: [0, 0, 0],
+      tableLineWidth: 0.2
     });
 
     // Generate filename with current date
@@ -371,6 +408,9 @@ const PageList_ClosingReport = ({F_ContainerMasterL: propF_ContainerMasterL, F_I
         { header: 'Container Number', key: 'containerNumber', width: 20 },
         { header: 'Item Name', key: 'itemName', width: 30 },
         { header: 'Component Name', key: 'componentName', width: 30 },
+        { header: 'Length', key: 'length', width: 15 },
+        { header: 'Width', key: 'width', width: 15 },
+        { header: 'Thickness', key: 'thickness', width: 15 },
         { header: 'Component Qty', key: 'componentQty', width: 15 }
       ];
 
@@ -391,6 +431,9 @@ const PageList_ClosingReport = ({F_ContainerMasterL: propF_ContainerMasterL, F_I
           containerNumber: item.ContainerNumber || '',
           itemName: item.ItemMaster || '',
           componentName: item.ComponentName || '',
+          length: item.Length || '',
+          width: item.Width || '',
+          thickness: item.Thickness || '',
           componentQty: item.ComponentQty || ''
         });
 
@@ -559,9 +602,9 @@ const PageList_ClosingReport = ({F_ContainerMasterL: propF_ContainerMasterL, F_I
                   <th style={tableStyles.tableHeader}>Container Number</th>
                   <th style={tableStyles.tableHeader}>Item Name</th>
                   <th style={tableStyles.tableHeader}>Component Name</th>
-                  {/* <th style={tableStyles.tableHeader}>Length</th>
+                  <th style={tableStyles.tableHeader}>Length</th>
                   <th style={tableStyles.tableHeader}>Width</th>
-                  <th style={tableStyles.tableHeader}>Thickness</th> */}
+                  <th style={tableStyles.tableHeader}>Thickness</th>
                   <th style={tableStyles.tableHeader}>Component Qty</th>
                   <th style={tableStyles.tableHeader}>Status</th>
                 </tr>
@@ -580,9 +623,9 @@ const PageList_ClosingReport = ({F_ContainerMasterL: propF_ContainerMasterL, F_I
                     <td style={tableStyles.tableCell}>{item.ContainerNumber}</td>
                     <td style={tableStyles.tableCell}>{item.ItemMaster}</td>
                     <td style={tableStyles.tableCell}>{item.ComponentName}</td>
-                    {/* <td style={tableStyles.tableCell}>{item.Length}</td>
+                    <td style={tableStyles.tableCell}>{item.Length}</td>
                     <td style={tableStyles.tableCell}>{item.Width}</td>
-                    <td style={tableStyles.tableCell}>{item.Thickness}</td> */}
+                    <td style={tableStyles.tableCell}>{item.Thickness}</td>
                     <td style={tableStyles.tableCell}>{item.ComponentQty}</td>
                     <td style={tableStyles.tableCell}>{item.Status}</td>
                   </tr>
