@@ -467,6 +467,14 @@ const WoodJobCard = ({
                   <td>${jobCard.W3 ? (jobCard.W3 % 1 === 0 ? Math.round(jobCard.W3) : jobCard.W3.toFixed(2)) : 'N/A'}</td>
                   <td>${jobCard.CFT ? (jobCard.CFT % 1 === 0 ? Math.round(jobCard.CFT) : jobCard.CFT.toFixed(2)) : 'N/A'}</td>
                 </tr>
+                ${jobCard.W_1 || jobCard.W_2 || jobCard.W_3 || jobCard.Qty3 ? `
+                <tr>
+                  <td>${jobCard.W_1 ? (jobCard.W_1 % 1 === 0 ? Math.round(jobCard.W_1) : jobCard.W_1.toFixed(2)) : 'N/A'}</td>
+                  <td>${jobCard.W_2 ? (jobCard.W_2 % 1 === 0 ? Math.round(jobCard.W_2) : jobCard.W_2.toFixed(2)) : 'N/A'}</td>
+                  <td>${jobCard.W_3 ? (jobCard.W_3 % 1 === 0 ? Math.round(jobCard.W_3) : jobCard.W_3.toFixed(2)) : 'N/A'}</td>
+                  <td>${jobCard.CFT2 ? (jobCard.CFT2 % 1 === 0 ? Math.round(jobCard.CFT2) : jobCard.CFT2.toFixed(2)) : 'N/A'}</td>
+                </tr>
+                ` : ''}
               </table>
 
               <table class="dimensions-table">
@@ -1331,6 +1339,95 @@ const WoodJobCard = ({
                       </div>
                     </Col>
                   </Row>
+                  
+                  {/* Additional row for W_1, W_2, W_3, Qty3 if they exist */}
+                  {(jobCard.W_1 || jobCard.W_2 || jobCard.W_3 || jobCard.Qty3) && (
+                    <Row className="g-0" style={{ borderTop: "1px solid #2d3748" }}>
+                      <Col
+                        xs={3}
+                        style={{
+                          textAlign: "center",
+                          borderRight: "2px solid #2d3748",
+                          padding: "0.75rem",
+                        }}
+                      >
+                        <div
+                          style={{
+                            padding: "0.75rem",
+                            color: "#000000",
+                          }}
+                        >
+                          {jobCard.W_1
+                            ? jobCard.W_1 % 1 === 0
+                              ? Math.round(jobCard.W_1)
+                              : jobCard.W_1.toFixed(2)
+                            : "N/A"}
+                        </div>
+                      </Col>
+                      <Col
+                        xs={3}
+                        style={{
+                          textAlign: "center",
+                          borderRight: "2px solid #2d3748",
+                          padding: "0.75rem",
+                        }}
+                      >
+                        <div
+                          style={{
+                            padding: "0.75rem",
+                            color: "#000000",
+                          }}
+                        >
+                          {jobCard.W_2
+                            ? jobCard.W_2 % 1 === 0
+                              ? Math.round(jobCard.W_2)
+                              : jobCard.W_2.toFixed(2)
+                            : "N/A"}
+                        </div>
+                      </Col>
+                      <Col
+                        xs={3}
+                        style={{
+                          textAlign: "center",
+                          borderRight: "2px solid #2d3748",
+                          padding: "0.75rem",
+                        }}
+                      >
+                        <div
+                          style={{
+                            padding: "0.75rem",
+                            color: "#000000",
+                          }}
+                        >
+                          {jobCard.W_3
+                            ? jobCard.W_3 % 1 === 0
+                              ? Math.round(jobCard.W_3)
+                              : jobCard.W_3.toFixed(2)
+                            : "N/A"}
+                        </div>
+                      </Col>
+                      <Col
+                        xs={3}
+                        style={{
+                          textAlign: "center",
+                          padding: "0.75rem",
+                        }}
+                      >
+                        <div
+                          style={{
+                            padding: "0.75rem",
+                            color: "#000000",
+                          }}
+                        >
+                          {jobCard.Qty3
+                            ? jobCard.Qty3 % 1 === 0
+                              ? Math.round(jobCard.Qty3)
+                              : jobCard.Qty3.toFixed(2)
+                            : "N/A"}
+                        </div>
+                      </Col>
+                    </Row>
+                  )}
                 </Col>
               </Row>
 

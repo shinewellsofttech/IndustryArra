@@ -49,7 +49,7 @@ export const PageList_ComponentMaster = () => {
 	const API_URL_IsActive = API_WEB_URLS.MASTER + "/0/token/ComponentsUpdateIsActive";
 	const API_URL1 = API_WEB_URLS.MASTER + "/0/token/MachineComponentMap";
 	const API_URL2 = API_WEB_URLS.MASTER + "/0/token/MachineMaster";
-	const rtPage_Add = "/AddComponent";
+	const rtPage_Add = "/AddMultipleComponent";
 	const rtPage_Edit = "/AddComponent";
 	const API_URL_SAVE = "AddComponentPhoto/0/token";
 	const API_URL_Update = "UpdateComponentPhotoStatus/0/token";

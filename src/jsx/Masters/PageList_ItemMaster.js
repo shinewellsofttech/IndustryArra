@@ -15,6 +15,8 @@ import { useNavigate } from 'react-router-dom';
 import { API_WEB_URLS } from '../../constants/constAPI';
 import { Fn_AddEditData, Fn_FillListData } from '../../store/Functions';
 import XLSX from 'xlsx';
+import { toast } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
 
 
 export const PageList_ItemMaster = () => {
@@ -30,9 +32,11 @@ export const PageList_ItemMaster = () => {
 	  })
 	const [gridData, setGridData] = useState([]);
 	const [loading, setLoading] = useState(true);
+	const [selectedIds, setSelectedIds] = useState([]);
 	const dispatch = useDispatch();
 	const navigate = useNavigate();
 	const API_URL = API_WEB_URLS.MASTER + "/0/token/ItemMaster";
+	const API_URL_DELETE = API_WEB_URLS.MASTER + "/0/token/DeleteItemMaster";
 	const rtPage_Add = "/AddItem";
 	const rtPage_Edit = "/AddItem";
 	const [isUploading, setIsUploading] = useState(false);
@@ -85,6 +89,50 @@ export const PageList_ItemMaster = () => {
 		navigate(rtPage_Edit, { state: { Id } });
 	  }, [navigate, rtPage_Edit]);
 	
+
+const btnDelete = useCallback(async (id) => {
+	const res = await Fn_FillListData(dispatch, setState, "nothing", API_URL_DELETE + "/Id/" + id);
+	console.log("Delete Response:", res);
+	if(res && res.length > 0 && res[0].Id > 0 && res[0].Id == id){
+		toast.success("Item deleted successfully");
+		Fn_FillListData(dispatch, setGridData, "gridData", API_URL + "/Id/0");
+	}else{
+		toast.error("Data is used can not delete it");
+	}
+}, [dispatch, API_URL_DELETE, API_URL]);
+
+	const toggleSelectAll = useCallback((checked, currentPageRows) => {
+		if (checked) {
+			const ids = currentPageRows.map(r => r.original.Id);
+			setSelectedIds(prev => Array.from(new Set([...prev, ...ids])));
+		} else {
+			const ids = new Set(currentPageRows.map(r => r.original.Id));
+			setSelectedIds(prev => prev.filter(id => !ids.has(id)));
+		}
+	}, []);
+
+	const toggleSelectOne = useCallback((id, checked) => {
+		setSelectedIds(prev => {
+			if (checked) return Array.from(new Set([...prev, id]));
+			return prev.filter(itemId => itemId !== id);
+		});
+	}, []);
+
+	const handleBulkDelete = useCallback(async (ids) => {
+		if (!ids || ids.length === 0) return;
+		if (!window.confirm(`Delete ${ids.length} item(s)?`)) return;
+		for (const id of ids) {
+			try {
+				await Fn_FillListData(dispatch, setState, "nothing", API_URL_DELETE + "/Id/" + id);
+			} catch (e) {
+				console.error("Bulk delete error for id", id, e);
+			}
+		}
+		toast.success(`Deleted ${ids.length} item(s)`);
+		setSelectedIds([]);
+		Fn_FillListData(dispatch, setGridData, "gridData", API_URL + "/Id/0");
+	}, [API_URL, API_URL_DELETE, dispatch]);
+
 	// --- Define Upload functions here ---
 	const btnUploadOnClick = useCallback((id) => {
 		console.log("Upload clicked for ITEM ID:", id);
@@ -352,6 +400,34 @@ export const PageList_ItemMaster = () => {
 
 	const COLUMNS = useMemo(() => [
 		{
+			id: 'select',
+			Header: ({ page }) => {
+				const allIds = page.map(r => r.original.Id);
+				const allSelected = allIds.every(id => selectedIds.includes(id));
+				return (
+					<input
+						type="checkbox"
+						checked={allSelected}
+						onChange={(e) => toggleSelectAll(e.target.checked, page)}
+					/>
+				);
+			},
+			Cell: ({ row }) => {
+				const id = row.original.Id;
+				const checked = selectedIds.includes(id);
+				return (
+					<input
+						type="checkbox"
+						checked={checked}
+						onChange={(e) => toggleSelectOne(id, e.target.checked)}
+					/>
+				);
+			},
+			disableFilters: true,
+			disableSortBy: true,
+			width: 40,
+		},
+		{
 			Header : 'Id',
 			Footer : 'Id',
 			accessor: 'Id',
@@ -452,19 +528,29 @@ export const PageList_ItemMaster = () => {
 			disableFilters: true,
 			Cell: ({ row }) => {
 			  return (
-				<Button
-				  variant="primary"
-				  size="sm"
-				  onClick={() => btnEditOnClick(row.original.Id)}
-				  title="Edit"
-				>
-				  Edit
-				</Button>
+				<div style={{ display: 'flex', gap: '5px' }}>
+				  <Button
+					variant="primary"
+					size="sm"
+					onClick={() => btnEditOnClick(row.original.Id)}
+					title="Edit"
+				  >
+					Edit
+				  </Button>
+				  <Button
+					variant="danger"
+					size="sm"
+					onClick={() => btnDelete(row.original.Id)}
+					title="Delete"
+				  >
+					<i className="bi bi-trash"></i>
+				  </Button>
+				</div>
 			  );
 			},
 		  }, 
 
-	], [btnUploadOnClick, btnEditOnClick]);
+	], [btnUploadOnClick, btnEditOnClick, btnDelete, selectedIds, toggleSelectAll, toggleSelectOne]);
 
 	const data = useMemo( () => gridData, [gridData] )
 	const tableInstance = useTable({
@@ -702,6 +788,19 @@ export const PageList_ItemMaster = () => {
 					</Button>
 				</Col>
 			</Row>
+			{selectedIds.length > 0 && (
+				<Row className="mb-2">
+					<Col md="12">
+						<Button
+							variant="danger"
+							size="sm"
+							onClick={() => handleBulkDelete(selectedIds)}
+						>
+							Delete Selected ({selectedIds.length})
+						</Button>
+					</Col>
+				</Row>
+			)}
 
 			{/* --- Display Area for Item-Specific Upload Status --- */}
 			{itemIdForUpload !== null && ( // Only show if an item upload was initiated

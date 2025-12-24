@@ -28,6 +28,10 @@ const AddEdit_ComponentMaster = () => {
       W2: "",
       T2: "",
       Qty2: "",
+      L3: "",
+      W3: "",
+      T3: "",
+      Qty3: "",
       IsActive: true,
     },
     FillArray: [],
@@ -84,6 +88,10 @@ const AddEdit_ComponentMaster = () => {
       formData.append("W2", values.W2 || "")
       formData.append("T2", values.T2 || "")
       formData.append("Qty2", values.Qty2 || "")
+      formData.append("L3", values.L3 || "")
+      formData.append("W3", values.W3 || "")
+      formData.append("T3", values.T3 || "")
+      formData.append("Qty3", values.Qty3 || "")
       formData.append("IsActive", values.IsActive)
 
       // Append images to formData as Image1, Image2, etc. (only existing images)
@@ -379,6 +387,66 @@ const AddEdit_ComponentMaster = () => {
                               onChange={handleChange}
                               onBlur={handleBlur}
                               value={values.Qty2 || ""}
+                            />
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Compact numeric fields - Set 3 */}
+                      <div className="row mb-3">
+                        <div className="col-md-3">
+                          <div className="form-group">
+                            <label className="text-label">L3</label>
+                            <input
+                              type="number"
+                              step="0.01"
+                              className="form-control"
+                              name="L3"
+                              onChange={handleChange}
+                              onBlur={handleBlur}
+                              value={values.L3 || ""}
+                            />
+                          </div>
+                        </div>
+                        <div className="col-md-3">
+                          <div className="form-group">
+                            <label className="text-label">W3</label>
+                            <input
+                              type="number"
+                              step="0.01"
+                              className="form-control"
+                              name="W3"
+                              onChange={handleChange}
+                              onBlur={handleBlur}
+                              value={values.W3 || ""}
+                            />
+                          </div>
+                        </div>
+                        <div className="col-md-3">
+                          <div className="form-group">
+                            <label className="text-label">T3</label>
+                            <input
+                              type="number"
+                              step="0.01"
+                              className="form-control"
+                              name="T3"
+                              onChange={handleChange}
+                              onBlur={handleBlur}
+                              value={values.T3 || ""}
+                            />
+                          </div>
+                        </div>
+                        <div className="col-md-3">
+                          <div className="form-group">
+                            <label className="text-label">Qty3</label>
+                            <input
+                              type="number"
+                              step="0.01"
+                              className="form-control"
+                              name="Qty3"
+                              onChange={handleChange}
+                              onBlur={handleBlur}
+                              value={values.Qty3 || ""}
                             />
                           </div>
                         </div>

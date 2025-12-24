@@ -301,6 +301,11 @@ const fetchData = async () => {
               overflow: hidden;
             }
 
+            .page-break-before {
+              page-break-before: always !important;
+              break-before: page !important;
+            }
+
             .header {
               height: 10mm;
               text-align: center;
@@ -321,7 +326,7 @@ const fetchData = async () => {
             }
 
             .drawing-section {
-              height: 130mm;
+              height: 180mm;
               margin: 2mm 0;
               border: 1px solid #000;
               padding: 2mm;
@@ -329,12 +334,6 @@ const fetchData = async () => {
               flex-direction: column;
               align-items: center;
             }
-
-            .job-card[data-machine-rows="6"] .drawing-section { height: 120mm; }
-            .job-card[data-machine-rows="7"] .drawing-section { height: 110mm; }
-            .job-card[data-machine-rows="8"] .drawing-section { height: 100mm; }
-            .job-card[data-machine-rows="9"] .drawing-section { height: 90mm; }
-            .job-card[data-machine-rows="10"] .drawing-section { height: 80mm; }
 
             .drawing-section .label {
               height: 5mm;
@@ -392,16 +391,12 @@ const fetchData = async () => {
 
             .machine-table th:first-child,
             .machine-table td:first-child {
-              width: 10px;
-              min-width: 10px;
-              max-width: 10px;
+              width: 12mm;
             }
 
             .machine-table th:nth-child(2),
             .machine-table td:nth-child(2) {
-              width: 20px;
-              min-width: 20px;
-              max-width: 20px;
+              width: 18mm;
             }
 
             .machine-table th:nth-child(3),
@@ -410,71 +405,86 @@ const fetchData = async () => {
               white-space: normal;
               word-break: break-word;
               text-align: left;
-              padding: 0.5mm 1mm;
+              padding: 1.5mm 2mm;
             }
 
             .machine-table th:nth-child(4),
-            .machine-table td:nth-child(4),
+            .machine-table td:nth-child(4) {
+              width: 15mm;
+            }
+
             .machine-table th:nth-child(5),
-            .machine-table td:nth-child(5),
+            .machine-table td:nth-child(5) {
+              width: 12mm;
+            }
+
             .machine-table th:nth-child(6),
-            .machine-table td:nth-child(6),
+            .machine-table td:nth-child(6) {
+              width: 12mm;
+            }
+
             .machine-table th:nth-child(7),
-            .machine-table td:nth-child(7),
+            .machine-table td:nth-child(7) {
+              width: 24mm;
+            }
+
             .machine-table th:nth-child(8),
-            .machine-table td:nth-child(8),
+            .machine-table td:nth-child(8) {
+              width: 24mm;
+            }
+
             .machine-table th:nth-child(9),
-            .machine-table td:nth-child(9),
+            .machine-table td:nth-child(9) {
+              width: 20mm;
+            }
+
             .machine-table th:nth-child(10),
             .machine-table td:nth-child(10) {
-              width: 15px;
-              min-width: 15px;
-              max-width: 15px;
+              width: 22mm;
             }
 
             .machine-table td:nth-child(3) {
-              text-align: left;
-              padding: 0.5mm 1mm;
-              font-size: 10px;
-              font-weight: 500;
-              white-space: normal;
-              word-break: break-word;
+              text-align: left !important;
+              padding-left: 2mm !important;
+              padding-right: 2mm !important;
+              font-size: 10px !important;
+              white-space: normal !important;
+              word-wrap: break-word !important;
             }
 
             .machine-table th {
-              padding: 0.5mm;
-              font-size: 8px;
+              padding: 1.5mm 1mm;
+              font-size: 9px;
               text-align: center;
-              line-height: 1;
+              line-height: 1.4;
               background-color: #f0f0f0;
-              white-space: nowrap;
-              overflow: hidden;
-              text-overflow: ellipsis;
+              white-space: normal;
+              word-wrap: break-word;
+              vertical-align: middle;
+              font-weight: 700;
+              height: 8mm;
+              border: 1px solid #000;
             }
 
             .machine-table td {
-              padding: 0.5mm;
-              font-size: 8px;
+              padding: 1.5mm 1mm;
+              font-size: 9px;
               text-align: center;
-              line-height: 1;
-              white-space: nowrap;
-              overflow: hidden;
-              text-overflow: ellipsis;
+              line-height: 1.3;
+              vertical-align: middle;
+              height: 9mm;
+              border: 1px solid #000;
             }
 
             .machine-table td:first-child {
               font-size: 11px !important;
               font-weight: 600 !important;
-              padding: 0.5mm;
-              text-align: center;
             }
 
             .notes-section {
-              height: 15mm;
               margin-top: 2mm;
               border: 1px solid #000;
               padding: 2mm;
-              overflow: hidden;
             }
 
             .notes-section .label {
@@ -486,8 +496,8 @@ const fetchData = async () => {
             .notes-content {
               font-size: 10px;
               line-height: 1.2;
-              height: calc(100% - 5mm);
-              overflow: hidden;
+              overflow: auto;
+              padding: 2mm;
             }
 
             table {
@@ -574,44 +584,9 @@ const fetchData = async () => {
                 </tr>
               </table>
 
-              <div class="drawing-section">
-                <div class="label">COMPONENT DRAWING</div>
-                ${drawingsData[jobCard.F_ComponentsMaster] && drawingsData[jobCard.F_ComponentsMaster].length > 0 ? `
-                  <div style="display: flex; flex-wrap: wrap; justify-content: center; gap: 2mm; width: 100%;">
-                    ${drawingsData[jobCard.F_ComponentsMaster].map((drawing, index) => {
-                      const imageCount = drawingsData[jobCard.F_ComponentsMaster].length;
-                      let imageSize, containerSize;
-                      
-                      if (imageCount === 1) {
-                        imageSize = "max-width: 150mm; max-height: 100mm;";
-                        containerSize = "max-width: 160mm; min-width: 120mm; width: 100%;";
-                      } else if (imageCount === 2) {
-                        imageSize = "max-width: 80mm; max-height: 60mm;";
-                        containerSize = "max-width: 90mm; min-width: 70mm; width: 48%;";
-                      } else if (imageCount === 3) {
-                        imageSize = "max-width: 60mm; max-height: 45mm;";
-                        containerSize = "max-width: 70mm; min-width: 50mm; width: 32%;";
-                      } else if (imageCount === 4) {
-                        imageSize = "max-width: 50mm; max-height: 38mm;";
-                        containerSize = "max-width: 60mm; min-width: 40mm; width: 24%;";
-                      } else {
-                        imageSize = "max-width: 40mm; max-height: 30mm;";
-                        containerSize = "max-width: 50mm; min-width: 30mm; width: 20%;";
-                      }
-                      
-                      return `
-                        <div style="text-align: center; border: 1px solid #e2e8f0; padding: 1mm; border-radius: 2mm; background-color: #f8f9fa; ${containerSize}; flex: 1;">
-                          <img src="${API_WEB_URLS.IMAGEURL}/${drawing.ImageDataNew}" style="width: 100%; ${imageSize} height: auto; object-fit: contain; border-radius: 1mm;" />
-                        </div>
-                      `;
-                    }).join('')}
-                  </div>
-                ` : '<div style="height: 60mm; display: flex; align-items: center; justify-content: center; color: #666;">No drawings available</div>'}
-              </div>
-
               <table class="machine-table" data-rows="${machineDetails.length}">
                 <tr>
-                  <th colspan="10" class="label">MACHINE DETAILS</th>
+                  <th colspan="10" class="label">MACHINE SEQUENCING</th>
                 </tr>
                 <tr>
                   <th>M/C NO</th>
@@ -620,10 +595,10 @@ const fetchData = async () => {
                   <th>PROCESS</th>
                   <th>QTY</th>
                   <th>REJ</th>
-                  <th>START</th>
-                  <th>END</th>
-                  <th>ALLOC</th>
-                  <th>USER</th>
+                  <th>START TIME</th>
+                  <th>END TIME</th>
+                  <th>ALLOCATED TIME</th>
+                  <th>OPERATOR NAME</th>
                 </tr>
                 ${machineDetails.map(machine => `
                   <tr>
@@ -644,6 +619,71 @@ const fetchData = async () => {
               <div class="notes-section">
                 <div class="label">NOTES</div>
                 <div class="notes-content">${jobCard.Notes || ''}</div>
+              </div>
+            </div>
+
+            <!-- Page 2 -->
+            <div class="job-card page-break-before">
+              <div class="header">AARA DESIGN</div>
+              
+              <!-- Component Name - Centered Sub-header -->
+              <table>
+                <tr>
+                  <td style="text-align: center; padding: 0.75rem; border-bottom: 1px solid #000000; font-weight: 700; font-size: 0.9rem;">
+                    ${jobCard.ComponentsName || 'N/A'}
+                  </td>
+                </tr>
+              </table>
+
+              <!-- Dimensions Table -->
+              <table class="dimensions-table">
+                <tr>
+                  <th style="border: 1px solid #000000; padding: 0.75rem; text-align: center; background-color: #f8f9fa; font-weight: 700;">Length (in mm)</th>
+                  <th style="border: 1px solid #000000; padding: 0.75rem; text-align: center; background-color: #f8f9fa; font-weight: 700;">Width (in mm)</th>
+                  <th style="border: 1px solid #000000; padding: 0.75rem; text-align: center; background-color: #f8f9fa; font-weight: 700;">Thickness (in mm)</th>
+                </tr>
+                <tr>
+                  <td style="border: 1px solid #000000; padding: 0.75rem; text-align: center; font-weight: 600;">${jobCard.F1 ? (jobCard.F1 % 1 === 0 ? Math.round(jobCard.F1) : jobCard.F1.toFixed(2)) : 'N/A'}</td>
+                  <td style="border: 1px solid #000000; padding: 0.75rem; text-align: center; font-weight: 600;">${jobCard.F2 ? (jobCard.F2 % 1 === 0 ? Math.round(jobCard.F2) : jobCard.F2.toFixed(2)) : 'N/A'}</td>
+                  <td style="border: 1px solid #000000; padding: 0.75rem; text-align: center; font-weight: 600;">${jobCard.F3 ? (jobCard.F3 % 1 === 0 ? Math.round(jobCard.F3) : jobCard.F3.toFixed(2)) : 'N/A'}</td>
+                </tr>
+              </table>
+
+              <div class="drawing-section" style="flex: 1; min-height: 400px; display: flex; flex-direction: column;">
+                <div class="label">COMPONENT DRAWING</div>
+                <div style="flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center;">
+                  ${drawingsData[jobCard.F_ComponentsMaster] && drawingsData[jobCard.F_ComponentsMaster].length > 0 ? `
+                    <div style="display: flex; flex-wrap: wrap; justify-content: center; gap: 2mm; width: 100%;">
+                      ${drawingsData[jobCard.F_ComponentsMaster].map((drawing, index) => {
+                        const imageCount = drawingsData[jobCard.F_ComponentsMaster].length;
+                        let imageSize, containerSize;
+                        
+                        if (imageCount === 1) {
+                          imageSize = "max-width: 150mm; max-height: 100mm;";
+                          containerSize = "max-width: 160mm; min-width: 120mm; width: 100%;";
+                        } else if (imageCount === 2) {
+                          imageSize = "max-width: 80mm; max-height: 60mm;";
+                          containerSize = "max-width: 90mm; min-width: 70mm; width: 48%;";
+                        } else if (imageCount === 3) {
+                          imageSize = "max-width: 60mm; max-height: 45mm;";
+                          containerSize = "max-width: 70mm; min-width: 50mm; width: 32%;";
+                        } else if (imageCount === 4) {
+                          imageSize = "max-width: 50mm; max-height: 38mm;";
+                          containerSize = "max-width: 60mm; min-width: 40mm; width: 24%;";
+                        } else {
+                          imageSize = "max-width: 40mm; max-height: 30mm;";
+                          containerSize = "max-width: 50mm; min-width: 30mm; width: 20%;";
+                        }
+                        
+                        return `
+                          <div style="text-align: center; border: 1px solid #e2e8f0; padding: 1mm; border-radius: 2mm; background-color: #f8f9fa; ${containerSize}; flex: 1;">
+                            <img src="${API_WEB_URLS.IMAGEURL}/${drawing.ImageDataNew}" style="width: 100%; ${imageSize} height: auto; object-fit: contain; border-radius: 1mm;" />
+                          </div>
+                        `;
+                      }).join('')}
+                    </div>
+                  ` : '<div style="height: 60mm; display: flex; align-items: center; justify-content: center; color: #666;">No drawings available</div>'}
+                </div>
               </div>
             </div>
           `;
@@ -948,8 +988,8 @@ const fetchData = async () => {
   }}
 >
       {jobCardArray.map((jobCard) => (
+        <React.Fragment key={jobCard.ID}>
         <div 
-          key={jobCard.ID} 
           className="job-card"
           style={{
             border: "1px solid #000000",
@@ -1279,28 +1319,444 @@ const fetchData = async () => {
             </Col>
           </Row>
 
-          {/* Component drawing section with inline rendering */}
+          {/* Keep the existing machine details section */}
+          <div style={{
+            marginTop: "1.5rem",
+            padding: "1rem",
+            border: "2px solid #2d3748",
+            borderRadius: "4px"
+          }}>
+            <p style={{
+              color: "#065f46",
+              fontWeight: "700",
+              marginBottom: "0.5rem"
+            }}>MACHINE SEQUENCING</p>
+            <div style={{ 
+              width: '100%',
+              margin: '0',
+              padding: '0'
+            }}>
+              <table style={{
+                width: "100%",
+                borderCollapse: "collapse",
+                marginTop: "0.5rem",
+                border: "2px solid #000000",
+                tableLayout: 'fixed'
+              }}>
+                <thead>
+                  <tr>
+                    <th style={{
+                      border: "2px solid #000000",
+                      padding: "0.75rem",
+                      backgroundColor: "#f8f9fa",
+                      color: "#065f46",
+                      fontWeight: "700",
+                      width: "80px"
+                    }}>MACHINE NO</th>
+                    <th style={{
+                      border: "2px solid #000000",
+                      padding: "0.75rem",
+                      backgroundColor: "#f8f9fa",
+                      color: "#065f46",
+                      fontWeight: "700"
+                    }}>DATE</th>
+                    <th style={{
+                      border: "2px solid #000000",
+                      padding: "0.75rem",
+                      backgroundColor: "#f8f9fa",
+                      color: "#065f46",
+                      fontWeight: "700"
+                    }}>MACHINE NAME</th>
+                    <th style={{
+                      border: "2px solid #000000",
+                      padding: "0.75rem",
+                      backgroundColor: "#f8f9fa",
+                      color: "#065f46",
+                      fontWeight: "700"
+                    }}>PROCESS</th>
+                    <th style={{
+                      border: "2px solid #000000",
+                      padding: "0.75rem",
+                      backgroundColor: "#f8f9fa",
+                      color: "#065f46",
+                      fontWeight: "700"
+                    }}>QUANTITY</th>
+                    <th style={{
+                      border: "2px solid #000000",
+                      padding: "0.75rem",
+                      backgroundColor: "#f8f9fa",
+                      color: "#065f46",
+                      fontWeight: "700"
+                    }}>REJECTION</th>
+                    <th style={{
+                      border: "2px solid #000000",
+                      padding: "0.75rem",
+                      backgroundColor: "#f8f9fa",
+                      color: "#065f46",
+                      fontWeight: "700"
+                    }}>START TIME</th>
+                    <th style={{
+                      border: "2px solid #000000",
+                      padding: "0.75rem",
+                      backgroundColor: "#f8f9fa",
+                      color: "#065f46",
+                      fontWeight: "700"
+                    }}>END TIME</th>
+                    <th style={{
+                      border: "2px solid #000000",
+                      padding: "0.75rem",
+                      backgroundColor: "#f8f9fa",
+                      color: "#065f46",
+                      fontWeight: "700"
+                    }}>ALLOCATED TIME</th>
+                    <th style={{
+                      border: "2px solid #000000",
+                      padding: "0.75rem",
+                      backgroundColor: "#f8f9fa",
+                      color: "#065f46",
+                      fontWeight: "700",
+                      width: "200px"
+                    }}>OPERATOR NAME</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {getMachineDetails(jobCard.ID).map((machine) => (
+                    <tr key={machine.ID}>
+                      <td style={{
+                        border: "2px solid #000000",
+                        padding: "0.75rem",
+                        color: "#000000"
+                      }}>{machine.MachineNo}</td>
+                      <td style={{
+                        border: "2px solid #000000",
+                        padding: "0.75rem",
+                        color: "#000000"
+                      }}>{machine.Date}</td>
+                      <td style={{
+                        border: "2px solid #000000",
+                        padding: "0.75rem",
+                        color: "#000000"
+                      }}>{machine.MachineName}</td>
+                      <td style={{
+                        border: "2px solid #000000",
+                        padding: "0.75rem"
+                      }}>
+                        <input
+                          style={{
+                            width: "100%",
+                            padding: "0.5rem",
+                            border: "1px solid #000000",
+                            borderRadius: "4px",
+                            color: "#000000"
+                          }}
+                          name="Process"
+                          value={machine.Process || ""}
+                          onChange={(e) => handleChange(machine.ID, e)}
+                        />
+                      </td>
+                      <td style={{
+                        border: "2px solid #000000",
+                        padding: "0.75rem"
+                      }}>
+                        <input
+                          style={{
+                            width: "100%",
+                            padding: "0.5rem",
+                            border: "1px solid #000000",
+                            borderRadius: "4px",
+                            color: "#000000"
+                          }}
+                          name="Quantity"
+                          value={machine.Quantity || ""}
+                          onChange={(e) => handleChange(machine.ID, e)}
+                        />
+                      </td>
+                      <td style={{
+                        border: "2px solid #000000",
+                        padding: "0.75rem"
+                      }}>
+                        <input
+                          style={{
+                            width: "100%",
+                            padding: "0.5rem",
+                            border: "1px solid #000000",
+                            borderRadius: "4px",
+                            color: "#000000"
+                          }}
+                          name="Rejection"
+                          value={machine.Rejection || ""}
+                          onChange={(e) => handleChange(machine.ID, e)}
+                        />
+                      </td>
+                      <td style={{
+                        border: "2px solid #000000",
+                        padding: "0.75rem"
+                      }}>
+                        <input
+                          style={{
+                            width: "100%",
+                            padding: "0.5rem",
+                            border: "1px solid #000000",
+                            borderRadius: "4px",
+                            color: "#000000"
+                          }}
+                          name="StartTime"
+                          value={machine.StartTime || ""}
+                          onChange={(e) => handleChange(machine.ID, e)}
+                        />
+                      </td>
+                      <td style={{
+                        border: "2px solid #000000",
+                        padding: "0.75rem"
+                      }}>
+                        <input
+                          style={{
+                            width: "100%",
+                            padding: "0.5rem",
+                            border: "1px solid #000000",
+                            borderRadius: "4px",
+                            color: "#000000"
+                          }}
+                          name="EndTime"
+                          value={machine.EndTime || ""}
+                          onChange={(e) => handleChange(machine.ID, e)}
+                        />
+                      </td>
+                      <td style={{
+                        border: "2px solid #000000",
+                        padding: "0.75rem"
+                      }}>
+                        <input
+                          style={{
+                            width: "100%",
+                            padding: "0.5rem",
+                            border: "1px solid #000000",
+                            borderRadius: "4px",
+                            color: "#000000"
+                          }}
+                          name="AllocatedTime"
+                          value={machine.AllocatedTime || ""}
+                          onChange={(e) => handleChange(machine.ID, e)}
+                        />
+                      </td>
+                      <td style={{
+                        border: "2px solid #000000",
+                        padding: "0.75rem"
+                      }}>
+                        <input
+                          style={{
+                            width: "100%",
+                            padding: "0.5rem",
+                            border: "1px solid #000000",
+                            borderRadius: "4px",
+                            color: "#000000"
+                          }}
+                          name="UserName"
+                          value={machine.UserName || ""}
+                          onChange={(e) => handleChange(machine.ID, e)}
+                        />
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          {/* Keep the existing notes section */}
+          <div style={{
+            marginTop: "1.5rem",
+            padding: "1rem",
+            border: "2px solid #000000",
+            borderRadius: "4px"
+          }}>
+            <p style={{
+              fontWeight: "700",
+              marginBottom: "0.5rem"
+            }}>NOTES</p>
+            <div style={{
+              padding: "0.5rem",
+              border: "1px solid #cbd5e0",
+              borderRadius: "4px",
+              overflow: "auto"
+            }}>{jobCard.Notes || ""}</div>
+          </div>
+        </div>
+
+        {/* Second Page - Component Drawings and Dimensions */}
+        <div 
+          key={`${jobCard.ID}-page2`}
+          className="job-card-page-2"
+          style={{
+            border: "1px solid #000000",
+            marginTop: "30px",
+            backgroundColor: "#fff",
+            width: '100%',
+            maxWidth: '100%',
+            padding: '0px',
+            margin: '0',
+            position: 'relative'
+          }}
+        >
+          {/* Header Row - AARA DESIGN */}
+          <Row className="g-0">
+            <Col xs={12} style={{
+              borderBottom: "1px solid #000000",
+              padding: "10px",
+              textAlign: "center"
+            }}>
+              <span style={{
+                fontWeight: "700",
+                fontSize: "1.25rem"
+              }}>AARA DESIGN</span>
+            </Col>
+          </Row>
+
+          {/* Component Name - Centered Sub-header */}
+          <Row className="g-0">
+            <Col xs={12} style={{
+              borderBottom: "1px solid #000000",
+              padding: "10px",
+              textAlign: "center"
+            }}>
+              <span style={{
+                fontWeight: "700",
+                fontSize: "0.9rem"
+              }}>{jobCard.ComponentsName || "N/A"}</span>
+            </Col>
+          </Row>
+
+          {/* Dimensions Table */}
+          <Row className="g-0">
+            <Col xs={12} style={{
+              borderBottom: "1px solid #000000",
+              padding: "0"
+            }}>
+              <table style={{ width: "100%", borderCollapse: "collapse" }}>
+                <thead>
+                  <tr>
+                    <th style={{ 
+                      border: "1px solid #000000", 
+                      padding: "10px", 
+                      textAlign: "center",
+                      backgroundColor: "#f8f9fa",
+                      fontWeight: "700",
+                      width: "33.33%"
+                    }}>
+                      Length (in mm)
+                    </th>
+                    <th style={{ 
+                      border: "1px solid #000000", 
+                      padding: "10px", 
+                      textAlign: "center",
+                      backgroundColor: "#f8f9fa",
+                      fontWeight: "700",
+                      width: "33.33%"
+                    }}>
+                      Width (in mm)
+                    </th>
+                    <th style={{ 
+                      border: "1px solid #000000", 
+                      padding: "10px", 
+                      textAlign: "center",
+                      backgroundColor: "#f8f9fa",
+                      fontWeight: "700",
+                      width: "33.33%"
+                    }}>
+                      Thickness (in mm)
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td style={{ 
+                      border: "1px solid #000000", 
+                      padding: "10px", 
+                      textAlign: "center",
+                      fontWeight: "600"
+                    }}>
+                      {jobCard.F1 ? (jobCard.F1 % 1 === 0 ? Math.round(jobCard.F1) : jobCard.F1.toFixed(2)) : "N/A"}
+                    </td>
+                    <td style={{ 
+                      border: "1px solid #000000", 
+                      padding: "10px", 
+                      textAlign: "center",
+                      fontWeight: "600"
+                    }}>
+                      {jobCard.F2 ? (jobCard.F2 % 1 === 0 ? Math.round(jobCard.F2) : jobCard.F2.toFixed(2)) : "N/A"}
+                    </td>
+                    <td style={{ 
+                      border: "1px solid #000000", 
+                      padding: "10px", 
+                      textAlign: "center",
+                      fontWeight: "600"
+                    }}>
+                      {jobCard.F3 ? (jobCard.F3 % 1 === 0 ? Math.round(jobCard.F3) : jobCard.F3.toFixed(2)) : "N/A"}
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </Col>
+          </Row>
+
+          {/* Component Drawing Section */}
           <div style={{
             border: "1px solid #000000",
             borderRadius: "0",
-            padding: "1rem"
+            width: "100%",
+            padding: "1rem",
+            marginTop: "0",
+            display: "flex",
+            flexDirection: "column",
+            minHeight: "600px"
           }}>
-            <span style={{
+            <div style={{
               fontWeight: "700",
-              marginBottom: "0.5rem"
-            }}>COMPONENT DRAWING: </span>
+              marginBottom: "1rem",
+              textAlign: "center",
+              fontSize: "1.1rem"
+            }}>
+              COMPONENT DRAWING
+            </div>
+            
             <div style={{
               width: "100%",
               padding: "0.5rem",
               border: "1px solid #cbd5e0",
               borderRadius: "4px",
               overflowX: "auto",
-              marginTop: "0.5rem"
+              marginTop: "0.5rem",
+              flex: "1",
+              display: "flex",
+              flexDirection: "column",
+              justifyContent: "center"
             }}>
               {drawingsLoading[jobCard.F_ComponentsMaster] ? (
-                <div style={{ textAlign: "center", padding: "1rem" }}>Loading...</div>
+                <div style={{ 
+                  textAlign: "center", 
+                  padding: "2rem",
+                  fontSize: "1.1rem",
+                  color: "#666",
+                  minHeight: "200px",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center"
+                }}>
+                  Loading drawings...
+                </div>
               ) : !drawingsData[jobCard.F_ComponentsMaster] || drawingsData[jobCard.F_ComponentsMaster].length === 0 ? (
-                <div style={{ textAlign: "center", padding: "1rem" }}>No drawings available.</div>
+                <div style={{ 
+                  textAlign: "center", 
+                  padding: "2rem",
+                  fontSize: "1.1rem",
+                  color: "#666",
+                  minHeight: "200px",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center"
+                }}>
+                  No drawings available.
+                </div>
               ) : (
                 <div style={{ 
                   display: "flex",
@@ -1403,268 +1859,8 @@ const fetchData = async () => {
               )}
             </div>
           </div>
-
-          {/* Keep the existing machine details section */}
-          <div style={{
-            marginTop: "1.5rem",
-            padding: "1rem",
-            border: "1px solid #000000",
-            borderRadius: "0"
-          }}>
-            <p style={{
-              fontWeight: "700",
-              marginBottom: "0.5rem"
-            }}>Machine Details</p>
-            <div style={{ 
-              width: '100%',
-              margin: '0',
-              padding: '0'
-            }}>
-              <table style={{
-                width: "100%",
-                borderCollapse: "collapse",
-                marginTop: "0.5rem",
-                border: "1px solid #000000",
-                tableLayout: 'fixed'
-              }}>
-                <thead>
-                  <tr>
-                    <th style={{
-                      border: "1px solid #000000",
-                      padding: "0.75rem",
-                      backgroundColor: "#f8f9fa",
-                      color: "#065f46",
-                      fontWeight: "700",
-                      width: "80px"
-                    }}>MACHINE NO</th>
-                    <th style={{
-                      border: "1px solid #000000",
-                      padding: "0.75rem",
-                      backgroundColor: "#f8f9fa",
-                      color: "#065f46",
-                      fontWeight: "700"
-                    }}>DATE</th>
-                    <th style={{
-                      border: "1px solid #000000",
-                      padding: "0.75rem",
-                      backgroundColor: "#f8f9fa",
-                      color: "#065f46",
-                      fontWeight: "700"
-                    }}>MACHINE NAME</th>
-                    <th style={{
-                      border: "1px solid #000000",
-                      padding: "0.75rem",
-                      backgroundColor: "#f8f9fa",
-                      color: "#065f46",
-                      fontWeight: "700"
-                    }}>PROCESS</th>
-                    <th style={{
-                      border: "1px solid #000000",
-                      padding: "0.75rem",
-                      backgroundColor: "#f8f9fa",
-                      color: "#065f46",
-                      fontWeight: "700"
-                    }}>QUANTITY</th>
-                    <th style={{
-                      border: "1px solid #000000",
-                      padding: "0.75rem",
-                      backgroundColor: "#f8f9fa",
-                      color: "#065f46",
-                      fontWeight: "700"
-                    }}>REJECTION</th>
-                    <th style={{
-                      border: "1px solid #000000",
-                      padding: "0.75rem",
-                      backgroundColor: "#f8f9fa",
-                      color: "#065f46",
-                      fontWeight: "700"
-                    }}>START TIME</th>
-                    <th style={{
-                      border: "1px solid #000000",
-                      padding: "0.75rem",
-                      backgroundColor: "#f8f9fa",
-                      color: "#065f46",
-                      fontWeight: "700"
-                    }}>END TIME</th>
-                    <th style={{
-                      border: "1px solid #000000",
-                      padding: "0.75rem",
-                      backgroundColor: "#f8f9fa",
-                      color: "#065f46",
-                      fontWeight: "700"
-                    }}>ALLOCATED TIME</th>
-                    <th style={{
-                      border: "1px solid #000000",
-                      padding: "0.75rem",
-                      backgroundColor: "#f8f9fa",
-                      color: "#065f46",
-                      fontWeight: "700",
-                      width: "200px"
-                    }}>USER NAME</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {getMachineDetails(jobCard.ID).map((machine) => (
-                    <tr key={machine.ID}>
-                      <td style={{
-                        border: "1px solid #000000",
-                        padding: "0.75rem",
-                        color: "#000000"
-                      }}>{machine.MachineNo}</td>
-                      <td style={{
-                        border: "1px solid #000000",
-                        padding: "0.75rem",
-                        color: "#000000"
-                      }}>{machine.Date}</td>
-                      <td style={{
-                        border: "1px solid #000000",
-                        padding: "0.75rem",
-                        color: "#000000"
-                      }}>{machine.MachineName}</td>
-                      <td style={{
-                        border: "1px solid #000000",
-                        padding: "0.75rem"
-                      }}>
-                        <input
-                          style={{
-                            width: "100%",
-                            padding: "0.5rem",
-                            border: "1px solid #000000",
-                            borderRadius: "4px",
-                            color: "#000000"
-                          }}
-                          name="Process"
-                          value={machine.Process || ""}
-                          onChange={(e) => handleChange(machine.ID, e)}
-                        />
-                      </td>
-                      <td style={{
-                        border: "1px solid #000000",
-                        padding: "0.75rem"
-                      }}>
-                        <input
-                          style={{
-                            width: "100%",
-                            padding: "0.5rem",
-                            border: "1px solid #000000",
-                            borderRadius: "4px",
-                            color: "#000000"
-                          }}
-                          name="Quantity"
-                          value={machine.Quantity || ""}
-                          onChange={(e) => handleChange(machine.ID, e)}
-                        />
-                      </td>
-                      <td style={{
-                        border: "1px solid #000000",
-                        padding: "0.75rem"
-                      }}>
-                        <input
-                          style={{
-                            width: "100%",
-                            padding: "0.5rem",
-                            border: "1px solid #000000",
-                            borderRadius: "4px",
-                            color: "#000000"
-                          }}
-                          name="Rejection"
-                          value={machine.Rejection || ""}
-                          onChange={(e) => handleChange(machine.ID, e)}
-                        />
-                      </td>
-                      <td style={{
-                        border: "1px solid #000000",
-                        padding: "0.75rem"
-                      }}>
-                        <input
-                          style={{
-                            width: "100%",
-                            padding: "0.5rem",
-                            border: "1px solid #000000",
-                            borderRadius: "4px",
-                            color: "#000000"
-                          }}
-                          name="StartTime"
-                          value={machine.StartTime || ""}
-                          onChange={(e) => handleChange(machine.ID, e)}
-                        />
-                      </td>
-                      <td style={{
-                        border: "1px solid #000000",
-                        padding: "0.75rem"
-                      }}>
-                        <input
-                          style={{
-                            width: "100%",
-                            padding: "0.5rem",
-                            border: "1px solid #000000",
-                            borderRadius: "4px",
-                            color: "#000000"
-                          }}
-                          name="EndTime"
-                          value={machine.EndTime || ""}
-                          onChange={(e) => handleChange(machine.ID, e)}
-                        />
-                      </td>
-                      <td style={{
-                        border: "1px solid #000000",
-                        padding: "0.75rem"
-                      }}>
-                        <input
-                          style={{
-                            width: "100%",
-                            padding: "0.5rem",
-                            border: "1px solid #000000",
-                            borderRadius: "4px",
-                            color: "#000000"
-                          }}
-                          name="AllocatedTime"
-                          value={machine.AllocatedTime || ""}
-                          onChange={(e) => handleChange(machine.ID, e)}
-                        />
-                      </td>
-                      <td style={{
-                        border: "1px solid #000000",
-                        padding: "0.75rem"
-                      }}>
-                        <input
-                          style={{
-                            width: "100%",
-                            padding: "0.5rem",
-                            border: "1px solid #000000",
-                            borderRadius: "4px",
-                            color: "#000000"
-                          }}
-                          name="UserName"
-                          value={machine.UserName || ""}
-                          onChange={(e) => handleChange(machine.ID, e)}
-                        />
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
-
-          {/* Keep the existing notes section */}
-          <div style={{
-            marginTop: "1.5rem",
-            padding: "1rem",
-            border: "1px solid #000000",
-            borderRadius: "0"
-          }}>
-            <p style={{
-              fontWeight: "700",
-              marginBottom: "0.5rem"
-            }}>NOTES</p>
-            <div style={{
-              padding: "0.5rem",
-              border: "1px solid #000000",
-              borderRadius: "0"
-            }}>{jobCard.Notes || ""}</div>
-          </div>
         </div>
+        </React.Fragment>
       ))}
     </div>
 

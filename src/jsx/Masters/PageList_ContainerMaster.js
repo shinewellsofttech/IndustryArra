@@ -1,4 +1,4 @@
-import React,{ useEffect, useMemo, useState, useRef } from 'react';
+import React,{ useEffect, useMemo, useState } from 'react';
 import PageTitle from "../layouts/PageTitle";
 import { useTable, useGlobalFilter, useFilters, usePagination } from 'react-table';
 import MOCK_DATA from '../components/table/FilteringTable/MOCK_DATA_2.json';
@@ -45,7 +45,6 @@ export const PageList_ContainerMaster = () => {
 	const [selRow, setSelRow] = useState(0);
 	const [showModal, setShowModal] = useState(false);
 	const [breakUpArray, setBreakUpArray] = useState([]);
-	const fileInputRef = useRef(null);
 
 	
 	useEffect(() => {
@@ -350,10 +349,6 @@ export const PageList_ContainerMaster = () => {
 				alert(errorMessage);
 				setExcelData(null);
 				setUploadedRowCount(0);
-				// Clear file input
-				if (fileInputRef.current) {
-					fileInputRef.current.value = '';
-				}
 				return;
 			}
 	  
@@ -788,7 +783,6 @@ export const PageList_ContainerMaster = () => {
 					</label>
 					<div className="d-flex align-items-center">
 						<FormControl
-							ref={fileInputRef}
 							type="file"
 							accept=".xlsx, .xlsm"
 							onChange={handleFileUpload}
