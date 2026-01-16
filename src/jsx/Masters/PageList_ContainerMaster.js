@@ -33,7 +33,9 @@ export const PageList_ContainerMaster = () => {
 	const API_URL = API_WEB_URLS.MASTER + "/0/token/Container";
 	const API_URL_UpdateQuantity = API_WEB_URLS.MASTER + "/0/token/UpdateQuantityContainer";
 	const API_URL_UpdateInspectionDate = API_WEB_URLS.MASTER + "/0/token/UpdateDateContainer";
+	const API_URL_UpdateJobCardInitial = API_WEB_URLS.MASTER + "/0/token/UpdateJobCardInitialContainer";
 	const API_URL_BREAK = API_WEB_URLS.MASTER + "/0/token/ContainerMaster";
+	const API_URL_QUANTITY_BY_CONTRACT = API_WEB_URLS.MASTER + "/0/token/QuantityByContract";
 	const rtPage_Add = "/AddContainer";
 	const rtPage_Edit = "/AddContainer";
 	 const [excelData, setExcelData] = useState(null);
@@ -191,16 +193,31 @@ export const PageList_ContainerMaster = () => {
 			navigate,
 			"/ContainerMaster"
 		  );
+		
+		// Reload data after successful submission
+		if (res && res.id > 0) {
+			await Fn_FillListData(dispatch, setGridData, "gridData", API_URL + "/Id/0");
+			await Fn_FillListData(dispatch, setState, "FillArray", API_URL_BREAK + "/Id/0");
+			toast.success("Break-up saved successfully!", {
+				position: "top-right",
+				autoClose: 3000,
+				hideProgressBar: false,
+				closeOnClick: true,
+				pauseOnHover: true,
+				draggable: true,
+			});
+		}
+		
 		// Close modal after successful submission
 		handleCloseModal();
 	  };
 
 	  // Validation function to check if Quantity sum matches ShipmentQty for each ContractNo
-	  const validateQuantityByContract = (data) => {
+	  const validateQuantityByContract = async (data) => {
 		const contractGroups = {};
 		const errors = [];
-
-		// Group data by ContractNo
+		
+		// First, group data by ContractNo to calculate new quantities
 		data.forEach((row) => {
 			if (row.ContractNo && row.ShipmentQty && row.Quantity) {
 				const contractNo = row.ContractNo.toString().trim();
@@ -220,20 +237,30 @@ export const PageList_ContainerMaster = () => {
 			}
 		});
 
-		// Check if sum matches ShipmentQty
-		Object.keys(contractGroups).forEach((contractNo) => {
+		// For each unique ContractNo, fetch OldStoredQty once and validate
+		for (const contractNo of Object.keys(contractGroups)) {
 			const group = contractGroups[contractNo];
-			if (Math.abs(group.totalQuantity - group.shipmentQty) > 0.01) { // Allow small floating point differences
+			
+			// Fetch OldStoredQty once per ContractNo (sum of all stored quantities in database)
+			const res = await Fn_FillListData(dispatch, setState, "FillArray", API_URL_QUANTITY_BY_CONTRACT + "/" + contractNo + "/0");
+			console.log("res for ContractNo", contractNo, res);
+			const OldStoredQty = res && res[0] ? parseFloat(res[0].TotalQuantity) || 0 : 0;
+			
+			// Validate: OldStoredQty + new data quantity sum should equal ShipmentQty
+			const totalSum = OldStoredQty + group.totalQuantity;
+			if (Math.abs(totalSum - group.shipmentQty) > 0.01) { // Allow small floating point differences
 				const containerNames = group.containers.map(c => c.containerName).join(', ');
 				errors.push({
 					contractNo: contractNo,
 					shipmentQty: group.shipmentQty,
-					totalQuantity: group.totalQuantity,
+					oldStoredQty: OldStoredQty,
+					newQuantity: group.totalQuantity,
+					totalSum: totalSum,
 					containers: containerNames,
 					containerList: group.containers
 				});
 			}
-		});
+		}
 
 		return errors;
 	  };
@@ -244,7 +271,7 @@ export const PageList_ContainerMaster = () => {
 		if (file) {
 		  const reader = new FileReader();
 	  
-		  reader.onload = (e) => {
+		  reader.onload = async (e) => {
 			const binaryStr = e.target.result;
 			const workbook = XLSX.read(binaryStr, {
 			  type: "binary",
@@ -331,14 +358,16 @@ export const PageList_ContainerMaster = () => {
 			);
 	  
 			// Validate Quantity sum matches ShipmentQty for each ContractNo
-			const validationErrors = validateQuantityByContract(finalFilteredData);
+			const validationErrors = await validateQuantityByContract(finalFilteredData);
 			if (validationErrors.length > 0) {
 				let errorMessage = "Quantity validation failed:\n\n";
 				validationErrors.forEach((error, index) => {
 					errorMessage += `${index + 1}. Contract No: ${error.contractNo}\n`;
 					errorMessage += `   ShipmentQty: ${error.shipmentQty}\n`;
-					errorMessage += `   Total Quantity: ${error.totalQuantity}\n`;
-					errorMessage += `   Difference: ${Math.abs(error.shipmentQty - error.totalQuantity)}\n`;
+					errorMessage += `   Old Stored Quantity (Database): ${error.oldStoredQty}\n`;
+					errorMessage += `   New Quantity (Uploaded): ${error.newQuantity}\n`;
+					errorMessage += `   Total Sum (Old + New): ${error.totalSum}\n`;
+					errorMessage += `   Difference: ${Math.abs(error.shipmentQty - error.totalSum)}\n`;
 					errorMessage += `   Container(s): ${error.containers}\n`;
 					errorMessage += `   Details:\n`;
 					error.containerList.forEach((container, idx) => {
@@ -372,14 +401,16 @@ export const PageList_ContainerMaster = () => {
 			 }
 
 			 // Validate Quantity sum matches ShipmentQty for each ContractNo before saving
-			 const validationErrors = validateQuantityByContract(excelData);
+			 const validationErrors = await validateQuantityByContract(excelData);
 			if (validationErrors.length > 0) {
 				let errorMessage = "Cannot save! Quantity validation failed:\n\n";
 				validationErrors.forEach((error, index) => {
 					errorMessage += `${index + 1}. Contract No: ${error.contractNo}\n`;
 					errorMessage += `   ShipmentQty: ${error.shipmentQty}\n`;
-					errorMessage += `   Total Quantity: ${error.totalQuantity}\n`;
-					errorMessage += `   Difference: ${Math.abs(error.shipmentQty - error.totalQuantity)}\n`;
+					errorMessage += `   Old Stored Quantity (Database): ${error.oldStoredQty}\n`;
+					errorMessage += `   New Quantity (Uploaded): ${error.newQuantity}\n`;
+					errorMessage += `   Total Sum (Old + New): ${error.totalSum}\n`;
+					errorMessage += `   Difference: ${Math.abs(error.shipmentQty - error.totalSum)}\n`;
 					errorMessage += `   Container(s): ${error.containers}\n`;
 					errorMessage += `   Details:\n`;
 					error.containerList.forEach((container, idx) => {
@@ -491,7 +522,7 @@ export const PageList_ContainerMaster = () => {
 					return date.toLocaleDateString('en-GB');
 				};
 
-				if (ParentIds === null || ParentIds === undefined || ParentIds === '') {
+				
 					return (
 						<FormControl
 							type="date"
@@ -500,9 +531,7 @@ export const PageList_ContainerMaster = () => {
 							style={{ width: '150px' }}
 						/>
 					);
-				} else {
-					return <span>{formatDateForDisplay(row.original.InspectionDate)}</span>;
-				}
+				
 			},
 			Filter: DateFilter,
 			filter: (rows, id, filterValue) => {
@@ -588,6 +617,38 @@ export const PageList_ContainerMaster = () => {
 			Footer : 'JobCardInitial',
 			accessor: 'JobCardInitial',
 			Filter: ColumnFilter,
+			Cell: ({ row }) => {
+				const { ParentIds } = row.original;
+				const handleEnterKeyPress = async (e, rowData) => {
+					if (e.key === 'Enter') {
+						const jobCardInitialValue = e.target.value;
+						console.log('Row data on Enter:', rowData);
+						console.log('JobCardInitial value:', jobCardInitialValue);
+
+						
+						await Fn_FillListData(dispatch, setState, "no", API_URL_UpdateJobCardInitial + "/"+jobCardInitialValue+"/"+rowData.F_ContainerMasterL);
+						toast.success("Updated", {
+							position: "top-right",
+							autoClose: 3000,
+							hideProgressBar: false,
+							closeOnClick: true,
+							pauseOnHover: true,
+							draggable: true,
+						});
+					}
+				};
+
+		
+					return (
+						<FormControl
+							type="text"
+							defaultValue={row.original.JobCardInitial || ''}
+							onKeyDown={(e) => handleEnterKeyPress(e, row.original)}
+							style={{ width: '150px' }}
+						/>
+					);
+				
+			},
 		},
 
 		{

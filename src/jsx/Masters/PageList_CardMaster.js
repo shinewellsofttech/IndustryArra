@@ -51,6 +51,7 @@ const PageList_CardMaster = () => {
   const [expenseArr, setExpenseArr] = useState([]);
   const [Amount, setAmount] = useState(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [IsSample, setIsSample] = useState(false);
 
   const dispatch = useDispatch();
   const navigate = useNavigate();
@@ -105,25 +106,29 @@ const PageList_CardMaster = () => {
   };
 
   const btnCreateJobCard = async () => {
-    if (selectedIds.length === 0) {
+    // If IsSample is true, skip validation for selectedIds
+    if (!IsSample && selectedIds.length === 0) {
       alert("Please select at least one row");
       return;
     }
+    
     const obj = State.FillArray.find(item => item.Id == F_ItemMaster);
     if (!obj) {
       toast.error("Please select a valid item before continuing.");
       return;
     }
-    // console.log(obj);
-    // Convert array of IDs to comma-separated string
-    const selectedIdsString = selectedIds.join(',');
-    console.log(selectedIdsString);
+    
     const vformData = new FormData();
     vformData.append("F_ContainerMasterL", obj.F_ContainerMasterL);
-    // vformData.append("F_ContainerMaster", obj.F_ContainerMaster);
-    vformData.append("IdList", selectedIdsString); 
-    // Now sending as comma-separated string
+    vformData.append("IsSample", IsSample);
     vformData.append("UserId", 1);
+    
+    // Only append IdList if IsSample is false
+    if (!IsSample) {
+      const selectedIdsString = selectedIds.join(',');
+      console.log(selectedIdsString);
+      vformData.append("IdList", selectedIdsString);
+    }
     
     setIsSubmitting(true);
     const navigateToJobCardForm = () => {
@@ -417,7 +422,7 @@ const PageList_CardMaster = () => {
               type="button"
               onClick={btnCreateJobCard}
               variant="warning"
-              disabled={selectedIds.length === 0}
+              disabled={!IsSample && selectedIds.length === 0}
               size="sm"
               className="me-2"
             >
@@ -428,6 +433,17 @@ const PageList_CardMaster = () => {
                 {selectedIds.length} selected
               </span>
             )}
+          </div>
+        </Col>
+        <Col md="2">
+          <div className="d-flex align-items-center">
+            <Input
+              type="checkbox"
+              checked={IsSample}
+              onChange={(e) => setIsSample(e.target.checked)}
+              className="me-2"
+            />
+            <label className="form-label mb-0 small">Is Sample</label>
           </div>
         </Col>
       </Row>

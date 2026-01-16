@@ -411,6 +411,7 @@ const JobCardForm = () => {
   const [F_CategoryMaster, setCategoryMaster] = useState([]);
   const [F_ItemMaster, setItemMaster] = useState("");
   const [F_ContainerMasterL, setContainerMasterL] = useState([]);
+  const [isSampleItem, setIsSampleItem] = useState(false);
 
   useEffect(() => {
     fetchData();
@@ -439,6 +440,7 @@ const JobCardForm = () => {
     setCategoryMaster([]);
     setItemMaster("");
     setContainerMasterL("");
+    setIsSampleItem(false);
     setState((prevState) => ({ ...prevState, FillArray1: [] }));
 
     if (!containerId) {
@@ -472,7 +474,21 @@ const JobCardForm = () => {
     const value = selectedOption ? selectedOption.value : "";
     setItemMaster(value);
     const obj = State.FillArray1.find((x) => x.Id == value);
-    setContainerMasterL(obj ? obj.F_ContainerMasterL : "");
+    
+    if (obj) {
+      setContainerMasterL(obj.F_ContainerMasterL || "");
+      
+      // Check if item is a sample
+      if (obj.IsSample === true) {
+        setIsSampleItem(true);
+        setContainerMaster("0");
+      } else {
+        setIsSampleItem(false);
+      }
+    } else {
+      setContainerMasterL("");
+      setIsSampleItem(false);
+    }
   };
 
   // Helper function to get comma-separated category values
@@ -494,7 +510,15 @@ const JobCardForm = () => {
           const matchedItem = items.find((item) => item.Id == itemId);
           if (matchedItem) {
             setItemMaster(itemId);
-            setContainerMasterL(matchedItem.F_ContainerMasterL);
+            setContainerMasterL(matchedItem.F_ContainerMasterL || "");
+            
+            // Check if item is a sample
+            if (matchedItem.IsSample === true) {
+              setIsSampleItem(true);
+              setContainerMaster("0");
+            } else {
+              setIsSampleItem(false);
+            }
           }
         }
       })();
@@ -624,39 +648,52 @@ const JobCardForm = () => {
       <Row className="mb-3">
         {F_ContainerMaster &&
           F_ItemMaster &&
-          F_CategoryMaster.length > 0 && (
+          (F_CategoryMaster.length > 0 || isSampleItem) && (
             <>
-              {/* Metal Categories */}
-              {F_CategoryMaster.some(cat => ["4", "16"].includes(cat)) && (
-                <MetalJobCard
-                  key={`metal-${F_ContainerMaster}-${F_ItemMaster}-${getCategoryString()}`}
-                  F_ItemMaster={F_ItemMaster}
-                  F_ContainerMasterL={F_ContainerMasterL}
-                  F_CategoryMaster={getCategoryString()}
-                  F_ContainerMaster={F_ContainerMaster}
-                />
-              )}
-
-              {/* MDF Category */}
-              {F_CategoryMaster.includes("5") && (
-                <MDFJobCard
-                  key={`mdf-${F_ContainerMaster}-${F_ItemMaster}-${getCategoryString()}`}
-                  F_ItemMaster={F_ItemMaster}
-                  F_ContainerMasterL={F_ContainerMasterL}
-                  F_CategoryMaster={getCategoryString()}
-                  F_ContainerMaster={F_ContainerMaster}
-                />
-              )}
-
-              {/* Wood Categories */}
-              {F_CategoryMaster.some(cat => ["1", "2", "3", "15"].includes(cat)) && (
+              {/* If item is sample, always use WoodJobCard */}
+              {isSampleItem ? (
                 <WoodJobCard
-                  key={`wood-${F_ContainerMaster}-${F_ItemMaster}-${getCategoryString()}`}
+                  key={`wood-sample-${F_ContainerMaster}-${F_ItemMaster}-${getCategoryString()}`}
                   F_ItemMaster={F_ItemMaster}
                   F_ContainerMasterL={F_ContainerMasterL}
                   F_CategoryMaster={getCategoryString()}
                   F_ContainerMaster={F_ContainerMaster}
                 />
+              ) : (
+                <>
+                  {/* Metal Categories */}
+                  {F_CategoryMaster.some(cat => ["4", "16"].includes(cat)) && (
+                    <MetalJobCard
+                      key={`metal-${F_ContainerMaster}-${F_ItemMaster}-${getCategoryString()}`}
+                      F_ItemMaster={F_ItemMaster}
+                      F_ContainerMasterL={F_ContainerMasterL}
+                      F_CategoryMaster={getCategoryString()}
+                      F_ContainerMaster={F_ContainerMaster}
+                    />
+                  )}
+
+                  {/* MDF Category */}
+                  {F_CategoryMaster.includes("5") && (
+                    <MDFJobCard
+                      key={`mdf-${F_ContainerMaster}-${F_ItemMaster}-${getCategoryString()}`}
+                      F_ItemMaster={F_ItemMaster}
+                      F_ContainerMasterL={F_ContainerMasterL}
+                      F_CategoryMaster={getCategoryString()}
+                      F_ContainerMaster={F_ContainerMaster}
+                    />
+                  )}
+
+                  {/* Wood Categories */}
+                  {F_CategoryMaster.some(cat => ["1", "2", "3", "15"].includes(cat)) && (
+                    <WoodJobCard
+                      key={`wood-${F_ContainerMaster}-${F_ItemMaster}-${getCategoryString()}`}
+                      F_ItemMaster={F_ItemMaster}
+                      F_ContainerMasterL={F_ContainerMasterL}
+                      F_CategoryMaster={getCategoryString()}
+                      F_ContainerMaster={F_ContainerMaster}
+                    />
+                  )}
+                </>
               )}
             </>
           )}

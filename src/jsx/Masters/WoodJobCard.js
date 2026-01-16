@@ -421,23 +421,23 @@ const WoodJobCard = ({
               <table>
                 <tr class="info-row">
                   <td class="label" style="width: 33%">WOOD MACHINE CENTRE</td>
-                  <td class="label" style="width: 34%">JOB CARD NUMBER: ${jobCard.JobCardNo || 'N/A'}</td>
-                  <td class="label" style="width: 33%">ORDER QTY: ${jobCard.OrderQty || 'N/A'}</td>
+                  <td class="label" style="width: 34%">JOB CARD NUMBER: ${jobCard.JobCardNo || ''}</td>
+                  <td class="label" style="width: 33%">ORDER QTY: ${jobCard.OrderQty || ''}</td>
                 </tr>
               </table>
 
               <table>
                 <tr class="info-row">
                   <td class="label" style="width: 20%">CONTAINER NUMBER</td>
-                  <td style="width: 30%">${jobCard.ContainerNumber || 'N/A'}</td>
+                  <td style="width: 30%">${jobCard.ContainerNumber || ''}</td>
                   <td class="label" style="width: 20%">INSPECTION DATE</td>
-                  <td style="width: 30%">${jobCard.InspectionDate || 'N/A'}</td>
+                  <td style="width: 30%">${jobCard.InspectionDate || ''}</td>
                 </tr>
                 <tr class="info-row">
                   <td class="label">PRODUCT CODE</td>
-                  <td>${jobCard.ProductCode || 'N/A'}</td>
+                  <td>${jobCard.ProductCode || ''}</td>
                   <td class="label">ITEM</td>
-                  <td>${jobCard.ItemName || 'N/A'}</td>
+                  <td>${jobCard.ItemName || ''}</td>
                 </tr>
                 <tr class="info-row">
                   <td class="label">BATCH CODE</td>
@@ -445,9 +445,9 @@ const WoodJobCard = ({
                 </tr>
                 <tr class="info-row">
                   <td class="label">COMPONENT</td>
-                  <td>${jobCard.ComponentsName || 'N/A'}</td>
+                  <td>${jobCard.ComponentsName || ''}</td>
                   <td class="label">COMPONENT QTY</td>
-                  <td>${jobCard.ComponentQty || 'N/A'}</td>
+                  <td>${jobCard.ComponentQty || ''}</td>
                 </tr>
               </table>
 
@@ -462,17 +462,17 @@ const WoodJobCard = ({
                   <td class="label" style="width: 25%">CFT</td>
                 </tr>
                 <tr>
-                  <td>${jobCard.W1 ? (jobCard.W1 % 1 === 0 ? Math.round(jobCard.W1) : jobCard.W1.toFixed(2)) : 'N/A'}</td>
-                  <td>${jobCard.W2 ? (jobCard.W2 % 1 === 0 ? Math.round(jobCard.W2) : jobCard.W2.toFixed(2)) : 'N/A'}</td>
-                  <td>${jobCard.W3 ? (jobCard.W3 % 1 === 0 ? Math.round(jobCard.W3) : jobCard.W3.toFixed(2)) : 'N/A'}</td>
-                  <td>${jobCard.CFT ? (jobCard.CFT % 1 === 0 ? Math.round(jobCard.CFT) : jobCard.CFT.toFixed(2)) : 'N/A'}</td>
+                  <td>${jobCard.W1 ? (jobCard.W1 % 1 === 0 ? Math.round(jobCard.W1) : jobCard.W1.toFixed(2)) : ''}</td>
+                  <td>${jobCard.W2 ? (jobCard.W2 % 1 === 0 ? Math.round(jobCard.W2) : jobCard.W2.toFixed(2)) : ''}</td>
+                  <td>${jobCard.W3 ? (jobCard.W3 % 1 === 0 ? Math.round(jobCard.W3) : jobCard.W3.toFixed(2)) : ''}</td>
+                  <td>${jobCard.CFT ? (jobCard.CFT % 1 === 0 ? Math.round(jobCard.CFT) : jobCard.CFT.toFixed(2)) : ''}</td>
                 </tr>
                 ${jobCard.W_1 || jobCard.W_2 || jobCard.W_3 || jobCard.Qty3 ? `
                 <tr>
-                  <td>${jobCard.W_1 ? (jobCard.W_1 % 1 === 0 ? Math.round(jobCard.W_1) : jobCard.W_1.toFixed(2)) : 'N/A'}</td>
-                  <td>${jobCard.W_2 ? (jobCard.W_2 % 1 === 0 ? Math.round(jobCard.W_2) : jobCard.W_2.toFixed(2)) : 'N/A'}</td>
-                  <td>${jobCard.W_3 ? (jobCard.W_3 % 1 === 0 ? Math.round(jobCard.W_3) : jobCard.W_3.toFixed(2)) : 'N/A'}</td>
-                  <td>${jobCard.CFT2 ? (jobCard.CFT2 % 1 === 0 ? Math.round(jobCard.CFT2) : jobCard.CFT2.toFixed(2)) : 'N/A'}</td>
+                  <td>${jobCard.W_1 ? (jobCard.W_1 % 1 === 0 ? Math.round(jobCard.W_1) : jobCard.W_1.toFixed(2)) : ''}</td>
+                  <td>${jobCard.W_2 ? (jobCard.W_2 % 1 === 0 ? Math.round(jobCard.W_2) : jobCard.W_2.toFixed(2)) : ''}</td>
+                  <td>${jobCard.W_3 ? (jobCard.W_3 % 1 === 0 ? Math.round(jobCard.W_3) : jobCard.W_3.toFixed(2)) : ''}</td>
+                  <td>${jobCard.CFT2 ? (jobCard.CFT2 % 1 === 0 ? Math.round(jobCard.CFT2) : jobCard.CFT2.toFixed(2)) : ''}</td>
                 </tr>
                 ` : ''}
               </table>
@@ -487,9 +487,9 @@ const WoodJobCard = ({
                   <td class="label" style="width: 34%">Thickness</td>
                 </tr>
                 <tr>
-                  <td>${jobCard.F1 ? (jobCard.F1 % 1 === 0 ? Math.round(jobCard.F1) : jobCard.F1.toFixed(2)) : 'N/A'}</td>
-                  <td>${jobCard.F2 ? (jobCard.F2 % 1 === 0 ? Math.round(jobCard.F2) : jobCard.F2.toFixed(2)) : 'N/A'}</td>
-                  <td>${jobCard.F3 ? (jobCard.F3 % 1 === 0 ? Math.round(jobCard.F3) : jobCard.F3.toFixed(2)) : 'N/A'}</td>
+                  <td>${jobCard.F1 ? (jobCard.F1 % 1 === 0 ? Math.round(jobCard.F1) : jobCard.F1.toFixed(2)) : ''}</td>
+                  <td>${jobCard.F2 ? (jobCard.F2 % 1 === 0 ? Math.round(jobCard.F2) : jobCard.F2.toFixed(2)) : ''}</td>
+                  <td>${jobCard.F3 ? (jobCard.F3 % 1 === 0 ? Math.round(jobCard.F3) : jobCard.F3.toFixed(2)) : ''}</td>
                 </tr>
               </table>
 
@@ -551,7 +551,7 @@ const WoodJobCard = ({
               <table>
                 <tr>
                   <td style="text-align: center; padding: 0.75rem; border-bottom: 1px solid #000000; font-weight: 700; font-size: 0.9rem;">
-                    ${jobCard.ComponentsName || 'N/A'}
+                    ${jobCard.ComponentsName || ''}
                   </td>
                 </tr>
               </table>
@@ -564,9 +564,9 @@ const WoodJobCard = ({
                   <th style="border: 1px solid #000000; padding: 0.75rem; text-align: center; background-color: #f8f9fa; color: #065f46; font-weight: 700;">THK. (in mm)</th>
                 </tr>
                 <tr>
-                  <td style="border: 1px solid #000000; padding: 0.75rem; text-align: center; font-weight: 600;">${jobCard.F1 ? (jobCard.F1 % 1 === 0 ? Math.round(jobCard.F1) : jobCard.F1.toFixed(2)) : 'N/A'}</td>
-                  <td style="border: 1px solid #000000; padding: 0.75rem; text-align: center; font-weight: 600;">${jobCard.F2 ? (jobCard.F2 % 1 === 0 ? Math.round(jobCard.F2) : jobCard.F2.toFixed(2)) : 'N/A'}</td>
-                  <td style="border: 1px solid #000000; padding: 0.75rem; text-align: center; font-weight: 600;">${jobCard.F3 ? (jobCard.F3 % 1 === 0 ? Math.round(jobCard.F3) : jobCard.F3.toFixed(2)) : 'N/A'}</td>
+                  <td style="border: 1px solid #000000; padding: 0.75rem; text-align: center; font-weight: 600;">${jobCard.F1 ? (jobCard.F1 % 1 === 0 ? Math.round(jobCard.F1) : jobCard.F1.toFixed(2)) : ''}</td>
+                  <td style="border: 1px solid #000000; padding: 0.75rem; text-align: center; font-weight: 600;">${jobCard.F2 ? (jobCard.F2 % 1 === 0 ? Math.round(jobCard.F2) : jobCard.F2.toFixed(2)) : ''}</td>
+                  <td style="border: 1px solid #000000; padding: 0.75rem; text-align: center; font-weight: 600;">${jobCard.F3 ? (jobCard.F3 % 1 === 0 ? Math.round(jobCard.F3) : jobCard.F3.toFixed(2)) : ''}</td>
                 </tr>
               </table>
 
@@ -940,7 +940,7 @@ const WoodJobCard = ({
                       marginLeft: "0.5rem",
                     }}
                   >
-                    {jobCard.JobCardNo || "N/A"}
+                    {jobCard.JobCardNo || ""}
                   </span>
                 </Col>
                 <Col
@@ -968,7 +968,7 @@ const WoodJobCard = ({
                         padding: "0.75rem",
                       }}
                     >
-                      {jobCard.OrderQty || "N/A"}
+                      {jobCard.OrderQty || ""}
                     </Col>
                   </Row>
                 </Col>
@@ -1002,7 +1002,7 @@ const WoodJobCard = ({
                     color: "#000000",
                   }}
                 >
-                  <span>{jobCard.ContainerNumber || "N/A"}</span>
+                  <span>{jobCard.ContainerNumber || ""}</span>
                 </Col>
                 <Col
                   xs={2}
@@ -1026,7 +1026,7 @@ const WoodJobCard = ({
                     color: "#000000",
                   }}
                 >
-                  {jobCard.InspectionDate || "N/A"}
+                  {jobCard.InspectionDate || ""}
                 </Col>
               </Row>
 
@@ -1070,7 +1070,7 @@ const WoodJobCard = ({
                       color: "#000000",
                     }}
                   >
-                    {jobCard.ProductCode || "N/A"}
+                    {jobCard.ProductCode || ""}
                   </span>
                 </Col>
                 <Col
@@ -1098,7 +1098,7 @@ const WoodJobCard = ({
                     padding: "0.75rem",
                   }}
                 >
-                  <span>{jobCard.ItemName || "N/A"}</span>
+                  <span>{jobCard.ItemName || ""}</span>
                 </Col>
               </Row>
 
@@ -1163,7 +1163,7 @@ const WoodJobCard = ({
                     padding: "0.75rem",
                   }}
                 >
-                  <span>{jobCard.ComponentsName || "N/A"}</span>
+                  <span>{jobCard.ComponentsName || ""}</span>
                 </Col>
                 <Col
                   xs={2}
@@ -1189,7 +1189,7 @@ const WoodJobCard = ({
                     padding: "0.75rem",
                   }}
                 >
-                  <span>{jobCard.ComponentQty || "N/A"}</span>
+                  <span>{jobCard.ComponentQty || ""}</span>
                 </Col>
               </Row>
 
@@ -1246,7 +1246,7 @@ const WoodJobCard = ({
                           ? jobCard.W1 % 1 === 0
                             ? Math.round(jobCard.W1)
                             : jobCard.W1.toFixed(2)
-                          : "N/A"}
+                          : ""}
                       </div>
                     </Col>
                     <Col
@@ -1276,7 +1276,7 @@ const WoodJobCard = ({
                           ? jobCard.W2 % 1 === 0
                             ? Math.round(jobCard.W2)
                             : jobCard.W2.toFixed(2)
-                          : "N/A"}
+                          : ""}
                       </div>
                     </Col>
                     <Col
@@ -1306,7 +1306,7 @@ const WoodJobCard = ({
                           ? jobCard.W3 % 1 === 0
                             ? Math.round(jobCard.W3)
                             : jobCard.W3.toFixed(2)
-                          : "N/A"}
+                          : ""}
                       </div>
                     </Col>
                     <Col
@@ -1335,7 +1335,7 @@ const WoodJobCard = ({
                           ? jobCard.CFT % 1 === 0
                             ? Math.round(jobCard.CFT)
                             : jobCard.CFT.toFixed(2)
-                          : "N/A"}
+                          : ""}
                       </div>
                     </Col>
                   </Row>
@@ -1361,7 +1361,7 @@ const WoodJobCard = ({
                             ? jobCard.W_1 % 1 === 0
                               ? Math.round(jobCard.W_1)
                               : jobCard.W_1.toFixed(2)
-                            : "N/A"}
+                            : ""}
                         </div>
                       </Col>
                       <Col
@@ -1382,7 +1382,7 @@ const WoodJobCard = ({
                             ? jobCard.W_2 % 1 === 0
                               ? Math.round(jobCard.W_2)
                               : jobCard.W_2.toFixed(2)
-                            : "N/A"}
+                            : ""}
                         </div>
                       </Col>
                       <Col
@@ -1403,7 +1403,7 @@ const WoodJobCard = ({
                             ? jobCard.W_3 % 1 === 0
                               ? Math.round(jobCard.W_3)
                               : jobCard.W_3.toFixed(2)
-                            : "N/A"}
+                            : ""}
                         </div>
                       </Col>
                       <Col
@@ -1423,7 +1423,7 @@ const WoodJobCard = ({
                             ? jobCard.Qty3 % 1 === 0
                               ? Math.round(jobCard.Qty3)
                               : jobCard.Qty3.toFixed(2)
-                            : "N/A"}
+                            : ""}
                         </div>
                       </Col>
                     </Row>
@@ -1484,7 +1484,7 @@ const WoodJobCard = ({
                           ? jobCard.F1 % 1 === 0
                             ? Math.round(jobCard.F1)
                             : jobCard.F1.toFixed(2)
-                          : "N/A"}
+                          : ""}
                       </div>
                     </Col>
                     <Col
@@ -1514,7 +1514,7 @@ const WoodJobCard = ({
                           ? jobCard.F2 % 1 === 0
                             ? Math.round(jobCard.F2)
                             : jobCard.F2.toFixed(2)
-                          : "N/A"}
+                          : ""}
                       </div>
                     </Col>
                     <Col
@@ -1543,7 +1543,7 @@ const WoodJobCard = ({
                           ? jobCard.F3 % 1 === 0
                             ? Math.round(jobCard.F3)
                             : jobCard.F3.toFixed(2)
-                          : "N/A"}
+                          : ""}
                       </div>
                     </Col>
                   </Row>
@@ -1972,7 +1972,7 @@ const WoodJobCard = ({
                         fontSize: "0.9rem",
                       }}
                     >
-                      {jobCard.ComponentsName || "N/A"}
+                      {jobCard.ComponentsName || ""}
                     </span>
                   </Col>
                 </Row>
@@ -2033,7 +2033,7 @@ const WoodJobCard = ({
                               ? jobCard.F1 % 1 === 0
                                 ? Math.round(jobCard.F1)
                                 : jobCard.F1.toFixed(2)
-                              : "N/A"}
+                              : ""}
                           </td>
                           <td style={{ 
                             border: "2px solid #2d3748", 
@@ -2046,7 +2046,7 @@ const WoodJobCard = ({
                               ? jobCard.F2 % 1 === 0
                                 ? Math.round(jobCard.F2)
                                 : jobCard.F2.toFixed(2)
-                              : "N/A"}
+                              : ""}
                           </td>
                           <td style={{ 
                             border: "2px solid #2d3748", 
@@ -2059,7 +2059,7 @@ const WoodJobCard = ({
                               ? jobCard.F3 % 1 === 0
                                 ? Math.round(jobCard.F3)
                                 : jobCard.F3.toFixed(2)
-                              : "N/A"}
+                              : ""}
                           </td>
                         </tr>
                       </tbody>

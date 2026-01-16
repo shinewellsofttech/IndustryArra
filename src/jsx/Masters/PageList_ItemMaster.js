@@ -36,6 +36,7 @@ export const PageList_ItemMaster = () => {
 	const dispatch = useDispatch();
 	const navigate = useNavigate();
 	const API_URL = API_WEB_URLS.MASTER + "/0/token/ItemMaster";
+	const API_URL_UPDATE = API_WEB_URLS.MASTER + "/0/token/UpdateItemMaster";
 	const API_URL_DELETE = API_WEB_URLS.MASTER + "/0/token/DeleteItemMaster";
 	const rtPage_Add = "/AddItem";
 	const rtPage_Edit = "/AddItem";
@@ -90,7 +91,7 @@ export const PageList_ItemMaster = () => {
 	  }, [navigate, rtPage_Edit]);
 	
 
-const btnDelete = useCallback(async (id) => {
+	const btnDelete = useCallback(async (id) => {
 	const res = await Fn_FillListData(dispatch, setState, "nothing", API_URL_DELETE + "/Id/" + id);
 	console.log("Delete Response:", res);
 	if(res && res.length > 0 && res[0].Id > 0 && res[0].Id == id){
@@ -100,6 +101,21 @@ const btnDelete = useCallback(async (id) => {
 		toast.error("Data is used can not delete it");
 	}
 }, [dispatch, API_URL_DELETE, API_URL]);
+
+	const btnMarkAsUploaded = useCallback(async (rowData) => {
+		console.log("Row Data:", rowData);
+
+		const res = await		Fn_FillListData(dispatch, setState, "nothing", API_URL_UPDATE + "/Id/" + rowData.Id);
+		console.log("Update Response:", res);
+		if(res && res.length > 0 && res[0].Id > 0 ){
+			toast.success("Item marked as uploaded successfully");
+			Fn_FillListData(dispatch, setGridData, "gridData", API_URL + "/Id/0");
+		}else{
+			toast.error("Failed to mark item as uploaded");
+		}
+		// Function to update upload status without actual upload
+		// You can add API call here later to update IsDataUploaded status
+	}, []);
 
 	const toggleSelectAll = useCallback((checked, currentPageRows) => {
 		if (checked) {
@@ -488,13 +504,23 @@ const btnDelete = useCallback(async (id) => {
 			  }
   
 			  return (
-				<Button
-				  variant="primary"
-				  size="sm"
-				  onClick={() => btnUploadOnClick(row.original.Id)}
-				>
-				  Upload
-				</Button>
+				<div style={{ display: 'flex', gap: '5px' }}>
+				  <Button
+					variant="primary"
+					size="sm"
+					onClick={() => btnUploadOnClick(row.original.Id)}
+				  >
+					Upload
+				  </Button>
+				  <Button
+					variant="success"
+					size="sm"
+					onClick={() => btnMarkAsUploaded(row.original)}
+					title="Mark as Uploaded"
+				  >
+					<i className="bi bi-check"></i>
+				  </Button>
+				</div>
 			  );
 			},
 		  },
@@ -550,7 +576,7 @@ const btnDelete = useCallback(async (id) => {
 			},
 		  }, 
 
-	], [btnUploadOnClick, btnEditOnClick, btnDelete, selectedIds, toggleSelectAll, toggleSelectOne]);
+	], [btnUploadOnClick, btnEditOnClick, btnDelete, btnMarkAsUploaded, selectedIds, toggleSelectAll, toggleSelectOne]);
 
 	const data = useMemo( () => gridData, [gridData] )
 	const tableInstance = useTable({
