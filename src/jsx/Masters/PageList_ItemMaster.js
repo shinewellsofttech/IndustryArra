@@ -17,6 +17,7 @@ import { Fn_AddEditData, Fn_FillListData } from '../../store/Functions';
 import XLSX from 'xlsx';
 import { toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
+import JSZip from 'jszip';
 
 
 export const PageList_ItemMaster = () => {
@@ -38,6 +39,7 @@ export const PageList_ItemMaster = () => {
 	const API_URL = API_WEB_URLS.MASTER + "/0/token/ItemMaster";
 	const API_URL_UPDATE = API_WEB_URLS.MASTER + "/0/token/UpdateItemMaster";
 	const API_URL_DELETE = API_WEB_URLS.MASTER + "/0/token/DeleteItemMaster";
+	const API_URL_Photos = API_WEB_URLS.MASTER + "/0/token/ComponentPhotoForDownload";
 	const rtPage_Add = "/AddItem";
 	const rtPage_Edit = "/AddItem";
 	const [isUploading, setIsUploading] = useState(false);
@@ -101,6 +103,65 @@ export const PageList_ItemMaster = () => {
 		toast.error("Data is used can not delete it");
 	}
 }, [dispatch, API_URL_DELETE, API_URL]);
+
+	const btnDownloadImages = useCallback( async (rowData) => {
+		console.log("Download Images - Row Data:", rowData);
+		try {
+			const res = await Fn_FillListData(dispatch, setState, "nothing", API_URL_Photos + "/Id/" + rowData.Id);
+			console.log("Download Images Response:", res);
+			
+			if (!res || res.length === 0) {
+				toast.warning("No images found for this item");
+				return;
+			}
+
+			// Create a new JSZip instance
+			const zip = new JSZip();
+			const imageUrl = API_WEB_URLS.IMAGEURL;
+
+			// Fetch and add each image to the zip
+			for (const item of res) {
+				if (item.ImageDataNew) {
+					try {
+						const imageUrl_full = imageUrl + item.ImageDataNew;
+						console.log("Fetching image from:", imageUrl_full);
+						
+						// Fetch the image
+						const response = await fetch(imageUrl_full);
+						if (!response.ok) {
+							console.warn(`Failed to fetch image: ${item.ImageDataNew}`);
+							continue;
+						}
+						
+						const blob = await response.blob();
+						
+						// Add image to zip with its original filename
+						zip.file(item.ImageDataNew, blob);
+					} catch (error) {
+						console.error(`Error fetching image ${item.ImageDataNew}:`, error);
+					}
+				}
+			}
+
+			// Generate zip file
+			const zipBlob = await zip.generateAsync({ type: "blob" });
+			
+			// Create download link
+			const url = window.URL.createObjectURL(zipBlob);
+			const link = document.createElement("a");
+			link.href = url;
+			link.download = `${rowData.ItemCode || 'Images'}.zip`;
+			document.body.appendChild(link);
+			link.click();
+			document.body.removeChild(link);
+			window.URL.revokeObjectURL(url);
+			
+			toast.success(`Downloaded ${res.length} image(s) as ${rowData.ItemCode || 'Images'}.zip`);
+		} catch (error) {
+			console.error("Error downloading images:", error);
+			toast.error("Failed to download images");
+		}
+	}, [dispatch, API_URL_Photos]);
 
 	const btnMarkAsUploaded = useCallback(async (rowData) => {
 		console.log("Row Data:", rowData);
@@ -564,6 +625,15 @@ export const PageList_ItemMaster = () => {
 					Edit
 				  </Button>
 				  <Button
+					variant="info"
+					size="sm"
+					onClick={() => btnDownloadImages(row.original)}
+					title="Download Images"
+				  >
+					<i className="bi bi-image me-1"></i>
+					<i className="bi bi-download"></i>
+				  </Button>
+				  <Button
 					variant="danger"
 					size="sm"
 					onClick={() => btnDelete(row.original.Id)}
@@ -576,7 +646,7 @@ export const PageList_ItemMaster = () => {
 			},
 		  }, 
 
-	], [btnUploadOnClick, btnEditOnClick, btnDelete, btnMarkAsUploaded, selectedIds, toggleSelectAll, toggleSelectOne]);
+	], [btnUploadOnClick, btnEditOnClick, btnDelete, btnDownloadImages, btnMarkAsUploaded, selectedIds, toggleSelectAll, toggleSelectOne]);
 
 	const data = useMemo( () => gridData, [gridData] )
 	const tableInstance = useTable({

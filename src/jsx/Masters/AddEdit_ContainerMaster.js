@@ -14,7 +14,7 @@ const ContainerMasterSchema = Yup.object().shape({
   ContainerNumber: Yup.string().required("Container Number is required"),
   ItemName: Yup.string().required("Item Name is required"),
   Quantity: Yup.number().required("Quantity is required").positive().integer(),
-  JobCardInitial: Yup.string().required("Job Card Initial is required"),
+  JobCardInitial: Yup.string(),
   ContractNo: Yup.string().required("Contract No is required"),
 });
 
@@ -440,7 +440,7 @@ const AddEdit_ContainerMaster = () => {
                           🔢 Quantity *
                         </th>
                         <th style={{...styles.tableHeader, minWidth: '160px'}}>
-                          📋 Job Card Initial {isSampleContainer ? '' : '*'}
+                          📋 Job Card Initial
                         </th>
                         <th style={{...styles.tableHeader, minWidth: '160px'}}>
                           📄 Contract No {isSampleContainer ? '' : '*'}
