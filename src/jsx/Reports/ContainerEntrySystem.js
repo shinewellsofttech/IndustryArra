@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from "react";
+import React, { useState, useCallback } from "react";
 import { useDispatch } from "react-redux";
 import { useLocation, useNavigate } from "react-router-dom";
 import { Fn_AddEditData, Fn_FillListData, Fn_GetReport } from "../../store/Functions";
@@ -28,12 +28,9 @@ function ContainerEntrySystem() {
     isProgress: true,
   });
 
-  const API_URL =
-    API_WEB_URLS.MASTER + "/0/token/GetContainerMachiningStatusPercent";
   const API_URL1 = API_WEB_URLS.MASTER + "/0/token/GetContainerMachiningStatus";
   const API_URL2 = API_WEB_URLS.MASTER + "/0/token/ActualQuantity";
   const [gridData, setGridData] = useState([]);
-  const [loading, setLoading] = useState(false);
 
   // Modal states
   const [modalOpen, setModalOpen] = useState(false);
@@ -81,55 +78,17 @@ function ContainerEntrySystem() {
   const location = useLocation();
   const navigate = useNavigate();
 
-  useEffect(() => {
-    fetchData();
-  }, []); // Remove dispatch dependency to prevent re-calls
-
-  const fetchData = useCallback(async () => {
-    if (loading) return; // Prevent multiple simultaneous calls
-    setLoading(true);
-    try {
-      const result = await Fn_FillListData(
-        dispatch,
-        setState,
-        "FillArray",
-        `${API_URL}/Id/0`
-      );
-      console.log("API Response:", result);
-    } catch (error) {
-      console.error("Error fetching data:", error);
-      setGridData([]);
-    } finally {
-      setLoading(false);
-    }
-  }, [dispatch]);
-
-  // Get status distribution from API data
+  // Static status cards: Not Started, Running, Done (no GetContainerMachiningStatusPercent API)
   const getStatusDistribution = () => {
-    if (
-      !state.FillArray ||
-      !Array.isArray(state.FillArray) ||
-      state.FillArray.length === 0
-    )
-      return [];
-
-    return state.FillArray.map((item) => {
-      if (!item || typeof item !== "object") return null;
-
-      const statusMap = { 0: "Not Started", 1: "Running", 2: "Done" };
-      const colorMap = { 0: "#dc3545", 1: "#ffc107", 2: "#28a745" };
-
-      const statusCode = item.ContainerStatusCode ?? 0;
-      const percentage = item.Percentage ?? 0;
-      const count = item.Count ?? 0;
-
-      return {
-        name: statusMap[statusCode] || "Unknown",
-        data: [Math.round(percentage)],
-        color: colorMap[statusCode] || "#6c757d",
-        count: count,
-      };
-    }).filter(Boolean);
+    const statusMap = { 0: "Not Started", 1: "Running", 2: "Done" };
+    const colorMap = { 0: "#dc3545", 1: "#ffc107", 2: "#28a745" };
+    return [0, 1, 2].map((statusCode) => ({
+      name: statusMap[statusCode],
+      data: [0],
+      color: colorMap[statusCode],
+      count: "-",
+      statusCode,
+    }));
   };
 
   // Handle status box click with loading protection
@@ -1362,21 +1321,14 @@ function ContainerEntrySystem() {
               </p>
             </CardHeader>
             <CardBody>
-              {loading ? (
-                <div className="text-center">
-                  <div className="spinner-border" role="status">
-                    <span className="sr-only">Loading...</span>
-                  </div>
-                </div>
-              ) : (
-                <div className="status-boxes-container">
-                  {getStatusDistribution().map((status, index) => (
-                    <div
-                      key={index}
-                      className={`status-box ${status.name.toLowerCase().replace(' ', '-')}`}
-                      onClick={() => handleStatusBoxClick(index)}
-                      title={`Click to view ${status.name} containers`}
-                    >
+              <div className="status-boxes-container">
+                {getStatusDistribution().map((status, index) => (
+                  <div
+                    key={index}
+                    className={`status-box ${status.name.toLowerCase().replace(' ', '-')}`}
+                    onClick={() => handleStatusBoxClick(status.statusCode)}
+                    title={`Click to view ${status.name} containers`}
+                  >
                       <div className="status-box-icon">
                         {status.name === 'Not Started' && <i className="fas fa-times-circle"></i>}
                         {status.name === 'Running' && <i className="fas fa-clock"></i>}
@@ -1385,8 +1337,7 @@ function ContainerEntrySystem() {
                       <div className="status-box-title">{status.name}</div>
                     </div>
                   ))}
-                </div>
-              )}
+              </div>
             </CardBody>
           </Card>
         </Col>

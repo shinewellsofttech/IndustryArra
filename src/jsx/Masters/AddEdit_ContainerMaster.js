@@ -43,6 +43,7 @@ const AddEdit_ContainerMaster = () => {
   const [focusedCell, setFocusedCell] = useState({ row: 0, col: 0 });
   const inputRefs = useRef({});
   const [isSampleContainer, setIsSampleContainer] = useState(false);
+  const [isTikamoon, setIsTikamoon] = useState(false);
   
   const dispatch = useDispatch()
   const location = useLocation()
@@ -317,6 +318,16 @@ const AddEdit_ContainerMaster = () => {
         JobCardInitial: Yup.string(),
         ContractNo: Yup.string(),
       });
+    } else if (isTikamoon) {
+      // When IsTikamoon is checked, ContractNo is not mandatory
+      validationSchema = Yup.object().shape({
+        InspectionDate: Yup.date().required("Inspection Date is required"),
+        ContainerNumber: Yup.string().required("Container Number is required"),
+        ItemName: Yup.string().required("Item Name is required"),
+        Quantity: Yup.number().required("Quantity is required").positive().integer(),
+        JobCardInitial: Yup.string(),
+        ContractNo: Yup.string(), // Not required when IsTikamoon is true
+      });
     } else {
       // When checkbox is off, all validations apply
       validationSchema = ContainerMasterSchema;
@@ -363,7 +374,7 @@ const AddEdit_ContainerMaster = () => {
           Quantity: row.Quantity,
           JobCardInitial: row.JobCardInitial,
           ContractNo: row.ContractNo,
-        
+          IsTikamoon: isTikamoon,
         };
       });
 
@@ -401,6 +412,55 @@ const AddEdit_ContainerMaster = () => {
       />
 
       <div style={styles.container}>
+        {/* IsTikamoon Checkbox */}
+        <div style={{ 
+          marginBottom: '16px', 
+          padding: '16px', 
+          background: '#ffffff',
+          borderRadius: '8px',
+          border: '1px solid #e5e7eb',
+          boxShadow: '0 2px 4px rgba(0, 0, 0, 0.05)'
+        }}>
+          <label style={{ 
+            display: 'flex', 
+            alignItems: 'center', 
+            gap: '10px',
+            cursor: 'pointer',
+            fontFamily: 'Times New Roman',
+            fontSize: '16px',
+            fontWeight: '600',
+            color: '#374151'
+          }}>
+            <input
+              type="checkbox"
+              checked={isTikamoon}
+              onChange={(e) => {
+                setIsTikamoon(e.target.checked);
+                // Clear errors when checkbox state changes to re-validate
+                setErrors({});
+              }}
+              style={{
+                width: '20px',
+                height: '20px',
+                cursor: 'pointer',
+                accentColor: '#374151'
+              }}
+            />
+            <span>IsTikamoon</span>
+          </label>
+          {isTikamoon && (
+            <div style={{ 
+              marginTop: '8px', 
+              fontSize: '13px', 
+              color: '#6b7280',
+              fontStyle: 'italic',
+              paddingLeft: '30px'
+            }}>
+              ℹ️ IsTikamoon mode: Contract No is not mandatory.
+            </div>
+          )}
+        </div>
+
         <div className="row">
           <div className="col-lg-12">
             <div className="card" style={styles.tableContainer}>
@@ -443,7 +503,7 @@ const AddEdit_ContainerMaster = () => {
                           📋 Job Card Initial
                         </th>
                         <th style={{...styles.tableHeader, minWidth: '160px'}}>
-                          📄 Contract No {isSampleContainer ? '' : '*'}
+                          📄 Contract No {isSampleContainer || isTikamoon ? '' : '*'}
                         </th>
                         <th style={{...styles.tableHeader, minWidth: '100px'}}>
                           ⚡ Actions

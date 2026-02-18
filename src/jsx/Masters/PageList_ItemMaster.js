@@ -40,6 +40,7 @@ export const PageList_ItemMaster = () => {
 	const API_URL_UPDATE = API_WEB_URLS.MASTER + "/0/token/UpdateItemMaster";
 	const API_URL_DELETE = API_WEB_URLS.MASTER + "/0/token/DeleteItemMaster";
 	const API_URL_Photos = API_WEB_URLS.MASTER + "/0/token/ComponentPhotoForDownload";
+	const API_URL_ItemData = API_WEB_URLS.MASTER + "/0/token/ItemExportData";
 	const rtPage_Add = "/AddItem";
 	const rtPage_Edit = "/AddItem";
 	const [isUploading, setIsUploading] = useState(false);
@@ -161,7 +162,44 @@ export const PageList_ItemMaster = () => {
 			console.error("Error downloading images:", error);
 			toast.error("Failed to download images");
 		}
-	}, [dispatch, API_URL_Photos]);
+		}, [dispatch, API_URL_Photos]);
+
+	const btnShowRowData = useCallback(async (rowData) => {
+		const ItemId = rowData.Id;
+		const res = await Fn_FillListData(dispatch, setState, "nothing", API_URL_ItemData + "/Id/" + ItemId);
+		if (res && res.length > 0) {
+			const itemData = res[0];
+			const wb = XLSX.utils.book_new();
+			const itemInfo = [{
+				Name: itemData.Name || '',
+				ItemCode: itemData.ItemCode || '',
+				ItemWidth: itemData.ItemWidth || '',
+				ItemDepth: itemData.ItemDepth || '',
+				ItemHeight: itemData.ItemHeight || ''
+			}];
+			const ws1 = XLSX.utils.json_to_sheet(itemInfo);
+			XLSX.utils.book_append_sheet(wb, ws1, "Item Data");
+			if (itemData.ComponentJson) {
+				try {
+					const componentData = JSON.parse(itemData.ComponentJson);
+					const ws2 = XLSX.utils.json_to_sheet(componentData);
+					XLSX.utils.book_append_sheet(wb, ws2, "Component Data");
+				} catch (e) { console.error("Error parsing ComponentJson:", e); }
+			}
+			if (itemData.MachineJson) {
+				try {
+					const machineData = JSON.parse(itemData.MachineJson);
+					const ws3 = XLSX.utils.json_to_sheet(machineData);
+					XLSX.utils.book_append_sheet(wb, ws3, "Machine Data");
+				} catch (e) { console.error("Error parsing MachineJson:", e); }
+			}
+			const filename = `${itemData.ItemCode || 'Item'}_Export.xlsx`;
+			XLSX.writeFile(wb, filename);
+			toast.success(`Excel file downloaded: ${filename}`);
+		} else {
+			toast.error("Failed to fetch item data for export");
+		}
+	}, [dispatch, API_URL_ItemData]);
 
 	const btnMarkAsUploaded = useCallback(async (rowData) => {
 		console.log("Row Data:", rowData);
@@ -633,6 +671,16 @@ export const PageList_ItemMaster = () => {
 					<i className="bi bi-image me-1"></i>
 					<i className="bi bi-download"></i>
 				  </Button>
+				  {row.original.IsDataUploaded === 1 && (
+					<Button
+						variant="success"
+						size="sm"
+						onClick={() => btnShowRowData(row.original)}
+						title="Export to Excel"
+					>
+						<i className="bi bi-download"></i> Export
+					</Button>
+				  )}
 				  <Button
 					variant="danger"
 					size="sm"
@@ -646,7 +694,7 @@ export const PageList_ItemMaster = () => {
 			},
 		  }, 
 
-	], [btnUploadOnClick, btnEditOnClick, btnDelete, btnDownloadImages, btnMarkAsUploaded, selectedIds, toggleSelectAll, toggleSelectOne]);
+	], [btnUploadOnClick, btnEditOnClick, btnDelete, btnDownloadImages, btnShowRowData, btnMarkAsUploaded, selectedIds, toggleSelectAll, toggleSelectOne]);
 
 	const data = useMemo( () => gridData, [gridData] )
 	const tableInstance = useTable({

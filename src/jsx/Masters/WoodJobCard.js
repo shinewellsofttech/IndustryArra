@@ -467,7 +467,7 @@ const WoodJobCard = ({
                   <td>${jobCard.W3 ? (jobCard.W3 % 1 === 0 ? Math.round(jobCard.W3) : jobCard.W3.toFixed(2)) : ''}</td>
                   <td>${jobCard.CFT ? (jobCard.CFT % 1 === 0 ? Math.round(jobCard.CFT) : jobCard.CFT.toFixed(2)) : ''}</td>
                 </tr>
-                ${jobCard.W_1 || jobCard.W_2 || jobCard.W_3 || jobCard.Qty3 ? `
+                ${jobCard.W_1 || jobCard.W_2 || jobCard.W_3 || jobCard.CFT2 ? `
                 <tr>
                   <td>${jobCard.W_1 ? (jobCard.W_1 % 1 === 0 ? Math.round(jobCard.W_1) : jobCard.W_1.toFixed(2)) : ''}</td>
                   <td>${jobCard.W_2 ? (jobCard.W_2 % 1 === 0 ? Math.round(jobCard.W_2) : jobCard.W_2.toFixed(2)) : ''}</td>
@@ -1341,7 +1341,7 @@ const WoodJobCard = ({
                   </Row>
                   
                   {/* Additional row for W_1, W_2, W_3, Qty3 if they exist */}
-                  {(jobCard.W_1 || jobCard.W_2 || jobCard.W_3 || jobCard.Qty3) && (
+                  {(jobCard.W_1 || jobCard.W_2 || jobCard.W_3 || jobCard.CFT2) && (
                     <Row className="g-0" style={{ borderTop: "1px solid #2d3748" }}>
                       <Col
                         xs={3}
@@ -1419,10 +1419,10 @@ const WoodJobCard = ({
                             color: "#000000",
                           }}
                         >
-                          {jobCard.Qty3
-                            ? jobCard.Qty3 % 1 === 0
-                              ? Math.round(jobCard.Qty3)
-                              : jobCard.Qty3.toFixed(2)
+                          {jobCard.CFT2
+                            ? jobCard.CFT2 % 1 === 0
+                              ? Math.round(jobCard.CFT2)
+                              : jobCard.CFT2.toFixed(2)
                             : ""}
                         </div>
                       </Col>

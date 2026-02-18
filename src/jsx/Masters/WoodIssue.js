@@ -350,18 +350,21 @@ function WoodIssue({woodIssueData = {}, components = [], woodSummary = []}) {
     return acc;
   }, {});
 
-  // Calculate totals with null checks
+  // Calculate totals with null checks (Issue cft includes IssueCFT + IssueCFT3)
   const calculateTotals = (components) => {
     if (!Array.isArray(components)) return { finalCft: 0, issueCft: 0 };
     
     return components.reduce((acc, component) => ({
       finalCft: acc.finalCft + Number(component?.FinalCFT || 0),
-      issueCft: acc.issueCft + Number(component?.IssueCFT || 0)
+      issueCft: acc.issueCft + Number(component?.IssueCFT || 0) + Number(component?.IssueCFT3 || 0)
     }), { finalCft: 0, issueCft: 0 });
   };
 
   // Calculate grand totals
   const grandTotals = calculateTotals(filteredComponents);
+
+  // Check if component has L3/W3/T3 (re-issue row)
+  const hasIssue3 = (c) => c != null && c.L3 != null && c.W3 != null && c.T3 != null;
 
   // Format date safely
   const formatDate = (dateString) => {
@@ -801,7 +804,8 @@ function WoodIssue({woodIssueData = {}, components = [], woodSummary = []}) {
                   });
                   
                   return sortedNonJComponents.map((component, index) => (
-                          <tr key={`nonJ-${component?.SNo || index}-${index}`}>
+                          <React.Fragment key={`nonJ-${component?.SNo || index}-${index}`}>
+                          <tr>
                             <td style={{
                               textAlign: 'center',
                               padding: '4px 6px',
@@ -946,6 +950,23 @@ function WoodIssue({woodIssueData = {}, components = [], woodSummary = []}) {
                               {formatNumber(component?.IssueCFT)}
                             </td>
                           </tr>
+                          {hasIssue3(component) && (
+                            <tr>
+                              <td style={{ textAlign: 'center', padding: '4px 6px', color: textColor, fontSize: '12px', border: `1px solid ${borderColor}`, backgroundColor: bgColor }}>{component?.SNo != null ? `${component.SNo}.1` : ''}</td>
+                              <td style={{ padding: '4px 6px', color: textColor, fontSize: '12px', border: `1px solid ${borderColor}`, backgroundColor: bgColor }}>{component?.Description || ''}</td>
+                              <td style={{ textAlign: 'center', padding: '4px 6px', color: textColor, fontSize: '12px', border: `1px solid ${borderColor}`, backgroundColor: bgColor }}></td>
+                              <td style={{ textAlign: 'center', padding: '4px 6px', color: textColor, fontSize: '12px', border: `1px solid ${borderColor}`, backgroundColor: bgColor }}></td>
+                              <td style={{ textAlign: 'center', padding: '4px 6px', color: textColor, fontSize: '12px', border: `1px solid ${borderColor}`, backgroundColor: bgColor }}></td>
+                              <td style={{ textAlign: 'center', padding: '4px 6px', color: textColor, fontSize: '12px', border: `1px solid ${borderColor}`, backgroundColor: bgColor }}></td>
+                              <td className="final-cft-column" style={{ textAlign: 'center', padding: '4px 6px', color: textColor, fontSize: '12px', border: `1px solid ${borderColor}`, backgroundColor: bgColor }}></td>
+                              <td style={{ textAlign: 'center', padding: '4px 6px', color: textColor, fontSize: '12px', border: `1px solid ${borderColor}`, backgroundColor: bgColor }}>{formatNumber(component?.L3)}</td>
+                              <td style={{ textAlign: 'center', padding: '4px 6px', color: textColor, fontSize: '12px', border: `1px solid ${borderColor}`, backgroundColor: bgColor }}>{formatNumber(component?.W3)}</td>
+                              <td style={{ textAlign: 'center', padding: '4px 6px', color: textColor, fontSize: '12px', border: `1px solid ${borderColor}`, backgroundColor: bgColor }}>{formatNumber(component?.T3)}</td>
+                              <td style={{ textAlign: 'center', padding: '4px 6px', color: textColor, fontSize: '12px', border: `1px solid ${borderColor}`, backgroundColor: bgColor }}>{formatNumber(component?.BatchQtyIssue3)}</td>
+                              <td style={{ textAlign: 'center', padding: '4px 6px', color: textColor, fontSize: '12px', border: `1px solid ${borderColor}`, backgroundColor: bgColor }}>{formatNumber(component?.IssueCFT3)}</td>
+                            </tr>
+                          )}
+                          </React.Fragment>
                         ));
                 })()}
                 
@@ -968,7 +989,8 @@ function WoodIssue({woodIssueData = {}, components = [], woodSummary = []}) {
                 
                 {/* Finally, show J category with restarting S.No */}
                 {groupedComponents['J'] && groupedComponents['J'].map((component, index) => (
-                  <tr key={`J-${index}`}>
+                  <React.Fragment key={`J-${index}`}>
+                  <tr>
                     <td style={{
                       textAlign: 'center',
                       padding: '4px 6px',
@@ -1113,6 +1135,23 @@ function WoodIssue({woodIssueData = {}, components = [], woodSummary = []}) {
                       {formatNumber(component?.IssueCFT)}
                     </td>
                   </tr>
+                  {hasIssue3(component) && (
+                    <tr>
+                      <td style={{ textAlign: 'center', padding: '4px 6px', color: textColor, fontSize: '12px', border: `1px solid ${borderColor}`, backgroundColor: bgColor }}>{`${index + 1}.1`}</td>
+                      <td style={{ padding: '4px 6px', color: textColor, fontSize: '12px', border: `1px solid ${borderColor}`, backgroundColor: bgColor }}>{component?.Description || ''}</td>
+                      <td style={{ textAlign: 'center', padding: '4px 6px', color: textColor, fontSize: '12px', border: `1px solid ${borderColor}`, backgroundColor: bgColor }}></td>
+                      <td style={{ textAlign: 'center', padding: '4px 6px', color: textColor, fontSize: '12px', border: `1px solid ${borderColor}`, backgroundColor: bgColor }}></td>
+                      <td style={{ textAlign: 'center', padding: '4px 6px', color: textColor, fontSize: '12px', border: `1px solid ${borderColor}`, backgroundColor: bgColor }}></td>
+                      <td style={{ textAlign: 'center', padding: '4px 6px', color: textColor, fontSize: '12px', border: `1px solid ${borderColor}`, backgroundColor: bgColor }}></td>
+                      <td className="final-cft-column" style={{ textAlign: 'center', padding: '4px 6px', color: textColor, fontSize: '12px', border: `1px solid ${borderColor}`, backgroundColor: bgColor }}></td>
+                      <td style={{ textAlign: 'center', padding: '4px 6px', color: textColor, fontSize: '12px', border: `1px solid ${borderColor}`, backgroundColor: bgColor }}>{formatNumber(component?.L3)}</td>
+                      <td style={{ textAlign: 'center', padding: '4px 6px', color: textColor, fontSize: '12px', border: `1px solid ${borderColor}`, backgroundColor: bgColor }}>{formatNumber(component?.W3)}</td>
+                      <td style={{ textAlign: 'center', padding: '4px 6px', color: textColor, fontSize: '12px', border: `1px solid ${borderColor}`, backgroundColor: bgColor }}>{formatNumber(component?.T3)}</td>
+                      <td style={{ textAlign: 'center', padding: '4px 6px', color: textColor, fontSize: '12px', border: `1px solid ${borderColor}`, backgroundColor: bgColor }}>{formatNumber(component?.BatchQtyIssue3)}</td>
+                      <td style={{ textAlign: 'center', padding: '4px 6px', color: textColor, fontSize: '12px', border: `1px solid ${borderColor}`, backgroundColor: bgColor }}>{formatNumber(component?.IssueCFT3)}</td>
+                    </tr>
+                  )}
+                  </React.Fragment>
                 ))}
                 
                 {/* Grand Total */}
