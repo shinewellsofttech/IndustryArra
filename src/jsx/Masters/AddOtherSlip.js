@@ -37,14 +37,15 @@ const AddOtherSlip = () => {
   const API_URL7 = `${API_WEB_URLS.MASTER}/0/token/WoodIssueL`;
   const API_URL_SAVE = "CreateOtherSlip/0/token";
   const API_URL_SAVE1 = "GetJobCardL/0/token";
-  
+
   const dispatch = useDispatch();
   const navigate = useNavigate();
-  
+
   const [F_ContainerMaster, setContainerMaster] = useState("");
   const [F_ContainerMaster2, setContainerMaster2] = useState("");
   const [F_CategoryMaster, setCategoryMaster] = useState("");
   const [F_ItemMaster, setItemMaster] = useState("");
+  const [selectedCML, setSelectedCML] = useState(""); // tracks F_ContainerMasterL for dropdown uniqueness
   const [showViewButton, setShowViewButton] = useState(false);
   const [buttonLoading, setButtonLoading] = useState(false);
 
@@ -72,10 +73,11 @@ const AddOtherSlip = () => {
     setContainerMaster(value);
     setCategoryMaster("");
     setItemMaster("");
+    setSelectedCML(""); // Reset F_ContainerMasterL tracking
     setOtherSlipData([]);
     setShowViewButton(false);
     setState(prevState => ({ ...prevState, FillArray1: [] }));
-    
+
     if (value) {
       setLoading(true);
       try {
@@ -87,20 +89,20 @@ const AddOtherSlip = () => {
       }
     }
   };
-  
+
   const handleCategoryChange = (value) => {
     setCategoryMaster(value);
   };
-  
+
   const handleItemChange = async (value) => {
-    const obj = State.FillArray1.find(x => x.Id == value);
-    setItemMaster(value);
+    // value is F_ContainerMasterL (unique per row)
+    const obj = State.FillArray1.find(x => x.F_ContainerMasterL == value);
+    setSelectedCML(value);                          // for dropdown display
+    setItemMaster(obj ? obj.Id : "");              // real Id for downstream use
     setContainerMaster2(obj?.F_ContainerMaster || "");
     setOtherSlipData([]);
-    
+
     if (value && obj) {
-      // Use IsOtherSlip property to determine button state
-      // If IsOtherSlip is 1, show view button; if 0, show create button
       if (obj.IsOtherSlip == 1 || obj.IsOtherSlip === "1") {
         setShowViewButton(true);
       } else {
@@ -130,25 +132,26 @@ const AddOtherSlip = () => {
       const userData = JSON.parse(localStorage.getItem("authUser"));
       console.log(userData);
       const vformData = new FormData();
-      const obj = State.FillArray1.find(x => x.Id == F_ItemMaster);
+      // Use selectedCML (F_ContainerMasterL) to uniquely identify the selected item
+      const obj = State.FillArray1.find(x => x.F_ContainerMasterL == selectedCML);
       vformData.append("F_ContainerMaster", F_ContainerMaster);
-      vformData.append("F_ItemMaster", F_ItemMaster);
-      vformData.append("F_ContainerMasterL", obj?.F_ContainerMasterL);
+      vformData.append("F_ItemMaster", F_ItemMaster);  // real Id
+      vformData.append("F_ContainerMasterL", selectedCML); // F_ContainerMasterL
 
       await Fn_AddEditData(
-          dispatch,
-          setState,
-          { arguList: { id: 0, formData: vformData } },
-          API_URL_SAVE,
-          true,
-          "memberid",
-          navigate,
-          "/"
-        );
-      await handleItemChange(F_ItemMaster); 
+        dispatch,
+        setState,
+        { arguList: { id: 0, formData: vformData } },
+        API_URL_SAVE,
+        true,
+        "memberid",
+        navigate,
+        "/"
+      );
+      await handleItemChange(selectedCML);  // refresh using F_ContainerMasterL
       window.location.reload();
-    } catch(error) {
-        console.error("Error creating wood issue:", error);
+    } catch (error) {
+      console.error("Error creating wood issue:", error);
     } finally {
       setButtonLoading(false);
     }
@@ -156,7 +159,7 @@ const AddOtherSlip = () => {
 
   return (
     <div>
-      <h4 className="card-title mb-3" style={{fontFamily:'Poppins'}}>Add Other Slips</h4>
+      <h4 className="card-title mb-3" style={{ fontFamily: 'Poppins' }}>Add Other Slips</h4>
       <Row className="mb-3">
         <Col md={4}>
           <label className="form-label">Select Container</label>
@@ -182,13 +185,14 @@ const AddOtherSlip = () => {
             className="form-control"
             name="F_ItemMaster"
             onChange={(e) => handleItemChange(e.target.value)}
-            value={F_ItemMaster}
+            value={selectedCML}
             disabled={loading || !F_ContainerMaster || buttonLoading}
           >
             <option value="">Select Item</option>
             {State.FillArray1.length > 0 &&
               State.FillArray1.map((option) => (
-                <option key={option.Id} value={option.Id}>
+                // Use F_ContainerMasterL as value so duplicate-Id items are treated as distinct
+                <option key={option.F_ContainerMasterL} value={option.F_ContainerMasterL}>
                   {option.Name}
                 </option>
               ))}
@@ -198,18 +202,18 @@ const AddOtherSlip = () => {
 
       <div style={{ marginTop: '20px' }}>
         {showViewButton ? (
-          <Button 
-            variant="primary" 
-            onClick={viewWoodIssue} 
+          <Button
+            variant="primary"
+            onClick={viewWoodIssue}
             style={{ width: '200px', fontWeight: 'bold' }}
             disabled={buttonLoading || !F_ItemMaster}
           >
             {buttonLoading ? 'Loading...' : 'View Other Slip'}
           </Button>
         ) : (
-          <Button 
-            variant="success" 
-            onClick={createWoodIssue} 
+          <Button
+            variant="success"
+            onClick={createWoodIssue}
             style={{ width: '200px', fontWeight: 'bold' }}
             disabled={buttonLoading || !F_ItemMaster}
           >
@@ -218,10 +222,10 @@ const AddOtherSlip = () => {
         )}
       </div>
       <div>
-        {otherSlipData && otherSlipData.length > 0 && !buttonLoading  ? (
+        {otherSlipData && otherSlipData.length > 0 && !buttonLoading ? (
           <OtherSlips otherSlipData={otherSlipData} />
         ) : null}
-        {buttonLoading && showViewButton && <p>Loading slip data...</p>} 
+        {buttonLoading && showViewButton && <p>Loading slip data...</p>}
       </div>
     </div>
   );

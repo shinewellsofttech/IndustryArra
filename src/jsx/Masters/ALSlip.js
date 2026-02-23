@@ -362,7 +362,7 @@ const ALSlip = () => {
                   CONTRACT NO.
                 </td>
                 <td style={{ border: '1px solid black', padding: '8px 6px', fontSize: '14px' }}>
-                  {item.ContractNo || 'IA8532949'}
+                  {item.ContractNo || ''}
                 </td>
                 <td style={{ border: '1px solid black', padding: '8px 6px', fontWeight: 'bold', fontSize: '14px' }}>
                   BATCH CODE
@@ -376,7 +376,7 @@ const ALSlip = () => {
                   JOB CARD NUMBER
                 </td>
                 <td style={{ border: '1px solid black', padding: '8px 6px', fontSize: '14px' }}>
-                  {item.JobCardNo || 'A150 / W1'}
+                  {item.JobCardNo || ''}
                 </td>
                 <td style={{ border: '1px solid black', padding: '8px 6px', fontWeight: 'bold', fontSize: '14px' }}>
                   DATE

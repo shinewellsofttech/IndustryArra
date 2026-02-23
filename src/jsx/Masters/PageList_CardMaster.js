@@ -38,6 +38,7 @@ const PageList_CardMaster = () => {
   const [excelData, setExcelData] = useState(null);
   const [fileName, setFileName] = useState("");
   const [F_ItemMaster, setItemMaster] = useState(0);
+  const [selectedCML, setSelectedCML] = useState(0); // tracks F_ContainerMasterL for dropdown uniqueness
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [F_ContainerMaster, setContainerMaster] = useState(0);
   const [totals, setTotals] = useState({
@@ -84,15 +85,15 @@ const PageList_CardMaster = () => {
   };
 
   const handleCheckboxChange = id => {
-    setSelectedIds(prev => 
-      prev.includes(id) 
+    setSelectedIds(prev =>
+      prev.includes(id)
         ? prev.filter(selectedId => selectedId !== id)
         : [...prev, id]
     );
   };
 
   const handleSelectAll = () => {
-    setSelectedIds(prev => 
+    setSelectedIds(prev =>
       prev.length === gridData.length ? [] : gridData.map(item => item?.Id)
     );
   };
@@ -111,25 +112,26 @@ const PageList_CardMaster = () => {
       alert("Please select at least one row");
       return;
     }
-    
-    const obj = State.FillArray.find(item => item.Id == F_ItemMaster);
+
+    // Use selectedCML (F_ContainerMasterL) to uniquely identify the selected row
+    const obj = State.FillArray.find(item => item.F_ContainerMasterL == selectedCML);
     if (!obj) {
       toast.error("Please select a valid item before continuing.");
       return;
     }
-    
+
     const vformData = new FormData();
     vformData.append("F_ContainerMasterL", obj.F_ContainerMasterL);
     vformData.append("IsSample", IsSample);
     vformData.append("UserId", 1);
-    
+
     // Only append IdList if IsSample is false
     if (!IsSample) {
       const selectedIdsString = selectedIds.join(',');
       console.log(selectedIdsString);
       vformData.append("IdList", selectedIdsString);
     }
-    
+
     setIsSubmitting(true);
     const navigateToJobCardForm = () => {
       navigate(rtPage_Job, {
@@ -186,36 +188,36 @@ const PageList_CardMaster = () => {
 
 
 
- 
- 
 
 
- 
 
- const handleSaveExcelData = async (event) => {
-   event.preventDefault();
-   try {
-     const formData = new FormData();
 
-     formData.append("UserId", 1);
-     formData.append("F_ItemMaster", F_ItemMaster);
-     formData.append("Data", JSON.stringify(excelData));
 
-   await  Fn_AddEditData(
-       dispatch,
-       setState,
-       { arguList: { id: State.id, formData } },
-       API_URL_SAVE,
-       true,
-       "memberid",
-       navigate,
-       "/CardMaster"
-     );
-   } catch (error) {
-     console.error("Error submitting form:", error);
-     alert("An error occurred while submitting the form. Please try again.");
-   }
- };
+
+  const handleSaveExcelData = async (event) => {
+    event.preventDefault();
+    try {
+      const formData = new FormData();
+
+      formData.append("UserId", 1);
+      formData.append("F_ItemMaster", F_ItemMaster);
+      formData.append("Data", JSON.stringify(excelData));
+
+      await Fn_AddEditData(
+        dispatch,
+        setState,
+        { arguList: { id: State.id, formData } },
+        API_URL_SAVE,
+        true,
+        "memberid",
+        navigate,
+        "/CardMaster"
+      );
+    } catch (error) {
+      console.error("Error submitting form:", error);
+      alert("An error occurred while submitting the form. Please try again.");
+    }
+  };
 
   const handleAmountSubmit = async () => {
     try {
@@ -238,7 +240,7 @@ const PageList_CardMaster = () => {
         true,
         "memberid"
       );
-      
+
       setIsModalOpen(false);
       setAmount(0);
       setExpenseArr([]);
@@ -260,12 +262,15 @@ const PageList_CardMaster = () => {
   };
 
   const handleItemMasterChange = async (selectedOption) => {
-    const value = selectedOption ? selectedOption.value : 0;
-    setItemMaster(value);
+    // selectedOption.value is F_ContainerMasterL (unique per row)
+    const cml = selectedOption ? selectedOption.value : 0;
+    setSelectedCML(cml);
+    // Extract the actual Item Id from the array
+    const foundItem = State.FillArray.find(item => item.F_ContainerMasterL == cml);
+    const itemId = foundItem ? foundItem.Id : 0;
+    setItemMaster(itemId);
     setSelectedIds([]); // Clear selected rows when dropdown changes
-    await Fn_FillListData(dispatch, setGridData, "gridData", API_URL + "/Id/" + value);
-    // You can add additional logic here if needed
-    // For example, resetting other dependent states or triggering API calls
+    await Fn_FillListData(dispatch, setGridData, "gridData", API_URL + "/Id/" + itemId);
   };
 
   const handleContainerMasterChange = async (e) => {
@@ -273,13 +278,14 @@ const PageList_CardMaster = () => {
     setContainerMaster(value);
     setSelectedIds([]); // Clear selected rows when dropdown changes
     setItemMaster(0); // Reset Item Master dropdown
+    setSelectedCML(0); // Reset F_ContainerMasterL tracking
     // Call API to get data related to the selected container
-	// const obj = State.FillArray1.find(item => item.Id == value);
+    // const obj = State.FillArray1.find(item => item.Id == value);
     if (value) {
       setLoading(true);
       try {
-		await Fn_FillListData(dispatch, setState, "FillArray", `${API_URL3}/Id/${value}`);
-		await Fn_FillListData(dispatch, setGridData, "gridData", API_URL + "/Id/0");
+        await Fn_FillListData(dispatch, setState, "FillArray", `${API_URL3}/Id/${value}`);
+        await Fn_FillListData(dispatch, setGridData, "gridData", API_URL + "/Id/0");
       } catch (error) {
         console.error("Error fetching container data:", error);
         setGridData([]);
@@ -290,26 +296,28 @@ const PageList_CardMaster = () => {
   };
 
   // Memoize item options for react-select
+  // Use F_ContainerMasterL as value so items with the same Id (but different quantities/lines) are treated as distinct
   const itemOptions = useMemo(() => {
     return State.FillArray.length > 0
       ? State.FillArray.map((option) => ({
-          value: option.Id,
-          label: `${option.Name} - ${option.ItemCode}`,
-        }))
+        value: option.F_ContainerMasterL,
+        label: `${option.Name} - ${option.ItemCode}`,
+      }))
       : [];
   }, [State.FillArray]);
 
   // Memoize selected item value for react-select
+  // Match by F_ContainerMasterL (selectedCML) to correctly highlight the unique row
   const selectedItem = useMemo(() => {
-    if (!F_ItemMaster || State.FillArray.length === 0) return null;
-    const foundOption = State.FillArray.find((option) => option.Id == F_ItemMaster);
+    if (!selectedCML || State.FillArray.length === 0) return null;
+    const foundOption = State.FillArray.find((option) => option.F_ContainerMasterL == selectedCML);
     return foundOption
       ? {
-          value: foundOption.Id,
-          label: `${foundOption.Name} - ${foundOption.ItemCode}`,
-        }
+        value: foundOption.F_ContainerMasterL,
+        label: `${foundOption.Name} - ${foundOption.ItemCode}`,
+      }
       : null;
-  }, [F_ItemMaster, State.FillArray]);
+  }, [selectedCML, State.FillArray]);
 
   return (
     <Container fluid className="page-content">
@@ -335,7 +343,7 @@ const PageList_CardMaster = () => {
       {/* <Breadcrumbs title={breadCrumbTitle} breadcrumbItem={breadcrumbItem} /> */}
       <Row className="mb-3 align-items-center">
         <Col md="2">
-          <h4 className="page-title mb-0" style={{fontFamily:'Poppins'}}>Card Master</h4>
+          <h4 className="page-title mb-0" style={{ fontFamily: 'Poppins' }}>Card Master</h4>
         </Col>
         <Col md="2">
           <div>
@@ -466,9 +474,9 @@ const PageList_CardMaster = () => {
                 padding: "0",
               }}
             >
-              <Table 
-                bordered 
-                hover 
+              <Table
+                bordered
+                hover
                 responsive
                 className="table-striped"
                 style={{
@@ -605,109 +613,109 @@ const PageList_CardMaster = () => {
           Collected Amount Details
         </ModalHeader>
         <ModalBody>
-        <Row>
-  <Col lg="6">
-    <Table
-      bordered
-      hover
-      responsive
-      style={{
-        maxHeight: "400px", /* Adjust the height as needed */
-        overflowY: "auto", /* Vertical scroll */
-        overflowX: "auto", /* Horizontal scroll */
-        display: "block",
-        border: "2px solid black", /* Black border around the table */
-      }}
-    >
-      <thead className="thead-dark">
-        <tr>
-          <th>SalesPersonName</th>
-          <th>Remarks</th>
-          <th>Amount</th>
-          <th>DateOfCreation</th>
-        </tr>
-      </thead>
-      <tbody>
-        {expenseArr.length > 0 ? (
-          expenseArr.map(item => (
-            <tr key={item?.Id || Math.random()}>
-              <td>{item?.SalesPersonName || "N/A"}</td>
-              <td>{item?.Remarks || "N/A"}</td>
-              <td>{item?.Amount || "N/A"}</td>
-              <td>{item?.DateOfCreation || "N/A"}</td>
-            </tr>
-          ))
-        ) : (
-          <tr>
-            <td colSpan="11" className="text-center">
-              No data available
-            </td>
-          </tr>
-        )}
-      </tbody>
-    </Table>
-  </Col>
-  
-  <Col lg="6" > {/* Vertical line between tables */}
-    <Row>
-      <Table
-        bordered
-        hover
-        responsive
-        style={{
-          border: "2px solid black", /* Black border around the table */
-        }}
-      >
-        <thead className="thead-dark">
-          <tr>
-            <th>Net Amount</th>
-            <th>Total Amount</th>
-            <th>Tax Amount</th>
-            <th>Total Expense</th>
-            <th>Cash Amount</th>
-            <th>Online Amount</th>
-            <th>Net-Expense</th>
-            <th>Total - Expense</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr>
-            <td>{totals.netAmount.toFixed(2)}</td>
-            <td>{totals.grossAmount.toFixed(2)}</td>
-            <td>{totals.taxAmount.toFixed(2)}</td>
-            <td>{parseFloat(totals.netExpense ?? 0).toFixed(2)}</td>
-            <td>{parseFloat(totals.cashTotal ?? 0).toFixed(2)}</td>
-            <td>{parseFloat(totals.onlineTotal ?? 0).toFixed(2)}</td>
-            <td>
-              {(totals.grossAmount - (parseFloat(totals.netExpense) || 0)).toFixed(2)}
-            </td>
-          </tr>
-        </tbody>
-      </Table>
-    </Row>
-    <Row className="mb-2">
-        <Col md="3">
-          <FormControl
-            type="number"
-            value={Amount}
-            onChange={e => setAmount(e.target.value)}
-            className="mb-2"
-          />
-        </Col>
-      
-        <Col md="3">
-          <Button
-            type="button"
-            onClick={handleAmountSubmit}
-            variant="success"
-            className="mb-2"
-          >
-            Submit
-          </Button>
-        </Col>
-      </Row>
-  </Col>
-</Row>
+          <Row>
+            <Col lg="6">
+              <Table
+                bordered
+                hover
+                responsive
+                style={{
+                  maxHeight: "400px", /* Adjust the height as needed */
+                  overflowY: "auto", /* Vertical scroll */
+                  overflowX: "auto", /* Horizontal scroll */
+                  display: "block",
+                  border: "2px solid black", /* Black border around the table */
+                }}
+              >
+                <thead className="thead-dark">
+                  <tr>
+                    <th>SalesPersonName</th>
+                    <th>Remarks</th>
+                    <th>Amount</th>
+                    <th>DateOfCreation</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {expenseArr.length > 0 ? (
+                    expenseArr.map(item => (
+                      <tr key={item?.Id || Math.random()}>
+                        <td>{item?.SalesPersonName || "N/A"}</td>
+                        <td>{item?.Remarks || "N/A"}</td>
+                        <td>{item?.Amount || "N/A"}</td>
+                        <td>{item?.DateOfCreation || "N/A"}</td>
+                      </tr>
+                    ))
+                  ) : (
+                    <tr>
+                      <td colSpan="11" className="text-center">
+                        No data available
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </Table>
+            </Col>
+
+            <Col lg="6" > {/* Vertical line between tables */}
+              <Row>
+                <Table
+                  bordered
+                  hover
+                  responsive
+                  style={{
+                    border: "2px solid black", /* Black border around the table */
+                  }}
+                >
+                  <thead className="thead-dark">
+                    <tr>
+                      <th>Net Amount</th>
+                      <th>Total Amount</th>
+                      <th>Tax Amount</th>
+                      <th>Total Expense</th>
+                      <th>Cash Amount</th>
+                      <th>Online Amount</th>
+                      <th>Net-Expense</th>
+                      <th>Total - Expense</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr>
+                      <td>{totals.netAmount.toFixed(2)}</td>
+                      <td>{totals.grossAmount.toFixed(2)}</td>
+                      <td>{totals.taxAmount.toFixed(2)}</td>
+                      <td>{parseFloat(totals.netExpense ?? 0).toFixed(2)}</td>
+                      <td>{parseFloat(totals.cashTotal ?? 0).toFixed(2)}</td>
+                      <td>{parseFloat(totals.onlineTotal ?? 0).toFixed(2)}</td>
+                      <td>
+                        {(totals.grossAmount - (parseFloat(totals.netExpense) || 0)).toFixed(2)}
+                      </td>
+                    </tr>
+                  </tbody>
+                </Table>
+              </Row>
+              <Row className="mb-2">
+                <Col md="3">
+                  <FormControl
+                    type="number"
+                    value={Amount}
+                    onChange={e => setAmount(e.target.value)}
+                    className="mb-2"
+                  />
+                </Col>
+
+                <Col md="3">
+                  <Button
+                    type="button"
+                    onClick={handleAmountSubmit}
+                    variant="success"
+                    className="mb-2"
+                  >
+                    Submit
+                  </Button>
+                </Col>
+              </Row>
+            </Col>
+          </Row>
 
         </ModalBody>
         <ModalFooter>

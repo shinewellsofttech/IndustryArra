@@ -30,12 +30,13 @@ const JobCardForm = () => {
   const API_URL3 = `${API_WEB_URLS.MASTER}/0/token/JobCardItems`;
   const API_URL_SAVE = "GetJobCardMasterForAL/0/token";
   const API_URL_SAVE1 = "CreateALSlip/0/token";
-  
+
   const dispatch = useDispatch();
   const navigate = useNavigate();
-  
+
   const [F_ContainerMaster, setContainerMaster] = useState("");
   const [F_ItemMaster, setItemMaster] = useState("");
+  const [selectedCML, setSelectedCML] = useState(""); // tracks F_ContainerMasterL for dropdown uniqueness
 
   // Calculate pagination
   const indexOfLastItem = currentPage * itemsPerPage;
@@ -111,7 +112,7 @@ const JobCardForm = () => {
   useEffect(() => {
     fetchData();
   }, [dispatch]);
-  
+
   const fetchData = async () => {
     setLoading(true);
     try {
@@ -126,11 +127,12 @@ const JobCardForm = () => {
 
   const handleContainerChange = async (e) => {
     const value = e.target.value;
-    const obj = State.FillArray.find(x=>x.Id == value);
+    const obj = State.FillArray.find(x => x.Id == value);
     setContainerMaster(value);
     setItemMaster(""); // Reset item selection
+    setSelectedCML(""); // Reset F_ContainerMasterL tracking
     setState(prevState => ({ ...prevState, FillArray1: [] })); // Clear item list
-    
+
     if (value) {
       try {
         await Fn_FillListData(dispatch, setState, "FillArray1", `${API_URL3}/Id/${value}`);
@@ -139,14 +141,17 @@ const JobCardForm = () => {
       }
     }
   };
-  
+
   const handleItemChange = async (value) => {
-    setItemMaster(value);
-    const obj = State.FillArray1.find(x=>x.Id == value);
+    // value is F_ContainerMasterL (unique per row)
+    const obj = State.FillArray1.find(x => x.F_ContainerMasterL == value);
+    if (!obj) return;
+    setSelectedCML(value);           // for dropdown display
+    setItemMaster(obj.Id);           // real Id for downstream use
     console.log(obj);
     let vformData = new FormData();
-    vformData.append("F_ContainerMasterL", obj.F_ContainerMasterL);
-    vformData.append("F_ItemMaster", value);
+    vformData.append("F_ContainerMasterL", value);
+    vformData.append("F_ItemMaster", obj.Id);
     vformData.append("F_CategoryMaster", 0);
 
     // Fetch job cards and machines for selected container
@@ -185,7 +190,8 @@ const JobCardForm = () => {
         alert('Please select at least one job card');
         return;
       }
-      const obj1 = State.FillArray1.find(x=>x.Id == F_ItemMaster);
+      // Use selectedCML (F_ContainerMasterL) to uniquely identify the selected item
+      const obj1 = State.FillArray1.find(x => x.F_ContainerMasterL == selectedCML);
       // Create the form data with selected job cards
       console.log(obj1);
       const formData = new FormData();
@@ -216,14 +222,14 @@ const JobCardForm = () => {
         // Show success message
         alert('AL Slip created successfully');
         // Refresh the job card list
-  
+
         let vformData = new FormData();
         vformData.append("F_ContainerMasterL", obj1.F_ContainerMasterL);
         vformData.append("F_ContainerMaster", F_ContainerMaster);
         vformData.append("F_ItemMaster", F_ItemMaster);
         vformData.append("F_CategoryMaster", 0);
-    
-    
+
+
         // Fetch job cards and machines for selected container
         await Fn_GetReport(
           dispatch,
@@ -242,7 +248,7 @@ const JobCardForm = () => {
 
   return (
     <div className="print-safe-page">
-      <h4 className="card-title mb-3 no-print" style={{fontFamily:'Poppins'}}>Create AL Slip</h4>
+      <h4 className="card-title mb-3 no-print" style={{ fontFamily: 'Poppins' }}>Create AL Slip</h4>
       <Row className="mb-3 no-print">
         <Col md={6}>
           <label className="form-label">Select Container</label>
@@ -268,12 +274,13 @@ const JobCardForm = () => {
             className="form-control"
             name="F_ItemMaster"
             onChange={(e) => handleItemChange(e.target.value)}
-            value={F_ItemMaster}
+            value={selectedCML}
           >
             <option value="">Select Item</option>
             {State.FillArray1.length > 0 &&
               State.FillArray1.map((option) => (
-                <option key={option.Id} value={option.Id}>
+                // Use F_ContainerMasterL as value so duplicate-Id items are treated as distinct
+                <option key={option.F_ContainerMasterL} value={option.F_ContainerMasterL}>
                   {option.Name}
                 </option>
               ))}
@@ -356,7 +363,7 @@ const JobCardForm = () => {
                 onClick={() => handlePageChange(currentPage - 1)}
                 disabled={currentPage === 1}
               />
-              
+
               {[...Array(totalPages)].map((_, index) => (
                 <Pagination.Item
                   key={index + 1}
@@ -382,7 +389,7 @@ const JobCardForm = () => {
       )}
 
       {selectedIds.length > 0 && (
-        <button 
+        <button
           style={tableStyles.selectedCountButton}
           onClick={handleCreateALSlip}
         >

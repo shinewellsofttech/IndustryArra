@@ -47,7 +47,7 @@ const CustomMultiSelect = ({
       const hasOtherCategories = current.some(
 
         (cat) => !metalCategories.includes(cat)
-        
+
       );
       return !hasOtherCategories;
     }
@@ -258,8 +258,8 @@ const CustomMultiSelect = ({
                   backgroundColor: isSelected
                     ? "#f0f8ff"
                     : isDisabled
-                    ? "#f8f9fa"
-                    : "transparent",
+                      ? "#f8f9fa"
+                      : "transparent",
                   opacity: isDisabled ? 0.5 : 1,
                 }}
                 onMouseEnter={(e) => {
@@ -410,6 +410,7 @@ const JobCardForm = () => {
   );
   const [F_CategoryMaster, setCategoryMaster] = useState([]);
   const [F_ItemMaster, setItemMaster] = useState("");
+  const [selectedCML, setSelectedCML] = useState(""); // tracks F_ContainerMasterL for dropdown uniqueness
   const [F_ContainerMasterL, setContainerMasterL] = useState([]);
   const [isSampleItem, setIsSampleItem] = useState(false);
 
@@ -439,6 +440,7 @@ const JobCardForm = () => {
     setContainerMaster(containerId);
     setCategoryMaster([]);
     setItemMaster("");
+    setSelectedCML(""); // Reset F_ContainerMasterL tracking
     setContainerMasterL("");
     setIsSampleItem(false);
     setState((prevState) => ({ ...prevState, FillArray1: [] }));
@@ -471,13 +473,17 @@ const JobCardForm = () => {
   };
 
   const handleItemChange = (selectedOption) => {
-    const value = selectedOption ? selectedOption.value : "";
-    setItemMaster(value);
-    const obj = State.FillArray1.find((x) => x.Id == value);
-    
+    // selectedOption.value is F_ContainerMasterL (unique per row)
+    const cml = selectedOption ? selectedOption.value : "";
+    setSelectedCML(cml);
+    // Extract the actual Item Id from the array
+    const obj = State.FillArray1.find((x) => x.F_ContainerMasterL == cml);
+    const itemId = obj ? obj.Id : "";
+    setItemMaster(itemId);
+
     if (obj) {
       setContainerMasterL(obj.F_ContainerMasterL || "");
-      
+
       // Check if item is a sample
       if (obj.IsSample === true) {
         setIsSampleItem(true);
@@ -496,8 +502,9 @@ const JobCardForm = () => {
     return F_CategoryMaster.join(",");
   };
 
+  // Use F_ContainerMasterL as value so items with the same Id (but different quantities/lines) are treated as distinct
   const itemOptions = State.FillArray1.map((option) => ({
-    value: option.Id,
+    value: option.F_ContainerMasterL,
     label: `${option.Name} - ${option.ItemCode}`,
   }));
 
@@ -507,11 +514,13 @@ const JobCardForm = () => {
       (async () => {
         const items = await loadItemsForContainer(containerId);
         if (itemId) {
+          // itemId is the actual Id (sent from PageList_CardMaster as F_ItemMaster)
           const matchedItem = items.find((item) => item.Id == itemId);
           if (matchedItem) {
-            setItemMaster(itemId);
+            setItemMaster(matchedItem.Id);
+            setSelectedCML(matchedItem.F_ContainerMasterL || ""); // drive dropdown display
             setContainerMasterL(matchedItem.F_ContainerMasterL || "");
-            
+
             // Check if item is a sample
             if (matchedItem.IsSample === true) {
               setIsSampleItem(true);
@@ -561,7 +570,7 @@ const JobCardForm = () => {
               name="F_ItemMaster"
               value={
                 itemOptions.length > 0
-                  ? itemOptions.find((opt) => opt.value == F_ItemMaster) || null
+                  ? itemOptions.find((opt) => opt.value == selectedCML) || null
                   : null
               }
               onChange={handleItemChange}
