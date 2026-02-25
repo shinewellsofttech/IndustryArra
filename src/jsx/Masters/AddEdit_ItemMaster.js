@@ -11,6 +11,8 @@ import { Col, Row } from "react-bootstrap";
 const NameSchema = Yup.object().shape({
   Name: Yup.string().required("Name is required"),
   ItemCode: Yup.string().nullable(),
+  ItemPhoto: Yup.mixed().nullable(),
+  NoOfComponents: Yup.number().nullable(),
   // ItemWidth: Yup.number().nullable(),
   // ItemDepth: Yup.number().nullable(),
   // ItemHeight: Yup.number().nullable(),
@@ -22,6 +24,8 @@ const AddEdit_ItemMaster = () => {
     formData: {
       Name: "",
       ItemCode: "",
+      ItemPhoto: null,
+      NoOfComponents: "",
       // ItemWidth: "",
       // ItemDepth: "",
       // ItemHeight: "",
@@ -57,6 +61,10 @@ const AddEdit_ItemMaster = () => {
       const formData = new FormData();
       formData.append("Name", values.Name);
       formData.append("ItemCode", values.ItemCode);
+      if (values.ItemPhoto) {
+        formData.append("ItemPhoto", values.ItemPhoto);
+      }
+      formData.append("NoOfComponents", values.NoOfComponents || 0);
       // formData.append("ItemWidth", values.ItemWidth || 0);
       // formData.append("ItemDepth", values.ItemDepth || 0);
       // formData.append("ItemHeight", values.ItemHeight || 0);
@@ -98,7 +106,7 @@ const AddEdit_ItemMaster = () => {
                     setSubmitting(false);
                   }}
                 >
-                  {({ values, errors, handleChange, handleBlur, handleSubmit, isSubmitting }) => (
+                  {({ values, errors, handleChange, handleBlur, handleSubmit, setFieldValue, isSubmitting }) => (
                     <form onSubmit={handleSubmit}>
                       <Row>
                         <Col lg="2">
@@ -134,62 +142,52 @@ const AddEdit_ItemMaster = () => {
                         </Col>
                       </Row>
 
-                      {/* <Row className="mt-3">
+                      <Row className="mt-3">
                         <Col lg="2">
-                          <label className="text-label" style={{ fontFamily: 'Times New Roman' }}>Item Width</label>
+                          <label className="text-label" style={{ fontFamily: 'Times New Roman' }}>Item Photo</label>
+                        </Col>
+                        <Col lg="4">
+                          <input
+                            type="file"
+                            className="form-control"
+                            name="ItemPhoto"
+                            onChange={(event) => setFieldValue("ItemPhoto", event.currentTarget.files[0])}
+                            style={{ fontFamily: 'Times New Roman' }}
+                          />
+                          {errors.ItemPhoto && <div className="text-danger" style={{ fontFamily: 'Times New Roman' }}>{errors.ItemPhoto}</div>}
+                        </Col>
+                        <Col lg="2">
+                          <label className="text-label" style={{ fontFamily: 'Times New Roman' }}>No Of Components</label>
                         </Col>
                         <Col lg="4">
                           <input
                             type="number"
-                            step="0.01"
                             className="form-control"
-                            name="ItemWidth"
+                            name="NoOfComponents"
                             onChange={handleChange}
                             onBlur={handleBlur}
-                            value={values.ItemWidth}
-                            placeholder="Enter width (optional)"
+                            value={values.NoOfComponents}
+                            placeholder="Enter number of components"
                             style={{ fontFamily: 'Times New Roman' }}
                           />
-                          {errors.ItemWidth && <div className="text-danger" style={{ fontFamily: 'Times New Roman' }}>{errors.ItemWidth}</div>}
-                        </Col>
-                        <Col lg="2">
-                          <label className="text-label" style={{ fontFamily: 'Times New Roman' }}>Item Depth</label>
-                        </Col>
-                        <Col lg="4">
-                          <input
-                            type="number"
-                            step="0.01"
-                            className="form-control"
-                            name="ItemDepth"
-                            onChange={handleChange}
-                            onBlur={handleBlur}
-                            value={values.ItemDepth}
-                            placeholder="Enter depth (optional)"
-                            style={{ fontFamily: 'Times New Roman' }}
-                          />
-                          {errors.ItemDepth && <div className="text-danger" style={{ fontFamily: 'Times New Roman' }}>{errors.ItemDepth}</div>}
+                          {errors.NoOfComponents && <div className="text-danger" style={{ fontFamily: 'Times New Roman' }}>{errors.NoOfComponents}</div>}
                         </Col>
                       </Row>
 
-                      <Row className="mt-3">
-                        <Col lg="2">
-                          <label className="text-label" style={{ fontFamily: 'Times New Roman' }}>Item Height</label>
-                        </Col>
-                        <Col lg="4">
-                          <input
-                            type="number"
-                            step="0.01"
-                            className="form-control"
-                            name="ItemHeight"
-                            onChange={handleChange}
-                            onBlur={handleBlur}
-                            value={values.ItemHeight}
-                            placeholder="Enter height (optional)"
-                            style={{ fontFamily: 'Times New Roman' }}
-                          />
-                          {errors.ItemHeight && <div className="text-danger" style={{ fontFamily: 'Times New Roman' }}>{errors.ItemHeight}</div>}
-                        </Col>
-                      </Row> */}
+                      {values.ItemPhoto && (
+                        <Row className="mt-3">
+                          <Col lg="2">
+                            <label className="text-label" style={{ fontFamily: 'Times New Roman' }}>Uploaded Photo</label>
+                          </Col>
+                          <Col lg="4">
+                            <img
+                              src={`${API_WEB_URLS.IMAGEURL}/${values.ItemPhoto}`}
+                              alt="Item Photo"
+                              style={{ maxWidth: '100%', height: 'auto', border: '1px solid #ddd', borderRadius: '4px', padding: '5px' }}
+                            />
+                          </Col>
+                        </Row>
+                      )}
 
                       <button type="submit" className="btn me-2 btn-primary" disabled={isSubmitting} style={{ fontFamily: 'Times New Roman' }}>
                         Submit

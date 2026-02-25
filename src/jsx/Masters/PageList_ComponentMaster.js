@@ -16,7 +16,7 @@ import JSZip from 'jszip';
 import { Container } from 'reactstrap';
 import { ThemeContext } from '../../context/ThemeContext';
 
-export const PageList_ComponentMaster = () => {
+export const PageList_ComponentMaster = ({ filterItemCode, filterIsActive, isModalView = false }) => {
 	const [State, setState] = useState({
 		id: 0,
 		FillArray: [],
@@ -378,7 +378,16 @@ export const PageList_ComponentMaster = () => {
 
 	]
 	const columns = useMemo( () => COLUMNS, [] )
-	const data = useMemo( () => gridData, [gridData] )
+	const data = useMemo(() => {
+		let filtered = gridData;
+		if (filterItemCode) {
+			filtered = (Array.isArray(filtered) ? filtered : []).filter(item => item.ItemCode === filterItemCode);
+		}
+		if (filterIsActive !== null && filterIsActive !== undefined) {
+			filtered = (Array.isArray(filtered) ? filtered : []).filter(item => item.IsActive === filterIsActive);
+		}
+		return filtered;
+	}, [gridData, filterItemCode, filterIsActive])
 	const tableInstance = useTable({
 		columns,
 		data,	
@@ -657,64 +666,65 @@ export const PageList_ComponentMaster = () => {
 	};
 	
 		return(
-		<Container fluid className="page-content">
-			
-			<Row className="mb-3 align-items-center">
-				<Col md="2">
-					<h4 className="page-title mb-0" style={{fontFamily:'Poppins'}}>Component Master</h4>
-				</Col>
-				<Col md="2">
-					<label htmlFor="fileInput" className="form-label mb-0 small">Upload Images Zip</label>
-				</Col>
-				<Col md="3">
-					<div className="d-flex align-items-center">
-						<FormControl
-							type="file"
-							accept=".zip"
-							onChange={handleZipUpload}
-							className="me-2"
-							size="sm"
-							disabled={isUploading || isSaving}
-						/>
-						{isUploading && (
-							<div className="spinner-border spinner-border-sm text-primary" role="status">
-								<span className="visually-hidden">Loading...</span>
-							</div>
+		<Container fluid className={`page-content ${isModalView ? 'p-0' : ''}`}>
+			{!isModalView && (
+				<Row className="mb-3 align-items-center">
+					<Col md="2">
+						<h4 className="page-title mb-0" style={{fontFamily:'Poppins'}}>Component Master</h4>
+					</Col>
+					<Col md="2">
+						<label htmlFor="fileInput" className="form-label mb-0 small">Upload Images Zip</label>
+					</Col>
+					<Col md="3">
+						<div className="d-flex align-items-center">
+							<FormControl
+								type="file"
+								accept=".zip"
+								onChange={handleZipUpload}
+								className="me-2"
+								size="sm"
+								disabled={isUploading || isSaving}
+							/>
+							{isUploading && (
+								<div className="spinner-border spinner-border-sm text-primary" role="status">
+									<span className="visually-hidden">Loading...</span>
+								</div>
+							)}
+						</div>
+					</Col>
+					<Col md="2">
+						{imageArray.length > 0 && (
+							<Button
+								variant="primary"
+								size="sm"
+								onClick={handleSubmitZip}
+								disabled={isSaving || isUploading}
+								className="w-100"
+							>
+								{isSaving ? (
+									<>
+										<span className="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>
+										Saving...
+									</>
+								) : (
+									'Submit Images'
+								)}
+							</Button>
 						)}
-					</div>
-				</Col>
-				<Col md="2">
-					{imageArray.length > 0 && (
+					</Col>
+					<Col md="2">
 						<Button
-							variant="primary"
+							type="button"
+							onClick={btnAddOnClick}
+							variant="success"
 							size="sm"
-							onClick={handleSubmitZip}
-							disabled={isSaving || isUploading}
 							className="w-100"
 						>
-							{isSaving ? (
-								<>
-									<span className="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>
-									Saving...
-								</>
-							) : (
-								'Submit Images'
-							)}
+							<i className="fas fa-plus me-1"></i>Add New
 						</Button>
-					)}
-				</Col>
-				<Col md="2">
-					<Button
-						type="button"
-						onClick={btnAddOnClick}
-						variant="success"
-						size="sm"
-						className="w-100"
-					>
-						<i className="fas fa-plus me-1"></i>Add New
-					</Button>
-				</Col>
-			</Row>
+					</Col>
+				</Row>
+			)}
 			
 			{imageArray.length > 0 && (
 				<Row className="mb-2">

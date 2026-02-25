@@ -562,6 +562,31 @@ export const PageList_ItemMaster = () => {
 			accessor: 'ItemCode',
 			Filter: ColumnFilter,
 		},
+
+		{
+			Header: 'Item Photo',
+			Footer: 'Item Photo',
+			accessor: row => row.ItemPhoto || '',
+			disableFilters: true,
+			Cell: ({ row }) => {
+				const img = row.original.ItemPhoto;
+				return img ? (
+					<img
+						src={API_WEB_URLS.IMAGEURL + img}
+						alt="Item"
+						style={{ maxWidth: '80px', height: 'auto', borderRadius: '4px', border: '1px solid #ddd', padding: '2px' }}
+						
+					/>
+				) : null;
+			},
+		},
+
+		{
+			Header : 'NoOfComponents',
+			Footer : 'NoOfComponents',
+			accessor: 'NoOfComponents',
+			Filter: ColumnFilter,
+		},
 		
 
 		  {

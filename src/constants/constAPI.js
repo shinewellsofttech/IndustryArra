@@ -1,11 +1,11 @@
 export const API_WEB_URLS = {
 
-  BASE: "https://apiarra.shinewellsofttech.co.in/api/V1/",
-  // BASE: "https://localhost:7037/api/V1/",
+  // BASE: "https://apiarra.shinewellsofttech.co.in/api/V1/",
+  BASE: "https://localhost:44379/api/V1/",
 
   LOGIN: "Authentication/Login",
-  // IMAGEURL: "https://localhost:44379/MemberImages/",
-  IMAGEURL: "https://apiarra.shinewellsofttech.co.in/MemberImages/",
+  IMAGEURL: "https://localhost:44379/MemberImages/",
+  // IMAGEURL: "https://apiarra.shinewellsofttech.co.in/MemberImages/",
   IMAGEURL_PDF: "http://apicollegedesktop.shinewellinnovation.com/MemberImages/PDF/",
   //
   MASTER: "Masters",

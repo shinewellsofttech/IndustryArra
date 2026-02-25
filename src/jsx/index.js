@@ -142,6 +142,7 @@ import WoodComponentReport from "./Reports/WoodComponentReport";
 import ContainerMasterReport from "./Reports/ContainerMasterReport";
 import PageList_MachineMaster from "./Masters/PageList_MachineMaster";
 import AddEdit_MachineMaster from "./Masters/AddEdit_MachineMaster";
+import TotalItemSummary from "./Masters/TotalItemSummary";
 
 const Markup = () => {
   const { menuToggle } = useContext(ThemeContext);
@@ -247,6 +248,7 @@ const Markup = () => {
 
     { url: "AddItem", component: <AddEdit_ItemMaster/> },
     { url: "ItemMaster", component: <PageList_ItemMaster/> },
+    { url: "TotalItemSummary", component: <TotalItemSummary/> },
 
     { url: "JobCardForm", component: <JobCardForm/> },
     { url: "MDFJobCard", component: <MDFJobCard/> },
