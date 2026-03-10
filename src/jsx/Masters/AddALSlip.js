@@ -251,7 +251,7 @@ const JobCardForm = () => {
       <h4 className="card-title mb-3 no-print" style={{ fontFamily: 'Poppins' }}>Create AL Slip</h4>
       <Row className="mb-3 no-print">
         <Col md={6}>
-          <label className="form-label">Select Container</label>
+          <label className="form-label">Select Shipment</label>
           <select
             className="form-control"
             name="F_ContainerMaster"
@@ -259,7 +259,7 @@ const JobCardForm = () => {
             value={F_ContainerMaster}
             disabled={loading}
           >
-            <option value="">Select Container</option>
+            <option value="">Select Shipment</option>
             {State.FillArray.length > 0 &&
               State.FillArray.map((option) => (
                 <option key={option.Id} value={option.Id}>
@@ -303,8 +303,8 @@ const JobCardForm = () => {
                   </th>
                   <th style={tableStyles.tableHeader}>Job Card No</th>
                   <th style={tableStyles.tableHeader}>Inspection Date</th>
-                  <th style={tableStyles.tableHeader}>Container Number</th>
-                  <th style={tableStyles.tableHeader}>Latest Container Number</th>
+                  <th style={tableStyles.tableHeader}>ShipmentNo</th>
+                  <th style={tableStyles.tableHeader}>Latest ShipmentNo</th>
                   <th style={tableStyles.tableHeader}>Item Name</th>
                   <th style={tableStyles.tableHeader}>Product Code</th>
                   <th style={tableStyles.tableHeader}>Batch Code</th>

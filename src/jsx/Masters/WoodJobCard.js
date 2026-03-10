@@ -428,7 +428,7 @@ const WoodJobCard = ({
 
               <table>
                 <tr class="info-row">
-                  <td class="label" style="width: 20%">CONTAINER NUMBER</td>
+                  <td class="label" style="width: 20%">SHIPMENT NO</td>
                   <td style="width: 30%">${jobCard.ContainerNumber || ''}</td>
                   <td class="label" style="width: 20%">INSPECTION DATE</td>
                   <td style="width: 30%">${jobCard.InspectionDate || ''}</td>
@@ -990,7 +990,7 @@ const WoodJobCard = ({
                       fontWeight: "700",
                     }}
                   >
-                    CONTAINER NUMBER
+                    SHIPMENT NO
                   </span>
                 </Col>
                 <Col

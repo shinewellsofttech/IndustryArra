@@ -357,7 +357,7 @@ const OtherSlips = ({otherSlipData}) => {
                           fontWeight: 'bold',
                           fontSize: '16px'
                         }}>
-                          CONTAINER NO.
+                          SHIPMENT NO.
                         </td>
                         <td style={{
                           border: '1px solid black',

@@ -542,7 +542,7 @@ const fetchData = async () => {
 
               <table>
                 <tr class="info-row">
-                  <td class="label" style="width: 20%">CONTAINER NO.</td>
+                  <td class="label" style="width: 20%">SHIPMENT NO</td>
                   <td style="width: 50%">${jobCard.ContainerNumber || 'N/A'}</td>
                   <td class="label" style="width: 15%">INSPECTION DATE</td>
                   <td style="width: 15%">${jobCard.InspectionDate || 'N/A'}</td>
@@ -1065,7 +1065,7 @@ const fetchData = async () => {
               padding: "10px",
               fontWeight: "700"
             }}>
-              CONTAINER NO.
+              SHIPMENT NO
             </Col>
             <Col xs={6} style={{
               borderRight: "1px solid #000000",

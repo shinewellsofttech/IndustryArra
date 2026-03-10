@@ -246,7 +246,7 @@ const ALSlip = () => {
       <h4 className="card-title mb-3 no-print" style={{ fontFamily: 'Times New Roman' }}>AL Slip</h4>
       <Row className="mb-3 no-print">
         <Col md={4}>
-          <label className="form-label" style={{ fontFamily: 'Times New Roman' }}>Select Container</label>
+          <label className="form-label" style={{ fontFamily: 'Times New Roman' }}>Select Shipment</label>
           <select
             className="form-control"
             name="F_ContainerMaster"
@@ -255,7 +255,7 @@ const ALSlip = () => {
             disabled={loading}
             style={{ fontFamily: 'Times New Roman' }}
           >
-            <option value="">Select Container</option>
+            <option value="">Select Shipment</option>
             {State.FillArray.length > 0 &&
               State.FillArray.map((option) => (
                 <option key={option.Id} value={option.Id}>
@@ -407,7 +407,7 @@ const ALSlip = () => {
                   {item.Quantity}
                 </td>
                 <td style={{ border: '1px solid black', padding: '8px 6px', fontWeight: 'bold', fontSize: '14px' }}>
-                  CONTAINER NO
+                  SHIPMENT NO
                 </td>
                 <td style={{ border: '1px solid black', padding: '8px 6px', fontSize: '14px' }}>
                   {item.ContainerNo}

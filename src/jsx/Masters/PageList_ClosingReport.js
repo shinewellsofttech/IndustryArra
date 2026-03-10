@@ -477,7 +477,7 @@ const PageList_ClosingReport = ({F_ContainerMasterL: propF_ContainerMasterL, F_I
             {!propF_ContainerMasterL && !propF_ItemMaster && (
         <Row className="mb-3">
           <Col md={6}>
-            <label className="form-label">Select Container</label>
+            <label className="form-label">Select Shipment</label>
             <select
               className="form-control"
               name="F_ContainerMaster"
@@ -485,7 +485,7 @@ const PageList_ClosingReport = ({F_ContainerMasterL: propF_ContainerMasterL, F_I
               value={F_ContainerMaster}
               disabled={loading}
             >
-              <option value="">Select Container</option>
+              <option value="">Select Shipment</option>
               {State.FillArray.length > 0 &&
                 State.FillArray.map((option) => (
                   <option key={option.Id} value={option.Id}>
@@ -599,7 +599,7 @@ const PageList_ClosingReport = ({F_ContainerMasterL: propF_ContainerMasterL, F_I
                     />
                   </th>
                   <th style={tableStyles.tableHeader}>Job Card No</th>
-                  <th style={tableStyles.tableHeader}>Container Number</th>
+                  <th style={tableStyles.tableHeader}>ShipmentNo</th>
                   <th style={tableStyles.tableHeader}>Item Name</th>
                   <th style={tableStyles.tableHeader}>Component Name</th>
                   <th style={tableStyles.tableHeader}>Length</th>

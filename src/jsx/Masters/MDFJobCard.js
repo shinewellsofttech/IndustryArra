@@ -667,7 +667,7 @@ const MDFJobCard = ({
               
               <table>
                 <tr class="info-row">
-                  <td class="label" style="width: 40%">CONTAINER NUMBER</td>
+                  <td class="label" style="width: 40%">SHIPMENT NO</td>
                   <td style="width: 40%">${
                     jobCard.ContainerNumber || "N/A"
                   }</td>
@@ -1168,7 +1168,7 @@ const MDFJobCard = ({
                     fontWeight: "700",
                   }}
                 >
-                  CONTAINER NUMBER
+                  SHIPMENT NO
                 </span>
               </Col>
               <Col

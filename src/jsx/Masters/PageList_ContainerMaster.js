@@ -819,7 +819,7 @@ export const PageList_ContainerMaster = () => {
 					</div>
 				</div>
 			)}
-		<PageTitle activeMenu="Filtering" motherMenu="Table" />
+		<PageTitle activeMenu="Shipment Master" motherMenu="Masters" />
 		
 		<Row className="mb-3 align-items-center">
 			<Col md="2">
@@ -900,7 +900,7 @@ export const PageList_ContainerMaster = () => {
 		<div className="card">
 			
 			<div className="card-header">
-				<h4 className="card-title">Table Filtering</h4>
+				<h4 className="card-title">Shipment Master</h4>
             </div>
 			<div className="card-body">
 				<div className="table-responsive">
@@ -971,7 +971,7 @@ export const PageList_ContainerMaster = () => {
 			{showModal && (
 				<Modal show={showModal} onHide={handleCloseModal} size="fullscreen" className="custom-modal">
 					<Modal.Header closeButton>
-						<Modal.Title>Container Break Details</Modal.Title>
+						<Modal.Title>Shipment Break Details</Modal.Title>
 					</Modal.Header>
 					<Modal.Body>
 						{/* Header line with key details */}

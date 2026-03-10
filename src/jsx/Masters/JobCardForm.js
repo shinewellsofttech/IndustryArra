@@ -544,7 +544,7 @@ const JobCardForm = () => {
         </Col>
         <Col md={3}>
           <div>
-            <label className="form-label mb-1 small" style={{ fontFamily: 'Poppins' }}>Container</label>
+            <label className="form-label mb-1 small" style={{ fontFamily: 'Poppins' }}>Shipment</label>
             <select
               className="form-control form-control-sm"
               name="F_ContainerMaster"
@@ -553,7 +553,7 @@ const JobCardForm = () => {
               disabled={loading}
               style={{ fontFamily: 'Poppins' }}
             >
-              <option value="">Select Container</option>
+              <option value="">Select Shipment</option>
               {State.FillArray.length > 0 &&
                 State.FillArray.map((option) => (
                   <option key={option.Id} value={option.Id}>

@@ -505,7 +505,7 @@ const SupervisorEntry = () => {
                             )}
                           </Col>
                           <Col lg="6">
-                            <label className="text-label">Container *</label>
+                            <label className="text-label">Shipment *</label>
                             <select
                               className="form-control"
                               name="ContainerId"
@@ -513,7 +513,7 @@ const SupervisorEntry = () => {
                               onBlur={handleBlur}
                               value={values.ContainerId}
                             >
-                              <option value="-1">Select Container</option>
+                              <option value="-1">Select Shipment</option>
                               {state.FillArray3.map((opt) => (
                                 <option key={opt.Id} value={opt.Id}>
                                   {opt.Name}

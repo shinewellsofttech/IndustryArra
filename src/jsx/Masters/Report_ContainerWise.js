@@ -150,7 +150,7 @@ export const Report_ContainerWise = () => {
 								<Col key={index} md={6} lg={4} className="mb-4">
 									<Card className="h-100 shadow-sm">
 										<Card.Header className="bg-primary text-white d-flex justify-content-between align-items-center">
-											<h5 className="mb-0">Container: {item.ContainerNumber}</h5>
+											<h5 className="mb-0">ShipmentNo: {item.ContainerNumber}</h5>
 											<Badge bg="light" text="dark" className="fs-6">
 												{formatDate(item.InspectionDate)}
 											</Badge>

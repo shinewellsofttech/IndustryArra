@@ -1315,7 +1315,7 @@ function ContainerEntrySystem() {
         <Col lg="12">
           <Card>
             <CardHeader>
-              <h4 className="card-title">Container Machining Status Report</h4>
+              <h4 className="card-title">Shipment Machining Status Report</h4>
               <p className="card-text">
                 Click on any status box to view detailed container list
               </p>
@@ -1388,7 +1388,7 @@ function ContainerEntrySystem() {
                 <thead>
                   <tr>
                     <th>#</th>
-                    <th>Container Name</th>
+                    <th>Shipment Name</th>
                     <th>Status</th>
                   </tr>
                 </thead>
@@ -1565,7 +1565,7 @@ function ContainerEntrySystem() {
         <ModalHeader toggle={toggleDepartmentModal}>
           <div>
             <h5 className="mb-0">
-            Container: - {selectedContainer?.Name || "Container"}
+            Shipment: - {selectedContainer?.Name || "Shipment"}
             </h5>
            
           </div>

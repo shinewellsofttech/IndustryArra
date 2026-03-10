@@ -311,7 +311,7 @@ function WoodComponentReport() {
                 }
             </style>
             <div class="pdf-container">
-                <div class="pdf-header">CONTAINER WOOD REQUIREMENT SUMMARY</div>
+                <div class="pdf-header">SHIPMENT WOOD REQUIREMENT SUMMARY</div>
                 <table class="pdf-table">
                     <thead>
                         <tr>
@@ -445,17 +445,17 @@ function WoodComponentReport() {
                         <Card.Header>
                             <Row className="align-items-center mb-2">
                                 <Col md={3}>
-                                    <h4 className="card-title mb-0" style={{ fontFamily: 'Arial, sans-serif', fontWeight: '600', fontSize: '1.5rem' }}>CONTAINER WOOD REQUIREMENT SUMMARY</h4>
+                                    <h4 className="card-title mb-0" style={{ fontFamily: 'Arial, sans-serif', fontWeight: '600', fontSize: '1.5rem' }}>SHIPMENT WOOD REQUIREMENT SUMMARY</h4>
                                 </Col>
                                 <Col md={3}>
                                     <Form.Select 
                                         value={selectedContainer} 
                                         onChange={handleContainerChange}
-                                        placeholder="Select Container"
+                                        placeholder="Select Shipment"
                                         size="sm"
                                         style={{ color: '#000000', fontFamily: 'Arial, sans-serif' }}
                                     >
-                                        <option value="" style={{ color: '#000000' }}>Select Container</option>
+                                        <option value="" style={{ color: '#000000' }}>Select Shipment</option>
                                         {State.ContainerData.map((container) => (
                                             <option key={container.Id} value={container.Id} style={{ color: '#000000' }}>
                                                 {container.Name}

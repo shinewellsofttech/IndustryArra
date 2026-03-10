@@ -146,7 +146,7 @@ const Edit_WoodIssue = () => {
       <h4 className="card-title mb-3">Wood Issue</h4>
       <Row className="mb-3">
         <Col md={4}>
-          <label className="form-label">Select Container</label>
+          <label className="form-label">Select Shipment</label>
           <select
             className="form-control"
             name="F_ContainerMaster"
@@ -154,7 +154,7 @@ const Edit_WoodIssue = () => {
             value={F_ContainerMaster}
             disabled={loading}
           >
-            <option value="">Select Container</option>
+            <option value="">Select Shipment</option>
             {State.FillArray.length > 0 &&
               State.FillArray.map((option) => (
                 <option key={option.Id} value={option.Id}>
@@ -202,7 +202,7 @@ const Edit_WoodIssue = () => {
             <div className="d-flex flex-wrap bg-light p-1 fs-6">
               {/* <div className="me-3 mb-1"><span className="fw-bold">ID:</span> {woodIssueData.Id}</div> */}
               <div className="me-3 mb-1"><span className="fw-bold">Item Code:</span> {woodIssueData.ItemCode}</div>
-              <div className="me-3 mb-1"><span className="fw-bold">Container:</span> {woodIssueData.ContainerNumber}</div>
+              <div className="me-3 mb-1"><span className="fw-bold">ShipmentNo:</span> {woodIssueData.ContainerNumber}</div>
               <div className="me-3 mb-1"><span className="fw-bold">Date:</span> {woodIssueData.InspectionDate}</div>
               <div className="me-3 mb-1"><span className="fw-bold">Batch:</span> {woodIssueData.BatchNo || '-'}</div>
               <div className="me-3 mb-1"><span className="fw-bold">Qty:</span> {woodIssueData.Quantity?.toFixed(2)}</div>

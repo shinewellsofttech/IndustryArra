@@ -159,7 +159,7 @@ function ContainerMasterReport() {
     const excelData = filteredData.map((item, index) => ({
       "S.No": index + 1,
       "Inspection Date": item.InspectionDate ? new Date(item.InspectionDate).toLocaleDateString('en-GB') : 'N/A',
-      "Container Number": item.ContainerNumber || 'N/A',
+      "ShipmentNo": item.ContainerNumber || 'N/A',
       "Contract No": item.ContractNo || 'N/A',
       "Item Code": item.ItemCode || 'N/A',
       "Item Name": item.ItemName || 'N/A',
@@ -327,7 +327,7 @@ function ContainerMasterReport() {
           <Card style={{ backgroundColor: bgColor, borderColor: borderColor }}>
             <CardHeader className="card-header-custom">
               <div className="d-flex justify-content-between align-items-center">
-                <h4 className="card-title-custom">Container Master Report</h4>
+                <h4 className="card-title-custom">Shipment Master Report</h4>
                 <Button 
                   className="export-btn" 
                   onClick={exportToExcel}
@@ -344,7 +344,7 @@ function ContainerMasterReport() {
                   <Spinner animation="border" role="status">
                     <span className="sr-only">Loading...</span>
                   </Spinner>
-                  <p className="mt-2" style={{ color: textColor }}>Loading Container Master data...</p>
+                  <p className="mt-2" style={{ color: textColor }}>Loading Shipment Master data...</p>
                 </div>
               ) : gridData && gridData.length > 0 ? (
                 <div className="table-responsive">
@@ -353,7 +353,7 @@ function ContainerMasterReport() {
                       <tr>
                         <th>#</th>
                         <th>Inspection Date</th>
-                        <th>Container Number</th>
+                        <th>ShipmentNo</th>
                         <th>Contract No</th>
                         <th>Item Code</th>
                         <th>Item Name</th>
@@ -519,7 +519,7 @@ function ContainerMasterReport() {
                 <div className="text-center py-4" style={{ color: textColor }}>
                   <i className="fas fa-info-circle fa-3x mb-3" style={{ color: textColor, opacity: 0.7 }}></i>
                   <h5 style={{ color: textColor }}>No Data Available</h5>
-                  <p style={{ color: textColor, opacity: 0.8 }}>No Container Master data found.</p>
+                  <p style={{ color: textColor, opacity: 0.8 }}>No Shipment Master data found.</p>
                 </div>
               )}
             </CardBody>

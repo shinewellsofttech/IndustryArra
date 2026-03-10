@@ -17,7 +17,7 @@ const getMenuContent = () => {
     // Admin menu items (F_UserType = 1) - structured into sections
     const adminMenuItems = [
         {
-            title: 'CONTAINERMASTER',
+            title: 'SHIPMENT MASTER',
             to: 'ContainerMaster',
         },
         {
@@ -79,11 +79,11 @@ const getMenuContent = () => {
     // Admin reporting items
     const adminReportingItems = [
         {
-            title: 'CONTAINER REPORT',
+            title: 'SHIPMENT REPORT',
             to: 'ContainerEntryReport',
         },
         {
-            title: 'CONTAINER ENTRY SYSTEM',
+            title: 'SHIPMENT ENTRY SYSTEM',
             to: 'ContainerEntrySystem',
         },
         {
@@ -91,7 +91,7 @@ const getMenuContent = () => {
             to: 'WoodComponentReport',
         },
         {
-            title: 'CONTAINER MASTER REPORT',
+            title: 'SHIPMENT MASTER REPORT',
             to: 'ContainerMasterReport',
         },
         {

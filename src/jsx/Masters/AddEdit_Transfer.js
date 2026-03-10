@@ -198,7 +198,7 @@ useEffect(()=>{
                     <form onSubmit={handleSubmit}>
                            <Row className="mb-3">
                         <Col lg="2">
-                          <label className="text-label" style={{ fontFamily: 'Segoe UI, Tahoma, Geneva, Verdana, sans-serif' }}>Container *</label>
+                          <label className="text-label" style={{ fontFamily: 'Segoe UI, Tahoma, Geneva, Verdana, sans-serif' }}>Shipment *</label>
                         </Col>
                         <Col lg="4">
                           <select
@@ -211,7 +211,7 @@ useEffect(()=>{
                             value={values.Container}
                             style={{ fontFamily: 'Segoe UI, Tahoma, Geneva, Verdana, sans-serif' }}
                           >
-                            <option value="">Select Container</option>
+                            <option value="">Select Shipment</option>
                             {state.FillArray2 && state.FillArray2.map((container) => (
                               <option key={container.Id} value={container.Id}>
                                 {container.Name}

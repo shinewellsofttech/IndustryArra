@@ -934,7 +934,7 @@ function ContainerReport() {
         <Col lg="12">
           <Card>
             <CardHeader>
-              <h4 className="card-title">Container Machining Status Report</h4>
+              <h4 className="card-title">Shipment Machining Status Report</h4>
               <p className="card-text">
                 Click on any bar to view detailed container list
               </p>
@@ -1006,7 +1006,7 @@ function ContainerReport() {
                 <thead>
                   <tr>
                     <th>#</th>
-                    <th>Container Name</th>
+                    <th>Shipment Name</th>
                     <th>Status</th>
                   </tr>
                 </thead>
@@ -1186,7 +1186,7 @@ function ContainerReport() {
               Department Status - {selectedContainer?.Name || "Container"}
             </h5>
             <small className="text-muted">
-              Container: {selectedContainer?.ContainerNumber || "N/A"}
+              ShipmentNo: {selectedContainer?.ContainerNumber || "N/A"}
             </small>
           </div>
         </ModalHeader>
@@ -1292,7 +1292,7 @@ function ContainerReport() {
                                                     )}
                                                 </h6>
                                                 <p>
-                                                    <strong>Container:</strong>{" "}
+                                                    <strong>ShipmentNo:</strong>{" "}
                                                     {item.ContainerNumber || "N/A"} |
                                                     <strong> Item ID:</strong>{" "}
                                                     {item.ContainerMasterLID || "N/A"}
@@ -1474,7 +1474,7 @@ function ContainerReport() {
           <div className="mb-3">
             <div className="row">
               <div className="col-md-6">
-                <strong>Container:</strong> {departmentDetailsData.containerNumber}
+                <strong>ShipmentNo:</strong> {departmentDetailsData.containerNumber}
               </div>
               <div className="col-md-6">
                 <strong>Item:</strong> {departmentDetailsData.itemName}

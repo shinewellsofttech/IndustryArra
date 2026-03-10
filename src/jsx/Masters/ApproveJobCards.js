@@ -401,7 +401,7 @@ const obj = State.FillArray1.find(x=>x.Id == value);
         </Col>
         <Col md={3}>
           <div>
-            <label className="form-label mb-1 small">Container</label>
+            <label className="form-label mb-1 small">Shipment</label>
             <select
               className="form-control form-control-sm"
               name="F_ContainerMaster"
@@ -409,7 +409,7 @@ const obj = State.FillArray1.find(x=>x.Id == value);
               value={F_ContainerMaster}
               disabled={loading}
             >
-              <option value="">Select Container</option>
+              <option value="">Select Shipment</option>
               {State.FillArray.length > 0 &&
                 State.FillArray.map((option) => (
                   <option key={option.Id} value={option.Id}>
@@ -497,7 +497,7 @@ const obj = State.FillArray1.find(x=>x.Id == value);
                   <th style={tableStyles.tableHeader}>Job Card No</th>
                   <th style={tableStyles.tableHeader}>Rejected at Machine</th>
                   <th style={tableStyles.tableHeader}>Inspection Date</th>
-                  <th style={tableStyles.tableHeader}>Container Number</th>
+                  <th style={tableStyles.tableHeader}>ShipmentNo</th>
                   <th style={tableStyles.tableHeader}>Item Name</th>
                   <th style={tableStyles.tableHeader}>Product Code</th>
                   <th style={tableStyles.tableHeader}>Batch Code</th>

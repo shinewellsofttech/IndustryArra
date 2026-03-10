@@ -268,7 +268,7 @@ const Setting = () => {
                       <div className="admin-settings">
                         <div className="row">
                           <div className="col-sm-6">
-                            <p>Container</p>{" "}
+                            <p>Shipment</p>{" "}
                             <Select
                               defaultValue={containerPosition_}
                               onChange={(e) => changeContainerPosition(e)}

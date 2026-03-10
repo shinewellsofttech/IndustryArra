@@ -176,7 +176,7 @@ const AddWoodIssue = () => {
       <h4 className="card-title mb-3">Wood Issue</h4>
       <Row className="mb-3 no-print">
         <Col md={4}>
-          <label className="form-label">Select Container</label>
+          <label className="form-label">Select Shipment</label>
           <select
             className="form-control"
             name="F_ContainerMaster"
@@ -184,7 +184,7 @@ const AddWoodIssue = () => {
             value={F_ContainerMaster}
             disabled={loading}
           >
-            <option value="">Select Container</option>
+            <option value="">Select Shipment</option>
             {State.FillArray.length > 0 &&
               State.FillArray.map((option) => (
                 <option key={option.Id} value={option.Id}>

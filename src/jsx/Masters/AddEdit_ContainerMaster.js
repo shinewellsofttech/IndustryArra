@@ -56,10 +56,10 @@ const AddEdit_ContainerMaster = () => {
   const API_URL_EDIT = `${API_WEB_URLS.MASTER}/0/token/Container/Id`
   
   // Define variables for PageTitle props
-  const activeMenu = "Master Entry";
-  const motherMenu = "Forms";
-  const pageContent = "Container Master";
-  const cardTitle = "Container Master - Smart Grid Entry";
+  const activeMenu = "Shipment Master";
+  const motherMenu = "Masters";
+  const pageContent = "Shipment Master";
+  const cardTitle = "Shipment Master - Smart Grid Entry";
 
   useEffect(() => {
     Fn_FillListData(dispatch, setState, "FillArray", `${API_URL}/Id/0`)

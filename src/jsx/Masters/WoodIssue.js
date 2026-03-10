@@ -202,7 +202,7 @@ function WoodIssue({woodIssueData = {}, components = [], woodSummary = []}) {
       ['WOOD ISSUE BILL OF MATERIAL'],
       [''],
       ['PRODUCT NAME', woodIssueData?.ProductName || '', 'PRODUCT CODE', woodIssueData?.ItemCode || ''],
-      ['CONTAINER NO', woodIssueData?.ContainerNumber || '', 'INSPECTION DATE', formatDate(woodIssueData?.InspectionDate)],
+      ['SHIPMENT NO', woodIssueData?.ContainerNumber || '', 'INSPECTION DATE', formatDate(woodIssueData?.InspectionDate)],
       ['BATCH NO', woodIssueData?.BatchNo || '', 'QUANTITY', formatNumber(woodIssueData?.Quantity)],
       ['DIMENSIONS (Cm)', '', '', ''],
       ['', 'W', 'D', 'H'],
@@ -658,7 +658,7 @@ function WoodIssue({woodIssueData = {}, components = [], woodSummary = []}) {
             </tr>
 
             <tr>
-              <td style={{ padding: '8px 10px', color: textColor, fontWeight: 'bold', fontSize: '12px', border: `1px solid ${borderColor}`, backgroundColor: bgColor }}>CONTAINER NO</td>
+              <td style={{ padding: '8px 10px', color: textColor, fontWeight: 'bold', fontSize: '12px', border: `1px solid ${borderColor}`, backgroundColor: bgColor }}>SHIPMENT NO</td>
               <td style={{ padding: '8px 10px', color: textColor, fontSize: '13px', border: `1px solid ${borderColor}`, backgroundColor: bgColor }}>{woodIssueData?.ContainerNumber || ''}</td>
               <td style={{ padding: '8px 10px', color: textColor, fontWeight: 'bold', fontSize: '12px', border: `1px solid ${borderColor}`, backgroundColor: bgColor }}>INSPECTION DATE</td>
               <td style={{ padding: '8px 10px', color: textColor, fontSize: '13px', border: `1px solid ${borderColor}`, backgroundColor: bgColor }}>

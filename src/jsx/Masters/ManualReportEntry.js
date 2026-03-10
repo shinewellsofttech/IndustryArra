@@ -157,7 +157,7 @@ const ManualReportEntry = () => {
     <form onSubmit={handleSubmit}>
       <Row className="mb-3">
         <Col md={4}>
-          <label className="form-label">Select Container</label>
+          <label className="form-label">Select Shipment</label>
           <select
             className="form-control"
             name="F_ContainerMaster"
@@ -165,7 +165,7 @@ const ManualReportEntry = () => {
             value={F_ContainerMaster}
             disabled={loading}
           >
-            <option value="">Select Container</option>
+            <option value="">Select Shipment</option>
             {State.FillArray.length > 0 &&
               State.FillArray.map((option) => (
                 <option key={option.Id} value={option.Id}>

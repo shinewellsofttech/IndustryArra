@@ -347,14 +347,14 @@ const PageList_CardMaster = () => {
         </Col>
         <Col md="2">
           <div>
-            <label className="form-label mb-1 small">Container</label>
+            <label className="form-label mb-1 small">Shipment</label>
             <select
               className="form-control form-control-sm"
               name="F_ContainerMaster"
               onChange={handleContainerMasterChange}
               value={F_ContainerMaster}
             >
-              <option value="">Select Container</option>
+              <option value="">Select Shipment</option>
               {State.FillArray1.length > 0 &&
                 State.FillArray1.map((option) => (
                   <option key={option.Id} value={option.Id}>
