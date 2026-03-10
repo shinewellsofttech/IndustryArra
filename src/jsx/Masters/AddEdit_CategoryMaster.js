@@ -9,8 +9,9 @@ import { API_WEB_URLS } from "../../constants/constAPI";
 
 
 
-const NameSchema = Yup.object().shape({
+const ValidationSchema = Yup.object().shape({
   Name: Yup.string().required("Name is required"),
+  FullName: Yup.string().required("Full Name is required"),
 });
 
 const AddEdit_CategoryMaster = () => {
@@ -18,6 +19,7 @@ const AddEdit_CategoryMaster = () => {
     id: 0,
     formData: {
       Name: "",
+      FullName: "",
     },
     isProgress: true,
   });
@@ -28,7 +30,7 @@ const AddEdit_CategoryMaster = () => {
   const API_URL = `${API_WEB_URLS.MASTER}/0/token/CategoryMaster`
     const API_URL2 = `${API_WEB_URLS.MASTER}/0/token/State`
   const API_URL_SAVE = "CategoryMaster/0/token"
-  const API_URL_EDIT = `${API_WEB_URLS.MASTER}/0/token/CustomerMasterEdit/Id`
+  const API_URL_EDIT = `${API_WEB_URLS.MASTER}/0/token/CategoryMaster/Id`
   // Define variables for PageTitle props
   const activeMenu = "Masters";
   const motherMenu = "Masters";
@@ -52,6 +54,7 @@ const AddEdit_CategoryMaster = () => {
       // const obj = JSON.parse(localStorage.getItem("authUser"))
       const formData = new FormData()
       formData.append("Name", values.Name)
+      formData.append("FullName", values.FullName)
       Fn_AddEditData(
         dispatch,
         setState,
@@ -86,8 +89,8 @@ const AddEdit_CategoryMaster = () => {
               <div className="basic-form">
                 <Formik
                   initialValues={state.formData}
-                  enableReinitialize
-                  validationSchema={NameSchema}
+                    enableReinitialize
+                    validationSchema={ValidationSchema}
                   onSubmit={(values, { setSubmitting }) => {
                     setTimeout(() => {
                       handleSubmit(values);
@@ -104,6 +107,20 @@ const AddEdit_CategoryMaster = () => {
                     isSubmitting,
                   }) => (
                     <form onSubmit={handleSubmit}>
+                      <div className="form-group mb-3">
+                        <label className="text-label">Full Name *</label>
+                        <input
+                          type="text"
+                          className="form-control"
+                          name="FullName"
+                          onChange={handleChange}
+                          onBlur={handleBlur}
+                          value={values.FullName}
+                        />
+                        {errors.FullName && (
+                          <div className="text-danger">{errors.FullName}</div>
+                        )}
+                      </div>
                       <div className="form-group mb-3">
                         <label className="text-label">Name *</label>
                         <input

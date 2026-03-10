@@ -5,7 +5,7 @@ import { Formik } from "formik";
 import * as Yup from "yup";
 import { useDispatch } from "react-redux";
 import { API_WEB_URLS } from "../../constants/constAPI";
-import { Fn_AddEditData, Fn_DisplayData } from "../../store/Functions";
+import { Fn_AddEditData, Fn_DisplayData, Fn_FillListData } from "../../store/Functions";
 
 const NameSchema = Yup.object().shape({
   Name: Yup.string().required("Name is required"),
@@ -19,16 +19,14 @@ const AddEdit_MachineMaster = () => {
       Name: "",
       F_MachineTypeMaster: "",
     },
-    FillArray: [
-      { Id: 1, Name: "Wood" },
-      { Id: 2, Name: "Metal" },
-    ],
+    FillArray: [],
   });
   const dispatch = useDispatch();
   const location = useLocation();
   const navigate = useNavigate();
 
   const API_URL_SAVE = "MachineMaster/0/token";
+  const API_URL_Category = API_WEB_URLS.MASTER + "/0/token/Category/Id/0";
   const API_URL_EDIT = `${API_WEB_URLS.MASTER}/0/token/MachineMasterEdit/Id`;
   // Define variables for PageTitle props
   const activeMenu = "Masters";
@@ -37,7 +35,10 @@ const AddEdit_MachineMaster = () => {
   const cardTitle = "Machine Master";
 
   useEffect(() => {
+
+       Fn_FillListData(dispatch, setState, "FillArray", API_URL_Category);
     const Id = (location.state && location.state.Id) || 0;
+    
     if (Id > 0) {
       setState((prevState) => ({ ...prevState, id: Id }));
       Fn_DisplayData(dispatch, setState, Id, API_URL_EDIT);

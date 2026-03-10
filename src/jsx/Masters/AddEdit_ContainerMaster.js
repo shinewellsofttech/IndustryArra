@@ -488,7 +488,7 @@ const AddEdit_ContainerMaster = () => {
                           📅 Inspection Date {isSampleContainer ? '' : '*'}
                         </th>
                         <th style={{...styles.tableHeader, minWidth: '180px'}}>
-                          📦 Container Number *
+                          📦 ShipmentNo *
                         </th>
                         <th style={{...styles.tableHeader, minWidth: '180px'}}>
                           🏷️ Item Name *
@@ -545,7 +545,7 @@ const AddEdit_ContainerMaster = () => {
                                 ...(errors[index]?.ContainerNumber ? styles.inputError : {}),
                                 ...(focusedCell.row === index && focusedCell.col === 1 ? styles.inputFocused : {})
                               }}
-                              placeholder="Enter container number"
+                              placeholder="Enter shipment no"
                             />
                             {errors[index]?.ContainerNumber && (
                               <small style={{ color: '#ef4444', fontSize: '12px', marginTop: '4px', display: 'block' }}>

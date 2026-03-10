@@ -546,8 +546,8 @@ export const PageList_ContainerMaster = () => {
 			},
 		  },
 		{
-			Header : 'ContainerNumber',
-			Footer : 'ContainerNumber',
+			Header : 'ShipmentNo',
+			Footer : 'ShipmentNo',
 			accessor: 'ContainerNumber',
 			Filter: ColumnFilter,
 		},
@@ -1008,7 +1008,7 @@ export const PageList_ContainerMaster = () => {
 							<table className="table table-bordered custom-table">
 								<thead className="table-light">
 									<tr>
-										<th>Container Number</th>
+										<th>ShipmentNo</th>
 										<th>Item Name</th>
 										<th>Contract No</th>
 										<th>Item Code</th>

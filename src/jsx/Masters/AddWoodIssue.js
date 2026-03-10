@@ -28,7 +28,7 @@ const AddWoodIssue = () => {
   const [woodIssueData, setWoodIssueData] = useState([]);
   const [components, setComponents] = useState([]);
   const [woodSummary, setWoodSummary] = useState([]);
-  const API_URL = `${API_WEB_URLS.MASTER}/0/token/JobCardContainers`;
+  const API_URL = `${API_WEB_URLS.MASTER}/0/token/WoodIssueContainers`;
   const API_URL2 = `${API_WEB_URLS.MASTER}/0/token/Category`;
   const API_URL3 = `${API_WEB_URLS.MASTER}/0/token/JobCardWoodIssue`;
   const API_URL4 = `${API_WEB_URLS.MASTER}/0/token/CheckWoodIssue`;

@@ -59,7 +59,7 @@ function TotalItemSummary() {
         await Fn_FillListData(dispatch, setComponentsData, "gridData", API_WEB_URLS.MASTER + "/0/token/Components/Id/0");
         setCompModalLoading(false);
     };
-
+    
     const handleActualComponentsClick = async () => {
         try {
             setSelectedItem(null);

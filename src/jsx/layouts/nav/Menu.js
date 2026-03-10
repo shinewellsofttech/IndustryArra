@@ -21,8 +21,16 @@ const getMenuContent = () => {
             to: 'ContainerMaster',
         },
         {
+            title: 'CATEGORYMASTER',
+            to: 'CategoryMaster',
+        },
+        {
             title: 'ITEMMASTER',
             to: 'ItemMaster',
+        },
+        {
+            title: 'ITEM SUMMARY',
+            to: 'TotalItemSummary',
         },
         {
             title: 'COMPONENTMASTER',
