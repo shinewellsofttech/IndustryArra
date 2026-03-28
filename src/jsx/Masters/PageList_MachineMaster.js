@@ -13,10 +13,12 @@ import { API_WEB_URLS } from '../../constants/constAPI';
 
 export const PageList_MachineMaster = () => {
 	const [gridData, setGridData] = useState([]);
+	const [categoryList, setCategoryList] = useState([]);
 	const navigate = useNavigate();
 	const rtPage_Add = "/AddMachine";
 	const rtPage_Edit = "/AddMachine";
     const API_URL = API_WEB_URLS.MASTER + "/0/token/MachineMaster";
+    const API_URL_Category = API_WEB_URLS.MASTER + "/0/token/Category/Id/0";
     const dispatch = useDispatch();
     const [loading, setLoading] = useState(true);
     useEffect(() => {
@@ -24,11 +26,12 @@ export const PageList_MachineMaster = () => {
 		  console.log('useEffect running');
 		  setLoading(true);
 		   Fn_FillListData(dispatch, setGridData, "gridData", API_URL + "/Id/0");
+		   Fn_FillListData(dispatch, setCategoryList, "gridData", API_URL_Category);
 		  setLoading(false);
 		};
 	
 		fetchData();
-	  }, [dispatch, API_URL]);
+	  }, [dispatch, API_URL, API_URL_Category]);
 	  const btnAddOnClick = () => {
 		
 		 navigate(rtPage_Add, { state: { Id: 0 } });
@@ -55,8 +58,12 @@ export const PageList_MachineMaster = () => {
 		{
 			Header : 'Machine Type',
 			Footer : 'Machine Type',
-			accessor: 'MachineType',
-			Filter: SelectColumnFilter,
+			accessor: 'F_MachineTypeMaster',
+			Filter: ColumnFilter,
+			Cell: ({ row }) => {
+				const cat = categoryList.find(c => c.Id === row.original.F_MachineTypeMaster);
+				return cat ? cat.Name : (row.original.MachineType || '-');
+			},
 		},
 
 
@@ -75,7 +82,7 @@ export const PageList_MachineMaster = () => {
 		  }, 
 
 	]
-	const columns = useMemo( () => COLUMNS, [] )
+	const columns = useMemo( () => COLUMNS, [categoryList] )
 	const data = useMemo( () => gridData, [gridData] )
 	const tableInstance = useTable({
 		columns,

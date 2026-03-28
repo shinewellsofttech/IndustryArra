@@ -90,7 +90,7 @@ export const PageList_ComponentMaster = ({ filterItemCode, filterIsActive, isMod
 		// Handle Machine Sequence button click
 		console.log('Machine Sequence clicked - Row Data:', rowData);
 		const MachineTypeId = rowData.F_CategoryMaster == 4 ? 2 : 1;
-		Fn_FillListData(dispatch, setState, "MachineMaster", API_URL2 + "/TBL.F_MachineTypeMaster/" + MachineTypeId);
+		Fn_FillListData(dispatch, setState, "MachineMaster", API_URL2 + "/TBL.F_MachineTypeMaster/" + rowData.F_CategoryMaster);
 		console.log('Machine Master:', State.MachineMaster);
 		try {
 			const data = await Fn_FillListData(dispatch, setState, "MachineComponentMap", API_URL1 + "/TBL.F_ComponentMaster/" + rowData.Id);
