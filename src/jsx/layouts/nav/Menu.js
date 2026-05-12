@@ -79,6 +79,10 @@ const getMenuContent = () => {
     // Admin reporting items
     const adminReportingItems = [
         {
+            title: 'NEW REPORTING ENTRY',
+            to: 'ReportingEntrySystem',
+        },
+        {
             title: 'SHIPMENT REPORT',
             to: 'ContainerEntryReport',
         },

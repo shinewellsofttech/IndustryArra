@@ -35,6 +35,7 @@ const ALSlip = () => {
   const [F_ContainerMaster, setContainerMaster] = useState("");
   const [F_CategoryMaster, setCategoryMaster] = useState("");
   const [F_ItemMaster, setItemMaster] = useState("");
+  const [selectedCML, setSelectedCML] = useState(""); // tracks F_ContainerMasterL for dropdown uniqueness
   const [isPdfGenerating, setIsPdfGenerating] = useState(false);
   const [pdfProgress, setPdfProgress] = useState(0);
   const [totalSlips, setTotalSlips] = useState(0);
@@ -66,6 +67,7 @@ const ALSlip = () => {
     setContainerMaster(value);
     setCategoryMaster(""); // Reset category selection
     setItemMaster(""); // Reset item selection
+    setSelectedCML(""); // Reset F_ContainerMasterL tracking
     setState(prevState => ({ ...prevState, FillArray1: [] })); // Clear item list
     
     if (value) {
@@ -82,13 +84,16 @@ const ALSlip = () => {
   };
   
   const handleItemChange = async (value) => {
-    setItemMaster(value);
-    const obj = State.FillArray1.find(x=>x.Id == value);
+    // value is F_ContainerMasterL (unique per row)
+    const obj = State.FillArray1.find(x => x.F_ContainerMasterL == value);
+    if (!obj) return;
+    setSelectedCML(value);           // for dropdown display
+    setItemMaster(obj.Id);           // real Id for downstream use
     console.log(obj);
     let vformData = new FormData();
-    vformData.append("F_ContainerMasterL", obj.F_ContainerMasterL);
+    vformData.append("F_ContainerMasterL", value);
     vformData.append("F_CategoryMaster", 0);
-    vformData.append("F_ItemMaster", value);
+    vformData.append("F_ItemMaster", obj.Id);
 
     // Fetch job cards and machines for selected container
     await Fn_GetReport(
@@ -270,13 +275,13 @@ const ALSlip = () => {
             className="form-control"
             name="F_ItemMaster"
             onChange={(e) => handleItemChange(e.target.value)}
-            value={F_ItemMaster}
+            value={selectedCML}
             style={{ fontFamily: 'Times New Roman' }}
           >
             <option value="">Select Item</option>
             {State.FillArray1.length > 0 &&
               State.FillArray1.map((option) => (
-                <option key={option.Id} value={option.Id}>
+                <option key={option.Id} value={option.F_ContainerMasterL}>
                   {option.Name}
                 </option>
               ))}

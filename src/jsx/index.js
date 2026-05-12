@@ -144,6 +144,7 @@ import ContainerMasterReport from "./Reports/ContainerMasterReport";
 import PageList_MachineMaster from "./Masters/PageList_MachineMaster";
 import AddEdit_MachineMaster from "./Masters/AddEdit_MachineMaster";
 import TotalItemSummary from "./Masters/TotalItemSummary";
+import ReportingEntrySystem from "./NewReportingSystem/ReportingEntrySystem";
 
 const Markup = () => {
   const { menuToggle } = useContext(ThemeContext);
@@ -281,6 +282,7 @@ const Markup = () => {
     { url: "ContainerEntryReport", component: <ContainerEntryReport/> },
     { url: "WoodComponentReport", component: <WoodComponentReport/> },
     { url: "ContainerMasterReport", component: <ContainerMasterReport/> },
+    { url: "ReportingEntrySystem", component: <ReportingEntrySystem/> },
 
   ];
   let path = window.location.pathname;
