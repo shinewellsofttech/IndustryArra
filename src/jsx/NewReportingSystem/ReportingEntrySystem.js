@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Row, Col, Card, CardHeader, CardBody, Modal, ModalHeader, ModalBody, ModalFooter, Button } from 'reactstrap';
+import { Row, Col, Card, CardHeader, CardBody, Modal, ModalHeader, ModalBody, ModalFooter, Button, Table, Input } from 'reactstrap';
 import { useDispatch } from 'react-redux';
 import { Pie } from 'react-chartjs-2';
 import { Chart as ChartJS, ArcElement, Tooltip, Legend } from 'chart.js';
@@ -17,12 +17,15 @@ const ReportingEntrySystem = () => {
   const [showModal, setShowModal] = useState(false);
   const [showDetailsModal, setShowDetailsModal] = useState(false);
   const [showMachineModal, setShowMachineModal] = useState(false);
+  const [showComponentModal, setShowComponentModal] = useState(false);
+  const [showSequenceModal, setShowSequenceModal] = useState(false);
   const [selectedDepartment, setSelectedDepartment] = useState(null);
   const [editedItems, setEditedItems] = useState({});
   const API_URL_ByStatus = `${API_WEB_URLS.MASTER}/0/token/NewReportingByStatus`;
   const API_URL_ByContainer = `${API_WEB_URLS.MASTER}/0/token/NewReportingByContainer`;
   const API_URL_ByDepartment1 = `${API_WEB_URLS.MASTER}/0/token/NewTransferDataH`;
   const API_URL_ByTransferComponent = `${API_WEB_URLS.MASTER}/0/token/NewTransferDataComponents`;
+  const API_URL_ByTransferMachine = `${API_WEB_URLS.MASTER}/0/token/TransferComponentMachineData`;
   const cards = [
     { id: 1, title: 'Not Started', color: '#10b981', icon: 'fa-circle' },
     { id: 2, title: 'Running', color: '#3b82f6', icon: 'fa-spinner' },
@@ -47,7 +50,7 @@ const ReportingEntrySystem = () => {
 
   const handleDepartmentClick = async (department) => {
     console.log('Department Data:', department);
-    
+
     // Handle DepartmentId = 1 separately
     if (department.DepartmentId === 1) {
       handleSpecialDepartment(department);
@@ -78,7 +81,7 @@ const ReportingEntrySystem = () => {
     setShowMachineModal(true);
   };
 
-  const handleOpenMachineItem =async (item) => {
+  const handleOpenMachineItem = async (item) => {
     console.log('Machine Department Item Opened:', item);
     console.log('Item Details:', {
       Id: item.Id,
@@ -92,7 +95,43 @@ const ReportingEntrySystem = () => {
       DateOfCreation: item.DateOfCreation,
       LastUpdateOn: item.LastUpdateOn
     });
-    const ComponentsDataArray = await Fn_FillListData(dispatch, setState, "MachineDepartmentData", `${API_URL_ByTransferComponent}/Id/${item.Id}`);
+    const ComponentsDataArray = await Fn_FillListData(dispatch, setState, "ComponentDetailsData", `${API_URL_ByTransferComponent}/Id/${item.Id}`);
+    setShowComponentModal(true);
+  };
+
+  const handleSequenceClick = async (item) => {
+    console.log("Sequence button clicked for item:", item);
+    const ComponentsMachineArray = await Fn_FillListData(dispatch, setState, "ComponentMachineData", `${API_URL_ByTransferMachine}/Id/${item.F_TransferComponentH}`);
+    setShowSequenceModal(true);
+  };
+
+  const handleMachineDateChange = (id, field, value) => {
+    setState(prevState => ({
+      ...prevState,
+      ComponentMachineData: prevState.ComponentMachineData.map(m =>
+        m.Id === id ? { ...m, [field]: value } : m
+      )
+    }));
+    console.log('Machine date changed:', { id, field, value });
+  };
+
+  const handleComponentDateChange = (id, field, value) => {
+    setState(prevState => ({
+      ...prevState,
+      ComponentDetailsData: prevState.ComponentDetailsData.map(item =>
+        item.Id === id ? { ...item, [field]: value } : item
+      )
+    }));
+  };
+
+  const formatDateTime = (dateString) => {
+    if (!dateString) return '';
+    return dateString.substring(0, 16);
+  };
+
+  const displayTextDate = (dateString) => {
+    if (!dateString) return '-';
+    return new Date(dateString).toLocaleString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: true });
   };
 
   const handleDateChange = (itemId, field, value) => {
@@ -269,10 +308,10 @@ const ReportingEntrySystem = () => {
                   />
                 </div>
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(250px, 1fr))', gap: '15px' }}>
-                  {state?.ContainerArray && state?.ContainerArray.filter(container => 
+                  {state?.ContainerArray && state?.ContainerArray.filter(container =>
                     container.ContainerNumber.toLowerCase().includes(searchQuery.toLowerCase())
                   ).length > 0 ? (
-                    state?.ContainerArray.filter(container => 
+                    state?.ContainerArray.filter(container =>
                       container.ContainerNumber.toLowerCase().includes(searchQuery.toLowerCase())
                     ).map((container) => (
                       <div
@@ -307,13 +346,13 @@ const ReportingEntrySystem = () => {
                               datasets: [{
                                 data: [container.CompletionPercentage.toFixed(2), (100 - container.CompletionPercentage).toFixed(2)],
                                 backgroundColor: [
-                                  container.CompletionPercentage === 100 ? '#d4edda' : 
-                                  container.CompletionPercentage >= 50 ? '#fff3cd' : '#f8d7da',
+                                  container.CompletionPercentage === 100 ? '#d4edda' :
+                                    container.CompletionPercentage >= 50 ? '#fff3cd' : '#f8d7da',
                                   '#e9ecef'
                                 ],
                                 borderColor: [
-                                  container.CompletionPercentage === 100 ? '#28a745' : 
-                                  container.CompletionPercentage >= 50 ? '#ffc107' : '#dc3545',
+                                  container.CompletionPercentage === 100 ? '#28a745' :
+                                    container.CompletionPercentage >= 50 ? '#ffc107' : '#dc3545',
                                   '#d1d5db'
                                 ],
                                 borderWidth: 2
@@ -326,7 +365,7 @@ const ReportingEntrySystem = () => {
                                 legend: { display: false },
                                 tooltip: {
                                   callbacks: {
-                                    label: function(context) {
+                                    label: function (context) {
                                       return context.label + ': ' + context.parsed + '%';
                                     }
                                   }
@@ -392,13 +431,13 @@ const ReportingEntrySystem = () => {
                         datasets: [{
                           data: [department.CompletionPercentage.toFixed(2), (100 - department.CompletionPercentage).toFixed(2)],
                           backgroundColor: [
-                            department.CompletionPercentage === 100 ? '#d4edda' : 
-                            department.CompletionPercentage >= 50 ? '#fff3cd' : '#f8d7da',
+                            department.CompletionPercentage === 100 ? '#d4edda' :
+                              department.CompletionPercentage >= 50 ? '#fff3cd' : '#f8d7da',
                             '#e9ecef'
                           ],
                           borderColor: [
-                            department.CompletionPercentage === 100 ? '#28a745' : 
-                            department.CompletionPercentage >= 50 ? '#ffc107' : '#dc3545',
+                            department.CompletionPercentage === 100 ? '#28a745' :
+                              department.CompletionPercentage >= 50 ? '#ffc107' : '#dc3545',
                             '#d1d5db'
                           ],
                           borderWidth: 2
@@ -411,7 +450,7 @@ const ReportingEntrySystem = () => {
                           legend: { display: false },
                           tooltip: {
                             callbacks: {
-                              label: function(context) {
+                              label: function (context) {
                                 return context.label + ': ' + context.parsed + '%';
                               }
                             }
@@ -451,7 +490,7 @@ const ReportingEntrySystem = () => {
                 Quantity Distribution
               </h6>
               <div style={{ height: '250px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                <Pie 
+                <Pie
                   data={{
                     labels: state?.DepartmentWiseData.map(item => item.ItemCode),
                     datasets: [{
@@ -461,7 +500,7 @@ const ReportingEntrySystem = () => {
                       ],
                       borderWidth: 1
                     }]
-                  }} 
+                  }}
                   options={{
                     ...chartOptions,
                     plugins: {
@@ -474,7 +513,7 @@ const ReportingEntrySystem = () => {
                         }
                       }
                     }
-                  }} 
+                  }}
                 />
               </div>
             </div>
@@ -502,7 +541,7 @@ const ReportingEntrySystem = () => {
                       {item.ItemName}
                     </div>
                   </div>
-                  
+
                   {/* Pie Chart for Item Qty Distribution */}
                   <div style={{ height: '120px', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '10px' }}>
                     <Pie
@@ -511,13 +550,13 @@ const ReportingEntrySystem = () => {
                         datasets: [{
                           data: [item.ReportQty, (item.Quantity - item.ReportQty)],
                           backgroundColor: [
-                            item.ReportQty === item.Quantity ? '#d4edda' : 
-                            item.ReportQty > 0 ? '#fff3cd' : '#f8d7da',
+                            item.ReportQty === item.Quantity ? '#d4edda' :
+                              item.ReportQty > 0 ? '#fff3cd' : '#f8d7da',
                             '#e9ecef'
                           ],
                           borderColor: [
-                            item.ReportQty === item.Quantity ? '#28a745' : 
-                            item.ReportQty > 0 ? '#ffc107' : '#dc3545',
+                            item.ReportQty === item.Quantity ? '#28a745' :
+                              item.ReportQty > 0 ? '#ffc107' : '#dc3545',
                             '#d1d5db'
                           ],
                           borderWidth: 1
@@ -530,7 +569,7 @@ const ReportingEntrySystem = () => {
                           legend: { display: false },
                           tooltip: {
                             callbacks: {
-                              label: function(context) {
+                              label: function (context) {
                                 return context.label + ': ' + context.parsed;
                               }
                             }
@@ -772,6 +811,121 @@ const ReportingEntrySystem = () => {
         </ModalBody>
         <ModalFooter>
           <Button color="secondary" onClick={() => setShowMachineModal(false)}>
+            Close
+          </Button>
+        </ModalFooter>
+      </Modal>
+
+      {/* Component Details Fullscreen Modal */}
+      <Modal isOpen={showComponentModal} toggle={() => setShowComponentModal(false)} fullscreen>
+        <ModalHeader toggle={() => setShowComponentModal(false)}>
+          <i className="fas fa-list me-2"></i>
+          Component Details
+        </ModalHeader>
+        <ModalBody style={{ overflowX: 'auto' }}>
+          <Table bordered hover responsive size="sm" className="text-center align-middle" style={{ minWidth: '1200px' }}>
+            <thead className="table-light">
+              <tr>
+                <th rowSpan="2" className="align-middle">Component Name</th>
+                <th rowSpan="2" className="align-middle">Size</th>
+                <th colSpan="2" className="align-middle">Wood Issue</th>
+                <th colSpan="3" className="align-middle">Machine</th>
+                <th colSpan="2" className="align-middle">Storage</th>
+                <th colSpan="2" className="align-middle">Sanding</th>
+              </tr>
+              <tr>
+                <th>Start Date</th>
+                <th>End Date</th>
+                <th>Start Date</th>
+                <th>End Date</th>
+                <th>Action</th>
+                <th>Start Date</th>
+                <th>End Date</th>
+                <th>Start Date</th>
+                <th>End Date</th>
+              </tr>
+            </thead>
+            <tbody>
+              {state?.ComponentDetailsData && state?.ComponentDetailsData.length > 0 ? (
+                state?.ComponentDetailsData.map((comp) => (
+                  <tr key={comp.Id}>
+                    <td className="text-start">{comp.ComponentName}</td>
+                    <td>{comp.Size}</td>
+
+                    {/* Wood Issue */}
+                    <td>
+                      <Input
+                        type="datetime-local"
+                        bsSize="sm"
+                        value={formatDateTime(comp.WoodIssueStartDate)}
+                        onChange={(e) => handleComponentDateChange(comp.Id, 'WoodIssueStartDate', e.target.value)}
+                      />
+                    </td>
+                    <td>
+                      <Input
+                        type="datetime-local"
+                        bsSize="sm"
+                        value={formatDateTime(comp.WoodIssueEndDate)}
+                        onChange={(e) => handleComponentDateChange(comp.Id, 'WoodIssueEndDate', e.target.value)}
+                      />
+                    </td>
+
+                    {/* Machine */}
+                    <td>{displayTextDate(comp.MachineStartDate)}</td>
+                    <td>{displayTextDate(comp.MachineEndDate)}</td>
+                    <td>
+                      <Button color="primary" size="sm" onClick={() => handleSequenceClick(comp)}>
+                        Sequence
+                      </Button>
+                    </td>
+
+                    {/* Storage */}
+                    <td>
+                      <Input
+                        type="datetime-local"
+                        bsSize="sm"
+                        value={formatDateTime(comp.StorageStartDate)}
+                        onChange={(e) => handleComponentDateChange(comp.Id, 'StorageStartDate', e.target.value)}
+                      />
+                    </td>
+                    <td>
+                      <Input
+                        type="datetime-local"
+                        bsSize="sm"
+                        value={formatDateTime(comp.StorageEndDate)}
+                        onChange={(e) => handleComponentDateChange(comp.Id, 'StorageEndDate', e.target.value)}
+                      />
+                    </td>
+
+                    {/* Sanding */}
+                    <td>
+                      <Input
+                        type="datetime-local"
+                        bsSize="sm"
+                        value={formatDateTime(comp.SandingStartDate)}
+                        onChange={(e) => handleComponentDateChange(comp.Id, 'SandingStartDate', e.target.value)}
+                      />
+                    </td>
+                    <td>
+                      <Input
+                        type="datetime-local"
+                        bsSize="sm"
+                        value={formatDateTime(comp.SandingEndDate)}
+                        onChange={(e) => handleComponentDateChange(comp.Id, 'SandingEndDate', e.target.value)}
+                      />
+                    </td>
+                  </tr>
+                ))
+              ) : (
+                <tr>
+                  <td colSpan="11" className="text-center">No Data Available</td>
+                </tr>
+              )}
+            </tbody>
+          </Table>
+        </ModalBody>
+        <ModalFooter>
+          <Button color="secondary" onClick={() => setShowComponentModal(false)}>
             Close
           </Button>
         </ModalFooter>
