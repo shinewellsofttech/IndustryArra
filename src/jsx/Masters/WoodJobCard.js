@@ -9,6 +9,7 @@ import { API_WEB_URLS } from "../../constants/constAPI";
 import { useDispatch } from "react-redux";
 import { useNavigate } from "react-router-dom";
 import ComponentDrawing from "./ComponentDrawing";
+import { generateCode128SVG, getBarcodeValue } from "./BarcodeHelper";
 
 const WoodJobCard = ({
   F_ItemMaster,
@@ -176,7 +177,7 @@ const WoodJobCard = ({
 
             /* Header section - fixed height */
             .header {
-              height: 10mm;
+              height: 11mm;
               text-align: center;
               font-size: 14px;
               font-weight: bold;
@@ -416,7 +417,12 @@ const WoodJobCard = ({
             <!-- Page 1 -->
             <div class="job-card" data-machine-rows="${machineDetails.length}">
               <div class="space-calculator"></div>
-              <div class="header" style={{fontFamily: 'Copperplate Gothic Light'}}>AARA DESIGN</div>
+              <div class="header" style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #065f46; padding-bottom: 1px; height: 11mm; margin-bottom: 2mm;">
+                <span style="font-family: 'Copperplate Gothic Light'; font-size: 16px; font-weight: bold;">AARA DESIGN</span>
+                <div style="display: flex; align-items: center; padding-right: 2mm;">
+                  ${generateCode128SVG(getBarcodeValue(jobCard, F_ContainerMasterL, F_ItemMaster))}
+                </div>
+              </div>
               
               <table>
                 <tr class="info-row">
@@ -545,7 +551,12 @@ const WoodJobCard = ({
 
             <!-- Page 2 -->
             <div class="job-card page-break-before">
-              <div class="header" style={{fontFamily: 'Copperplate Gothic Light'}}>AARA DESIGN</div>
+              <div class="header" style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #065f46; padding-bottom: 1px; height: 11mm; margin-bottom: 2mm;">
+                <span style="font-family: 'Copperplate Gothic Light'; font-size: 16px; font-weight: bold;">AARA DESIGN</span>
+                <div style="display: flex; align-items: center; padding-right: 2mm;">
+                  ${generateCode128SVG(getBarcodeValue(jobCard, F_ContainerMasterL, F_ItemMaster))}
+                </div>
+              </div>
               
               <!-- Component Name - Centered Sub-header -->
               <table>
@@ -870,9 +881,9 @@ const WoodJobCard = ({
               }}
             >
               {/* Header Row */}
-              <Row className="g-0">
+              <Row className="g-0 align-items-center">
                 <Col
-                  xs={12}
+                  xs={8}
                   style={{
                     borderBottom: "2px solid #2d3748",
                   }}
@@ -895,6 +906,21 @@ const WoodJobCard = ({
                       AARA DESIGN
                     </span>
                   </div>
+                </Col>
+                <Col
+                  xs={4}
+                  style={{
+                    borderBottom: "2px solid #2d3748",
+                    borderLeft: "2px solid #2d3748",
+                    padding: "4px",
+                    backgroundColor: "#f8f9fa",
+                    display: "flex",
+                    justifyContent: "center",
+                    alignItems: "center",
+                    minHeight: "44px"
+                  }}
+                >
+                  <div dangerouslySetInnerHTML={{ __html: generateCode128SVG(getBarcodeValue(jobCard, F_ContainerMasterL, F_ItemMaster)) }} />
                 </Col>
               </Row>
 

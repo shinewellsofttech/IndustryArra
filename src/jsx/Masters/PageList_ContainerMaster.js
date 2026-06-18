@@ -80,7 +80,8 @@ export const PageList_ContainerMaster = () => {
 			ItemCode: rowData.ItemCode,
 			Quantity: rowData.Quantity,
 			InspectionDate: rowData.InspectionDate ? rowData.InspectionDate.split('T')[0] : '',
-			JobCardInitial: rowData.JobCardInitial
+			JobCardInitial: rowData.JobCardInitial,
+			IsTikamoon: rowData.IsTikamoon || false
 		}]);
 		setShowModal(true);
 		console.log('Break button clicked for row:', rowData);
@@ -104,7 +105,8 @@ export const PageList_ContainerMaster = () => {
 			ItemCode: selRow.ItemCode,
 			Quantity: 0,
 			InspectionDate: selRow.InspectionDate ? selRow.InspectionDate.split('T')[0] : '',
-			JobCardInitial: selRow.JobCardInitial
+			JobCardInitial: selRow.JobCardInitial,
+			IsTikamoon: selRow.IsTikamoon || false
 		};
 		setBreakUpArray([...breakUpArray, newRow]);
 	  };
@@ -1013,6 +1015,7 @@ export const PageList_ContainerMaster = () => {
 										<th>Contract No</th>
 										<th>Item Code</th>
 										<th>Quantity</th>
+										<th>IsTikamoon</th>
 										{/* <th>Inspection Date</th> */}
 										{/* <th>Job Card Initial</th> */}
 										<th width="120">Actions</th>
@@ -1065,6 +1068,19 @@ export const PageList_ContainerMaster = () => {
 													onChange={(e) => updateBreakUpRow(index, 'Quantity', e.target.value)}
 													min="0"
 													max={selRow.Quantity}
+												/>
+											</td>
+											<td className="text-center" style={{ verticalAlign: 'middle' }}>
+												<input
+													type="checkbox"
+													checked={row.IsTikamoon || false}
+													onChange={(e) => updateBreakUpRow(index, 'IsTikamoon', e.target.checked)}
+													style={{
+														width: '20px',
+														height: '20px',
+														cursor: 'pointer',
+														accentColor: '#374151'
+													}}
 												/>
 											</td>
 											{/* <td>

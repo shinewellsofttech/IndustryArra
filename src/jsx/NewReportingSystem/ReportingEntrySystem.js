@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
-import { Row, Col, Card, CardHeader, CardBody, Modal, ModalHeader, ModalBody, ModalFooter, Button, Table, Input } from 'reactstrap';
+import { Row, Col, Card, CardHeader, CardBody, Modal, ModalHeader, ModalBody, ModalFooter, Button, Table, Input, Spinner } from 'reactstrap';
 import { useDispatch } from 'react-redux';
+import { useNavigate } from 'react-router-dom';
 import { Pie } from 'react-chartjs-2';
 import { Chart as ChartJS, ArcElement, Tooltip, Legend } from 'chart.js';
 import { Fn_AddEditData, Fn_FillListData, Fn_GetReport } from '../../store/Functions';
@@ -10,6 +11,8 @@ ChartJS.register(ArcElement, Tooltip, Legend);
 
 const ReportingEntrySystem = () => {
   const dispatch = useDispatch();
+  const navigate = useNavigate();
+  const [isLoading, setIsLoading] = useState(false);
   const [selectedCard, setSelectedCard] = useState(null);
   const [state, setState] = useState();
   const [searchQuery, setSearchQuery] = useState('');
@@ -19,6 +22,7 @@ const ReportingEntrySystem = () => {
   const [showMachineModal, setShowMachineModal] = useState(false);
   const [showComponentModal, setShowComponentModal] = useState(false);
   const [showSequenceModal, setShowSequenceModal] = useState(false);
+  const [selectedSequenceItem, setSelectedSequenceItem] = useState(null);
   const [selectedDepartment, setSelectedDepartment] = useState(null);
   const [editedItems, setEditedItems] = useState({});
   const API_URL_ByStatus = `${API_WEB_URLS.MASTER}/0/token/NewReportingByStatus`;
@@ -32,101 +36,252 @@ const ReportingEntrySystem = () => {
     { id: 3, title: 'Done', color: '#8b5cf6', icon: 'fa-check-circle' }
   ];
 
-  const handleCardClick = async (card) => {
-    setSelectedCard(card.id);
-    setSearchQuery('');
-    console.log(`Card clicked: ${card.title}`);
+  const reloadData = async () => {
+    if (selectedCard) {
+      await Fn_FillListData(dispatch, setState, "ContainerArray", `${API_URL_ByStatus}/Id/${selectedCard}`);
+    }
+    if (selectedContainer) {
+      await Fn_FillListData(dispatch, setState, "DepartmentArray", `${API_URL_ByContainer}/Id/${selectedContainer.ContainerMasterId}`);
+    }
+    if (selectedDepartment) {
+      if (selectedDepartment.DepartmentId === 1) {
+        await Fn_FillListData(dispatch, setState, "MachineDepartmentData", `${API_URL_ByDepartment1}/Id/${selectedDepartment.F_ContainerMaster}`);
+      } else {
+        const vformData = new FormData();
+        vformData.append('F_ContainerMaster', selectedContainer?.ContainerMasterId || 0);
+        vformData.append('DepartmentId', selectedDepartment.DepartmentId);
+        await Fn_GetReport(dispatch, setState, "DepartmentWiseData", 'GetTransferDataByDepartment/0/token', { arguList: { id: 0, formData: vformData } }, true);
+      }
+    }
+  };
 
-    const ContainerArray = await Fn_FillListData(dispatch, setState, "ContainerArray", `${API_URL_ByStatus}/Id/${card.id}`);
-    // Apna logic yahan add kar sakte ho
+  const handleCardClick = async (card) => {
+    setIsLoading(true);
+    try {
+      setSelectedCard(card.id);
+      setSearchQuery('');
+      console.log(`Card clicked: ${card.title}`);
+      await Fn_FillListData(dispatch, setState, "ContainerArray", `${API_URL_ByStatus}/Id/${card.id}`);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleContainerClick = async (container) => {
-    console.log('Container Data:', container);
-    setSelectedContainer(container);
-    setShowModal(true);
-    const DepartmentArray = await Fn_FillListData(dispatch, setState, "DepartmentArray", `${API_URL_ByContainer}/Id/${container.ContainerMasterId}`);
+    setIsLoading(true);
+    try {
+      console.log('Container Data:', container);
+      setSelectedContainer(container);
+      setShowModal(true);
+      await Fn_FillListData(dispatch, setState, "DepartmentArray", `${API_URL_ByContainer}/Id/${container.ContainerMasterId}`);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleDepartmentClick = async (department) => {
-    console.log('Department Data:', department);
+    setIsLoading(true);
+    try {
+      console.log('Department Data:', department);
 
-    // Handle DepartmentId = 1 separately
-    if (department.DepartmentId === 1) {
-      handleSpecialDepartment(department);
-      return;
+      // Handle DepartmentId = 1 separately
+      if (department.DepartmentId === 1) {
+        await handleSpecialDepartment(department);
+        return;
+      }
+
+      setSelectedDepartment(department);
+      const vformData = new FormData();
+      vformData.append('F_ContainerMaster', selectedContainer.ContainerMasterId);
+      vformData.append('DepartmentId', department.DepartmentId);
+      await Fn_GetReport(
+        dispatch,
+        setState,
+        "DepartmentWiseData",
+        'GetTransferDataByDepartment/0/token',
+        { arguList: { id: 0, formData: vformData } },
+        true
+      );
+      setShowDetailsModal(true);
+    } finally {
+      setIsLoading(false);
     }
-
-    setSelectedDepartment(department);
-    const vformData = new FormData();
-    vformData.append('F_ContainerMaster', selectedContainer.ContainerMasterId);
-    vformData.append('DepartmentId', department.DepartmentId);
-    const DepartmentWiseDataArray = await Fn_GetReport(
-      dispatch,
-      setState,
-      "DepartmentWiseData",
-      'GetTransferDataByDepartment/0/token',
-      { arguList: { id: 0, formData: vformData } },
-      true
-    );
-    setShowDetailsModal(true);
   };
 
   const handleSpecialDepartment = async (department) => {
     console.log('Special Department Handling for DepartmentId:', department.DepartmentId);
     console.log('Department Details:', department);
     setSelectedDepartment(department);
-    const MachineDepartmentDataArray = await Fn_FillListData(dispatch, setState, "MachineDepartmentData", `${API_URL_ByDepartment1}/Id/${department.F_ContainerMaster}`);
-    console.log('Machine Department Data:', MachineDepartmentDataArray);
+    await Fn_FillListData(dispatch, setState, "MachineDepartmentData", `${API_URL_ByDepartment1}/Id/${department.F_ContainerMaster}`);
     setShowMachineModal(true);
   };
 
   const handleOpenMachineItem = async (item) => {
-    console.log('Machine Department Item Opened:', item);
-    console.log('Item Details:', {
-      Id: item.Id,
-      ItemCode: item.ItemCode,
-      ItemName: item.ItemName,
-      Quantity: item.Quantity,
-      ContractNo: item.ContractNo,
-      F_ContainerMaster: item.F_ContainerMaster,
-      F_ItemMaster: item.F_ItemMaster,
-      F_ContainerMasterL: item.F_ContainerMasterL,
-      DateOfCreation: item.DateOfCreation,
-      LastUpdateOn: item.LastUpdateOn
-    });
-    const ComponentsDataArray = await Fn_FillListData(dispatch, setState, "ComponentDetailsData", `${API_URL_ByTransferComponent}/Id/${item.Id}`);
-    setShowComponentModal(true);
+    setIsLoading(true);
+    try {
+      console.log('Machine Department Item Opened:', item);
+      console.log('Item Details:', {
+        Id: item.Id,
+        ItemCode: item.ItemCode,
+        ItemName: item.ItemName,
+        Quantity: item.Quantity,
+        ContractNo: item.ContractNo,
+        F_ContainerMaster: item.F_ContainerMaster,
+        F_ItemMaster: item.F_ItemMaster,
+        F_ContainerMasterL: item.F_ContainerMasterL,
+        DateOfCreation: item.DateOfCreation,
+        LastUpdateOn: item.LastUpdateOn
+      });
+      await Fn_FillListData(dispatch, setState, "ComponentDetailsData", `${API_URL_ByTransferComponent}/Id/${item.Id}`);
+      setShowComponentModal(true);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleSequenceClick = async (item) => {
-    console.log("Sequence button clicked for item:", item);
-    const ComponentsMachineArray = await Fn_FillListData(dispatch, setState, "ComponentMachineData", `${API_URL_ByTransferMachine}/Id/${item.F_TransferComponentH}`);
-    setShowSequenceModal(true);
+    setIsLoading(true);
+    try {
+      console.log("Sequence button clicked for item:", item);
+      setSelectedSequenceItem(item);
+      await Fn_FillListData(dispatch, setState, "ComponentMachineData", `${API_URL_ByTransferMachine}/Id/${item.Id}`);
+      setShowSequenceModal(true);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
-  const handleMachineDateChange = (id, field, value) => {
-    setState(prevState => ({
-      ...prevState,
-      ComponentMachineData: prevState.ComponentMachineData.map(m =>
-        m.Id === id ? { ...m, [field]: value } : m
-      )
-    }));
-    console.log('Machine date changed:', { id, field, value });
+  const handleMachineDateChange = async (id, field, value) => {
+    setIsLoading(true);
+    try {
+      setState(prevState => ({
+        ...prevState,
+        ComponentMachineData: prevState.ComponentMachineData.map(m =>
+          m.Id == id ? { ...m, [field]: value } : m
+        )
+      }));
+      const changedMachine = state?.ComponentMachineData?.find(m => m.Id == id);
+      console.log('Machine Date Changed (Sequence):', { 
+        id, 
+        field, 
+        value, 
+        relatedData: changedMachine,
+        parentRowData: selectedSequenceItem
+      });
+      const ssmsValue = value ? value + ':00' : '';
+      const formData = new FormData();
+      formData.append('Id', id);
+      formData.append('Type', field =='StartDate' ? 1 : 2);
+      formData.append('NewDate', ssmsValue);
+      formData.append('F_TransferComponentsL', selectedSequenceItem?.Id);
+      
+      if (value) {
+        await Fn_AddEditData(
+          dispatch,
+          setState,
+          { arguList: { id: 0, formData } },
+          'UpdateTransferDate/0/token',
+          true,
+          "memberid",
+          navigate,
+          "#"
+        );
+        await reloadData();
+      }
+    } finally {
+      setIsLoading(false);
+    }
   };
 
-  const handleComponentDateChange = (id, field, value) => {
-    setState(prevState => ({
-      ...prevState,
-      ComponentDetailsData: prevState.ComponentDetailsData.map(item =>
-        item.Id === id ? { ...item, [field]: value } : item
-      )
-    }));
+  const handleWoodIssueDateChange = async (id, field, value) => {
+    setIsLoading(true);
+    try {
+      setState(prevState => ({
+        ...prevState,
+        ComponentDetailsData: prevState.ComponentDetailsData.map(item =>
+          item.Id == id ? { ...item, [field]: value } : item
+        )
+      }));
+      const changedItem = state?.ComponentDetailsData?.find(item => item.Id == id);
+      console.log('Wood Issue Date Changed:', { id, field, value, relatedData: changedItem });
+      const ssmsValue = value ? (value.includes('T') ? value + ':00' : value + 'T00:00:00') : '';
+      let API_URL = '';
+      if (field == 'WoodIssueStartDate') {
+        API_URL = `${API_WEB_URLS.MASTER}/0/token/UpdateWoodIssueStartDate/${ssmsValue}/${id}`;
+      } else {
+        API_URL = `${API_WEB_URLS.MASTER}/0/token/UpdateWoodIssueEndDate/${ssmsValue}/${id}`;
+      }
+      if (value) {
+        await Fn_FillListData(dispatch, setState, "nothing", API_URL, {}); 
+        await reloadData();
+      }
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleStorageDateChange = async (id, field, value) => {
+    setIsLoading(true);
+    try {
+      setState(prevState => ({
+        ...prevState,
+        ComponentDetailsData: prevState.ComponentDetailsData.map(item =>
+          item.Id == id ? { ...item, [field]: value } : item
+        )
+      }));
+      const changedItem = state?.ComponentDetailsData?.find(item => item.Id == id);
+      console.log('Storage Date Changed:', { id, field, value, relatedData: changedItem });
+      const ssmsValue = value ? (value.includes('T') ? value + ':00' : value + 'T00:00:00') : '';
+      let API_URL = '';
+      if (field == 'StorageStartDate') {
+        API_URL = `${API_WEB_URLS.MASTER}/0/token/UpdateStorageStartDate/${ssmsValue}/${id}`;
+      } else {
+        API_URL = `${API_WEB_URLS.MASTER}/0/token/UpdateStorageEndDate/${ssmsValue}/${id}`;
+      }
+      if (value) {
+        await Fn_FillListData(dispatch, setState, "nothing", API_URL, {});
+        await reloadData();
+      }
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleSandingDateChange = async (id, field, value) => {
+    setIsLoading(true);
+    try {
+      setState(prevState => ({
+        ...prevState,
+        ComponentDetailsData: prevState.ComponentDetailsData.map(item =>
+          item.Id == id ? { ...item, [field]: value } : item
+        )
+      }));
+      const changedItem = state?.ComponentDetailsData?.find(item => item.Id == id);
+      console.log('Sanding Date Changed:', { id, field, value, relatedData: changedItem });
+      const ssmsValue = value ? value + ':00' : '';
+      let API_URL = '';
+      if (field == 'SandingStartDate') {
+        API_URL = `${API_WEB_URLS.MASTER}/0/token/UpdateSandingStartDate/${ssmsValue}/${id}`;
+      } else {
+        API_URL = `${API_WEB_URLS.MASTER}/0/token/UpdateSandingEndDate/${ssmsValue}/${id}`;
+      }
+      if (value) {
+        await Fn_FillListData(dispatch, setState, "nothing", API_URL, {});
+        await reloadData();
+      }
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const formatDateTime = (dateString) => {
     if (!dateString) return '';
     return dateString.substring(0, 16);
+  };
+
+  const formatDateOnly = (dateString) => {
+    if (!dateString) return '';
+    return dateString.substring(0, 10);
   };
 
   const displayTextDate = (dateString) => {
@@ -145,22 +300,24 @@ const ReportingEntrySystem = () => {
   };
 
   const handleSaveItem = async (item) => {
-    const updatedItem = {
-      ...item,
-      ...editedItems[item.Id]
-    };
-    console.log('Save Item Data:', updatedItem);
-
-    // Create FormData with required parameters
-    const vFormData = new FormData();
-    vFormData.append('F_ContainerMaster', updatedItem.F_ContainerMaster);
-    vFormData.append('F_ContainerMasterL', updatedItem.F_ContainerMasterL);
-    vFormData.append('StartDate', updatedItem.StartDate || '');
-    vFormData.append('EndDate', updatedItem.EndDate || '');
-    vFormData.append('ReportQty', updatedItem.ReportQty);
-    vFormData.append('DepartmentId', selectedDepartment?.DepartmentId);
-
+    setIsLoading(true);
     try {
+      const key = item.F_ContainerMasterL || item.Id;
+      const updatedItem = {
+        ...item,
+        ...editedItems[key]
+      };
+      console.log('Save Item Data:', updatedItem);
+
+      // Create FormData with required parameters
+      const vFormData = new FormData();
+      vFormData.append('F_ContainerMaster', updatedItem.F_ContainerMaster);
+      vFormData.append('F_ContainerMasterL', updatedItem.F_ContainerMasterL);
+      vFormData.append('StartDate', updatedItem.StartDate || '');
+      vFormData.append('EndDate', updatedItem.EndDate || '');
+      vFormData.append('ReportQty', updatedItem.ReportQty);
+      vFormData.append('DepartmentId', selectedDepartment?.DepartmentId);
+
       // Make API call to save item data
       await Fn_AddEditData(
         dispatch,
@@ -173,19 +330,23 @@ const ReportingEntrySystem = () => {
       // Clear the edited data for this item after save
       setEditedItems(prev => {
         const updated = { ...prev };
-        delete updated[item.Id];
+        delete updated[key];
         return updated;
       });
+      await reloadData();
       alert('Item data saved successfully!');
     } catch (error) {
       console.error('Error saving item:', error);
       alert('Error saving item data: ' + error.message);
+    } finally {
+      setIsLoading(false);
     }
   };
 
   const getItemValue = (item, field) => {
-    if (editedItems[item.Id] && editedItems[item.Id][field] !== undefined) {
-      return editedItems[item.Id][field];
+    const key = item.F_ContainerMasterL || item.Id;
+    if (editedItems[key] && editedItems[key][field] !== undefined) {
+      return editedItems[key][field];
     }
     return item[field];
   };
@@ -524,7 +685,7 @@ const ReportingEntrySystem = () => {
             {state?.DepartmentWiseData && state?.DepartmentWiseData.length > 0 ? (
               state?.DepartmentWiseData.map((item) => (
                 <div
-                  key={item.Id}
+                  key={item.F_ContainerMasterL || item.Id}
                   style={{
                     padding: '15px',
                     backgroundColor: '#fff',
@@ -620,7 +781,8 @@ const ReportingEntrySystem = () => {
                         <input
                           type="number"
                           value={getItemValue(item, 'ReportQty')}
-                          onChange={(e) => handleDateChange(item.Id, 'ReportQty', parseFloat(e.target.value) || 0)}
+                          onChange={(e) => handleDateChange(item.F_ContainerMasterL || item.Id, 'ReportQty', parseFloat(e.target.value) || 0)}
+                          onFocus={(e) => e.target.select()}
                           style={{
                             width: '100%',
                             padding: '6px 8px',
@@ -641,7 +803,7 @@ const ReportingEntrySystem = () => {
                         <input
                           type="date"
                           value={getItemValue(item, 'StartDate') ? getItemValue(item, 'StartDate').split('T')[0] : ''}
-                          onChange={(e) => handleDateChange(item.Id, 'StartDate', e.target.value)}
+                          onChange={(e) => handleDateChange(item.F_ContainerMasterL || item.Id, 'StartDate', e.target.value)}
                           style={{
                             width: '100%',
                             padding: '6px 8px',
@@ -659,7 +821,7 @@ const ReportingEntrySystem = () => {
                         <input
                           type="date"
                           value={getItemValue(item, 'EndDate') ? getItemValue(item, 'EndDate').split('T')[0] : ''}
-                          onChange={(e) => handleDateChange(item.Id, 'EndDate', e.target.value)}
+                          onChange={(e) => handleDateChange(item.F_ContainerMasterL || item.Id, 'EndDate', e.target.value)}
                           style={{
                             width: '100%',
                             padding: '6px 8px',
@@ -803,8 +965,8 @@ const ReportingEntrySystem = () => {
                 </div>
               ))
             ) : (
-              <div style={{ gridColumn: '1 / -1', textAlign: 'center', color: '#6c757d', padding: '30px' }}>
-                <p>No machine department items found</p>
+              <div style={{ gridColumn: '1 / -1', textAlign: 'center', color: '#dc3545', padding: '30px', fontWeight: 'bold' }}>
+                <p>Create jobCard first to Start Reporting</p>
               </div>
             )}
           </div>
@@ -855,18 +1017,18 @@ const ReportingEntrySystem = () => {
                     {/* Wood Issue */}
                     <td>
                       <Input
-                        type="datetime-local"
+                        type="date"
                         bsSize="sm"
-                        value={formatDateTime(comp.WoodIssueStartDate)}
-                        onChange={(e) => handleComponentDateChange(comp.Id, 'WoodIssueStartDate', e.target.value)}
+                        value={formatDateOnly(comp.WoodIssueStartDate)}
+                        onChange={(e) => handleWoodIssueDateChange(comp.Id, 'WoodIssueStartDate', e.target.value)}
                       />
                     </td>
                     <td>
                       <Input
-                        type="datetime-local"
+                        type="date"
                         bsSize="sm"
-                        value={formatDateTime(comp.WoodIssueEndDate)}
-                        onChange={(e) => handleComponentDateChange(comp.Id, 'WoodIssueEndDate', e.target.value)}
+                        value={formatDateOnly(comp.WoodIssueEndDate)}
+                        onChange={(e) => handleWoodIssueDateChange(comp.Id, 'WoodIssueEndDate', e.target.value)}
                       />
                     </td>
 
@@ -882,18 +1044,18 @@ const ReportingEntrySystem = () => {
                     {/* Storage */}
                     <td>
                       <Input
-                        type="datetime-local"
+                        type="date"
                         bsSize="sm"
-                        value={formatDateTime(comp.StorageStartDate)}
-                        onChange={(e) => handleComponentDateChange(comp.Id, 'StorageStartDate', e.target.value)}
+                        value={formatDateOnly(comp.StorageStartDate)}
+                        onChange={(e) => handleStorageDateChange(comp.Id, 'StorageStartDate', e.target.value)}
                       />
                     </td>
                     <td>
                       <Input
-                        type="datetime-local"
+                        type="date"
                         bsSize="sm"
-                        value={formatDateTime(comp.StorageEndDate)}
-                        onChange={(e) => handleComponentDateChange(comp.Id, 'StorageEndDate', e.target.value)}
+                        value={formatDateOnly(comp.StorageEndDate)}
+                        onChange={(e) => handleStorageDateChange(comp.Id, 'StorageEndDate', e.target.value)}
                       />
                     </td>
 
@@ -903,7 +1065,7 @@ const ReportingEntrySystem = () => {
                         type="datetime-local"
                         bsSize="sm"
                         value={formatDateTime(comp.SandingStartDate)}
-                        onChange={(e) => handleComponentDateChange(comp.Id, 'SandingStartDate', e.target.value)}
+                        onChange={(e) => handleSandingDateChange(comp.Id, 'SandingStartDate', e.target.value)}
                       />
                     </td>
                     <td>
@@ -911,7 +1073,7 @@ const ReportingEntrySystem = () => {
                         type="datetime-local"
                         bsSize="sm"
                         value={formatDateTime(comp.SandingEndDate)}
-                        onChange={(e) => handleComponentDateChange(comp.Id, 'SandingEndDate', e.target.value)}
+                        onChange={(e) => handleSandingDateChange(comp.Id, 'SandingEndDate', e.target.value)}
                       />
                     </td>
                   </tr>
@@ -930,6 +1092,72 @@ const ReportingEntrySystem = () => {
           </Button>
         </ModalFooter>
       </Modal>
+
+      {/* Sequence Modal */}
+      <Modal isOpen={showSequenceModal} toggle={() => setShowSequenceModal(false)} size="lg">
+        <ModalHeader toggle={() => setShowSequenceModal(false)}>
+          <i className="fas fa-list-ol me-2"></i>
+          Sequence Details
+        </ModalHeader>
+        <ModalBody style={{ overflowX: 'auto' }}>
+          <Table bordered hover responsive size="sm" className="text-center align-middle">
+            <thead className="table-light">
+              <tr>
+                <th>Machine Name</th>
+                <th>Sequence</th>
+                <th>Start Date</th>
+                <th>End Date</th>
+              </tr>
+            </thead>
+            <tbody>
+              {state?.ComponentMachineData && state?.ComponentMachineData.length > 0 ? (
+                state?.ComponentMachineData.map((machine) => (
+                  <tr key={machine.Id}>
+                    <td className="text-start">{machine.MachineName}</td>
+                    <td>{machine.Sequence}</td>
+                    <td>
+                      <Input
+                        type="datetime-local"
+                        bsSize="sm"
+                        value={formatDateTime(machine.StartDate)}
+                        onChange={(e) => handleMachineDateChange(machine.Id, 'StartDate', e.target.value)}
+                      />
+                    </td>
+                    <td>
+                      <Input
+                        type="datetime-local"
+                        bsSize="sm"
+                        value={formatDateTime(machine.EndDate)}
+                        onChange={(e) => handleMachineDateChange(machine.Id, 'EndDate', e.target.value)}
+                      />
+                    </td>
+                  </tr>
+                ))
+              ) : (
+                <tr>
+                  <td colSpan="4" className="text-center">No Data Available</td>
+                </tr>
+              )}
+            </tbody>
+          </Table>
+        </ModalBody>
+        <ModalFooter>
+          <Button color="secondary" onClick={() => setShowSequenceModal(false)}>
+            Close
+          </Button>
+        </ModalFooter>
+      </Modal>
+
+      {/* Global Loading Overlay */}
+      {isLoading && (
+        <div style={{
+          position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh',
+          backgroundColor: 'rgba(255, 255, 255, 0.7)', zIndex: 9999,
+          display: 'flex', justifyContent: 'center', alignItems: 'center'
+        }}>
+          <Spinner color="primary" style={{ width: '3rem', height: '3rem' }} />
+        </div>
+      )}
     </Row>
   );
 };

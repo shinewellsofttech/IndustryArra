@@ -6,6 +6,7 @@ import { useDispatch } from "react-redux";
 import { useNavigate } from "react-router-dom";
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
+import { generateCode128SVG, getBarcodeValue } from "./BarcodeHelper";
 
 const MetalJobCard = ({F_ItemMaster, F_CategoryMaster, F_ContainerMaster, F_ContainerMasterL}) => {
   const [State, setState] = useState({
@@ -307,7 +308,7 @@ const fetchData = async () => {
             }
 
             .header {
-              height: 10mm;
+              height: 11mm;
               text-align: center;
               font-size: 14px;
               font-weight: bold;
@@ -529,7 +530,12 @@ const fetchData = async () => {
           const machineDetails = getMachineDetails(jobCard.ID);
           return `
             <div class="job-card" data-machine-rows="${machineDetails.length}">
-              <div class="header">AARA DESIGN</div>
+              <div class="header" style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #000000; padding-bottom: 1px; height: 11mm; margin-bottom: 2mm;">
+                <span style="font-family: 'Copperplate Gothic Light'; font-size: 16px; font-weight: bold;">AARA DESIGN</span>
+                <div style="display: flex; align-items: center; padding-right: 2mm;">
+                  ${generateCode128SVG(getBarcodeValue(jobCard, F_ContainerMasterL, F_ItemMaster))}
+                </div>
+              </div>
               
               <table>
                 <tr class="info-row">
@@ -624,7 +630,12 @@ const fetchData = async () => {
 
             <!-- Page 2 -->
             <div class="job-card page-break-before">
-              <div class="header">AARA DESIGN</div>
+              <div class="header" style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #000000; padding-bottom: 1px; height: 11mm; margin-bottom: 2mm;">
+                <span style="font-family: 'Copperplate Gothic Light'; font-size: 16px; font-weight: bold;">AARA DESIGN</span>
+                <div style="display: flex; align-items: center; padding-right: 2mm;">
+                  ${generateCode128SVG(getBarcodeValue(jobCard, F_ContainerMasterL, F_ItemMaster))}
+                </div>
+              </div>
               
               <!-- Component Name - Centered Sub-header -->
               <table>
@@ -1012,8 +1023,8 @@ const fetchData = async () => {
             <span style={{ fontWeight: 600 }}>Select this Job Card</span>
           </div>
           {/* Header Row - AARA DESIGN */}
-          <Row className="g-0">
-            <Col xs={12} style={{
+          <Row className="g-0 align-items-center">
+            <Col xs={8} style={{
               borderBottom: "1px solid #000000",
               padding: "10px",
               textAlign: "center"
@@ -1022,6 +1033,18 @@ const fetchData = async () => {
                 fontWeight: "700",
                 fontSize: "1.25rem"
               }}>AARA DESIGN</span>
+            </Col>
+            <Col xs={4} style={{
+              borderBottom: "1px solid #000000",
+              borderLeft: "1px solid #000000",
+              padding: "4px",
+              display: "flex",
+              justifyContent: "center",
+              alignItems: "center",
+              backgroundColor: "#f8f9fa",
+              minHeight: "44px"
+            }}>
+              <div dangerouslySetInnerHTML={{ __html: generateCode128SVG(getBarcodeValue(jobCard, F_ContainerMasterL, F_ItemMaster)) }} />
             </Col>
           </Row>
 
@@ -1599,8 +1622,8 @@ const fetchData = async () => {
           }}
         >
           {/* Header Row - AARA DESIGN */}
-          <Row className="g-0">
-            <Col xs={12} style={{
+          <Row className="g-0 align-items-center">
+            <Col xs={8} style={{
               borderBottom: "1px solid #000000",
               padding: "10px",
               textAlign: "center"
@@ -1609,6 +1632,18 @@ const fetchData = async () => {
                 fontWeight: "700",
                 fontSize: "1.25rem"
               }}>AARA DESIGN</span>
+            </Col>
+            <Col xs={4} style={{
+              borderBottom: "1px solid #000000",
+              borderLeft: "1px solid #000000",
+              padding: "4px",
+              display: "flex",
+              justifyContent: "center",
+              alignItems: "center",
+              backgroundColor: "#f8f9fa",
+              minHeight: "44px"
+            }}>
+              <div dangerouslySetInnerHTML={{ __html: generateCode128SVG(getBarcodeValue(jobCard, F_ContainerMasterL, F_ItemMaster)) }} />
             </Col>
           </Row>
 

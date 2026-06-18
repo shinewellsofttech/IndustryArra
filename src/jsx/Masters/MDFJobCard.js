@@ -13,6 +13,7 @@ import html2canvas from "html2canvas";
 import ComponentDrawing from "./ComponentDrawing";
 import { toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
+import { generateCode128SVG, getBarcodeValue } from "./BarcodeHelper";
 
 const MDFJobCard = ({
   F_ItemMaster,
@@ -444,7 +445,7 @@ const MDFJobCard = ({
             }
 
             .header {
-              height: 10mm;
+              height: 11mm;
               text-align: center;
               font-size: 14px;
               font-weight: bold;
@@ -663,7 +664,12 @@ const MDFJobCard = ({
             const machineDetails = getMachineDetails(jobCard.ID);
             return `
             <div class="job-card" data-machine-rows="${machineDetails.length}">
-              <div class="header">MDF JOB CARD</div>
+              <div class="header" style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #000000; padding-bottom: 1px; height: 11mm; margin-bottom: 2mm;">
+                <span style="font-size: 16px; font-weight: bold;">MDF JOB CARD</span>
+                <div style="display: flex; align-items: center; padding-right: 2mm;">
+                  ${generateCode128SVG(getBarcodeValue(jobCard, F_ContainerMasterL, F_ItemMaster))}
+                </div>
+              </div>
               
               <table>
                 <tr class="info-row">
@@ -1104,12 +1110,15 @@ const MDFJobCard = ({
             {/* Header - MDF JOB CARD */}
             <Row className="g-0">
               <Col
-                xs={8}
+                xs={5}
                 style={{
                   borderRight: "1px solid #000000",
                   borderBottom: "1px solid #000000",
                   padding: "10px",
                   textAlign: "center",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
                 }}
               >
                 <span
@@ -1120,6 +1129,20 @@ const MDFJobCard = ({
                 >
                   MDF JOB CARD
                 </span>
+              </Col>
+              <Col
+                xs={3}
+                style={{
+                  borderRight: "1px solid #000000",
+                  borderBottom: "1px solid #000000",
+                  padding: "4px",
+                  display: "flex",
+                  justifyContent: "center",
+                  alignItems: "center",
+                  backgroundColor: "#f8f9fa",
+                }}
+              >
+                <div dangerouslySetInnerHTML={{ __html: generateCode128SVG(getBarcodeValue(jobCard, F_ContainerMasterL, F_ItemMaster)) }} />
               </Col>
               <Col
                 xs={4}
