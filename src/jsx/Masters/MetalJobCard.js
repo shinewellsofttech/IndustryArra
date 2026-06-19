@@ -6,7 +6,7 @@ import { useDispatch } from "react-redux";
 import { useNavigate } from "react-router-dom";
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
-import { generateCode128SVG, getBarcodeValue } from "./BarcodeHelper";
+import { generateQRCodeSVG, getBarcodeValue } from "./BarcodeHelper";
 
 const MetalJobCard = ({F_ItemMaster, F_CategoryMaster, F_ContainerMaster, F_ContainerMasterL}) => {
   const [State, setState] = useState({
@@ -533,7 +533,7 @@ const fetchData = async () => {
               <div class="header" style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #000000; padding-bottom: 1px; height: 11mm; margin-bottom: 2mm;">
                 <span style="font-family: 'Copperplate Gothic Light'; font-size: 16px; font-weight: bold;">AARA DESIGN</span>
                 <div style="display: flex; align-items: center; padding-right: 2mm;">
-                  ${generateCode128SVG(getBarcodeValue(jobCard, F_ContainerMasterL, F_ItemMaster))}
+                  ${generateQRCodeSVG(getBarcodeValue(jobCard, F_ContainerMasterL, F_ItemMaster))}
                 </div>
               </div>
               
@@ -633,7 +633,7 @@ const fetchData = async () => {
               <div class="header" style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #000000; padding-bottom: 1px; height: 11mm; margin-bottom: 2mm;">
                 <span style="font-family: 'Copperplate Gothic Light'; font-size: 16px; font-weight: bold;">AARA DESIGN</span>
                 <div style="display: flex; align-items: center; padding-right: 2mm;">
-                  ${generateCode128SVG(getBarcodeValue(jobCard, F_ContainerMasterL, F_ItemMaster))}
+                  ${generateQRCodeSVG(getBarcodeValue(jobCard, F_ContainerMasterL, F_ItemMaster))}
                 </div>
               </div>
               
@@ -1044,7 +1044,7 @@ const fetchData = async () => {
               backgroundColor: "#f8f9fa",
               minHeight: "44px"
             }}>
-              <div dangerouslySetInnerHTML={{ __html: generateCode128SVG(getBarcodeValue(jobCard, F_ContainerMasterL, F_ItemMaster)) }} />
+              <div dangerouslySetInnerHTML={{ __html: generateQRCodeSVG(getBarcodeValue(jobCard, F_ContainerMasterL, F_ItemMaster)) }} />
             </Col>
           </Row>
 
@@ -1643,7 +1643,7 @@ const fetchData = async () => {
               backgroundColor: "#f8f9fa",
               minHeight: "44px"
             }}>
-              <div dangerouslySetInnerHTML={{ __html: generateCode128SVG(getBarcodeValue(jobCard, F_ContainerMasterL, F_ItemMaster)) }} />
+              <div dangerouslySetInnerHTML={{ __html: generateQRCodeSVG(getBarcodeValue(jobCard, F_ContainerMasterL, F_ItemMaster)) }} />
             </Col>
           </Row>
 

@@ -74,6 +74,10 @@ const getMenuContent = () => {
         //     title: 'WOOD REJECTION JOB CARDS',
         //     to: 'ApproveJobCards',
         // },
+        {
+            title: 'QR SCANNER',
+            to: 'QRScanner',
+        },
     ];
 
     // Admin reporting items

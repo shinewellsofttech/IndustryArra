@@ -13,7 +13,7 @@ import html2canvas from "html2canvas";
 import ComponentDrawing from "./ComponentDrawing";
 import { toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
-import { generateCode128SVG, getBarcodeValue } from "./BarcodeHelper";
+import { generateQRCodeSVG, getBarcodeValue } from "./BarcodeHelper";
 
 const MDFJobCard = ({
   F_ItemMaster,
@@ -667,7 +667,7 @@ const MDFJobCard = ({
               <div class="header" style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #000000; padding-bottom: 1px; height: 11mm; margin-bottom: 2mm;">
                 <span style="font-size: 16px; font-weight: bold;">MDF JOB CARD</span>
                 <div style="display: flex; align-items: center; padding-right: 2mm;">
-                  ${generateCode128SVG(getBarcodeValue(jobCard, F_ContainerMasterL, F_ItemMaster))}
+                  ${generateQRCodeSVG(getBarcodeValue(jobCard, F_ContainerMasterL, F_ItemMaster))}
                 </div>
               </div>
               
@@ -1142,7 +1142,7 @@ const MDFJobCard = ({
                   backgroundColor: "#f8f9fa",
                 }}
               >
-                <div dangerouslySetInnerHTML={{ __html: generateCode128SVG(getBarcodeValue(jobCard, F_ContainerMasterL, F_ItemMaster)) }} />
+                <div dangerouslySetInnerHTML={{ __html: generateQRCodeSVG(getBarcodeValue(jobCard, F_ContainerMasterL, F_ItemMaster)) }} />
               </Col>
               <Col
                 xs={4}

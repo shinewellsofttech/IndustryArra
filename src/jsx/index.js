@@ -145,6 +145,7 @@ import PageList_MachineMaster from "./Masters/PageList_MachineMaster";
 import AddEdit_MachineMaster from "./Masters/AddEdit_MachineMaster";
 import TotalItemSummary from "./Masters/TotalItemSummary";
 import ReportingEntrySystem from "./NewReportingSystem/ReportingEntrySystem";
+import QRScanner from "./Masters/QRScanner";
 
 const Markup = () => {
   const { menuToggle } = useContext(ThemeContext);
@@ -283,6 +284,7 @@ const Markup = () => {
     { url: "WoodComponentReport", component: <WoodComponentReport/> },
     { url: "ContainerMasterReport", component: <ContainerMasterReport/> },
     { url: "ReportingEntrySystem", component: <ReportingEntrySystem/> },
+    { url: "QRScanner", component: <QRScanner/> },
 
   ];
   let path = window.location.pathname;

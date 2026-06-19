@@ -1,4 +1,24 @@
 import JsBarcode from "jsbarcode";
+import qrcode from "qrcode-generator";
+
+export const generateQRCodeSVG = (text) => {
+  if (!text) return "";
+  try {
+    // 0 = automatic type selection (auto-fit based on string length)
+    // 'M' = medium error correction (approx 15% recovery)
+    const qr = qrcode(0, "M");
+    qr.addData(text);
+    qr.make();
+    
+    // createSvgTag parameters: (cellSize, margin)
+    // cellSize = 1.5 gives a highly detailed yet compact size
+    // margin = 0 removes default extra whitespace
+    return qr.createSvgTag(1.5, 0);
+  } catch (error) {
+    console.error("Error generating QR code SVG:", error);
+    return "";
+  }
+};
 
 export const generateCode128SVG = (text) => {
   if (!text) return "";
@@ -25,6 +45,7 @@ export const generateCode128SVG = (text) => {
     return "";
   }
 };
+
 
 export const getBarcodeValue = (jobCard, F_ContainerMasterL, F_ItemMaster) => {
   const container = jobCard.F_ContainerMasterL || F_ContainerMasterL || '';

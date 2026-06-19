@@ -9,7 +9,7 @@ import { API_WEB_URLS } from "../../constants/constAPI";
 import { useDispatch } from "react-redux";
 import { useNavigate } from "react-router-dom";
 import ComponentDrawing from "./ComponentDrawing";
-import { generateCode128SVG, getBarcodeValue } from "./BarcodeHelper";
+import { generateQRCodeSVG, getBarcodeValue } from "./BarcodeHelper";
 
 const WoodJobCard = ({
   F_ItemMaster,
@@ -420,7 +420,7 @@ const WoodJobCard = ({
               <div class="header" style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #065f46; padding-bottom: 1px; height: 11mm; margin-bottom: 2mm;">
                 <span style="font-family: 'Copperplate Gothic Light'; font-size: 16px; font-weight: bold;">AARA DESIGN</span>
                 <div style="display: flex; align-items: center; padding-right: 2mm;">
-                  ${generateCode128SVG(getBarcodeValue(jobCard, F_ContainerMasterL, F_ItemMaster))}
+                  ${generateQRCodeSVG(getBarcodeValue(jobCard, F_ContainerMasterL, F_ItemMaster))}
                 </div>
               </div>
               
@@ -554,7 +554,7 @@ const WoodJobCard = ({
               <div class="header" style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #065f46; padding-bottom: 1px; height: 11mm; margin-bottom: 2mm;">
                 <span style="font-family: 'Copperplate Gothic Light'; font-size: 16px; font-weight: bold;">AARA DESIGN</span>
                 <div style="display: flex; align-items: center; padding-right: 2mm;">
-                  ${generateCode128SVG(getBarcodeValue(jobCard, F_ContainerMasterL, F_ItemMaster))}
+                  ${generateQRCodeSVG(getBarcodeValue(jobCard, F_ContainerMasterL, F_ItemMaster))}
                 </div>
               </div>
               
@@ -920,7 +920,7 @@ const WoodJobCard = ({
                     minHeight: "44px"
                   }}
                 >
-                  <div dangerouslySetInnerHTML={{ __html: generateCode128SVG(getBarcodeValue(jobCard, F_ContainerMasterL, F_ItemMaster)) }} />
+                  <div dangerouslySetInnerHTML={{ __html: generateQRCodeSVG(getBarcodeValue(jobCard, F_ContainerMasterL, F_ItemMaster)) }} />
                 </Col>
               </Row>
 
