@@ -533,7 +533,7 @@ const fetchData = async () => {
               <div class="header" style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #000000; padding-bottom: 1px; height: 11mm; margin-bottom: 2mm;">
                 <span style="font-family: 'Copperplate Gothic Light'; font-size: 16px; font-weight: bold;">AARA DESIGN</span>
                 <div style="display: flex; align-items: center; padding-right: 2mm;">
-                  ${generateQRCodeSVG(getBarcodeValue(jobCard, F_ContainerMasterL, F_ItemMaster))}
+                  ${generateQRCodeSVG(getBarcodeValue(jobCard, F_ContainerMasterL, F_ItemMaster, F_CategoryMaster))}
                 </div>
               </div>
               
@@ -633,7 +633,7 @@ const fetchData = async () => {
               <div class="header" style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #000000; padding-bottom: 1px; height: 11mm; margin-bottom: 2mm;">
                 <span style="font-family: 'Copperplate Gothic Light'; font-size: 16px; font-weight: bold;">AARA DESIGN</span>
                 <div style="display: flex; align-items: center; padding-right: 2mm;">
-                  ${generateQRCodeSVG(getBarcodeValue(jobCard, F_ContainerMasterL, F_ItemMaster))}
+                  ${generateQRCodeSVG(getBarcodeValue(jobCard, F_ContainerMasterL, F_ItemMaster, F_CategoryMaster))}
                 </div>
               </div>
               
@@ -1044,7 +1044,7 @@ const fetchData = async () => {
               backgroundColor: "#f8f9fa",
               minHeight: "44px"
             }}>
-              <div dangerouslySetInnerHTML={{ __html: generateQRCodeSVG(getBarcodeValue(jobCard, F_ContainerMasterL, F_ItemMaster)) }} />
+              <div dangerouslySetInnerHTML={{ __html: generateQRCodeSVG(getBarcodeValue(jobCard, F_ContainerMasterL, F_ItemMaster, F_CategoryMaster)) }} />
             </Col>
           </Row>
 
@@ -1440,6 +1440,7 @@ const fetchData = async () => {
                       fontWeight: "700",
                       width: "200px"
                     }}>OPERATOR NAME</th>
+
                   </tr>
                 </thead>
                 <tbody>
@@ -1579,6 +1580,7 @@ const fetchData = async () => {
                           onChange={(e) => handleChange(machine.ID, e)}
                         />
                       </td>
+
                     </tr>
                   ))}
                 </tbody>
@@ -1643,7 +1645,7 @@ const fetchData = async () => {
               backgroundColor: "#f8f9fa",
               minHeight: "44px"
             }}>
-              <div dangerouslySetInnerHTML={{ __html: generateQRCodeSVG(getBarcodeValue(jobCard, F_ContainerMasterL, F_ItemMaster)) }} />
+              <div dangerouslySetInnerHTML={{ __html: generateQRCodeSVG(getBarcodeValue(jobCard, F_ContainerMasterL, F_ItemMaster, F_CategoryMaster)) }} />
             </Col>
           </Row>
 

@@ -667,7 +667,7 @@ const MDFJobCard = ({
               <div class="header" style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #000000; padding-bottom: 1px; height: 11mm; margin-bottom: 2mm;">
                 <span style="font-size: 16px; font-weight: bold;">MDF JOB CARD</span>
                 <div style="display: flex; align-items: center; padding-right: 2mm;">
-                  ${generateQRCodeSVG(getBarcodeValue(jobCard, F_ContainerMasterL, F_ItemMaster))}
+                  ${generateQRCodeSVG(getBarcodeValue(jobCard, F_ContainerMasterL, F_ItemMaster, F_CategoryMaster))}
                 </div>
               </div>
               
@@ -1142,7 +1142,7 @@ const MDFJobCard = ({
                   backgroundColor: "#f8f9fa",
                 }}
               >
-                <div dangerouslySetInnerHTML={{ __html: generateQRCodeSVG(getBarcodeValue(jobCard, F_ContainerMasterL, F_ItemMaster)) }} />
+                <div dangerouslySetInnerHTML={{ __html: generateQRCodeSVG(getBarcodeValue(jobCard, F_ContainerMasterL, F_ItemMaster, F_CategoryMaster)) }} />
               </Col>
               <Col
                 xs={4}
@@ -2076,6 +2076,7 @@ const MDFJobCard = ({
                       >
                         USER NAME
                       </th>
+
                     </tr>
                   </thead>
                   <tbody>
@@ -2223,6 +2224,7 @@ const MDFJobCard = ({
                             onChange={(e) => handleChange(machine.ID, e)}
                           />
                         </td>
+
                       </tr>
                     ))}
                   </tbody>

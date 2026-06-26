@@ -47,9 +47,62 @@ export const generateCode128SVG = (text) => {
 };
 
 
-export const getBarcodeValue = (jobCard, F_ContainerMasterL, F_ItemMaster) => {
+/**
+ * Encodes all 4 core IDs into the QR barcode value using - separator (excluding machine ID).
+ * @param {object} jobCard - The job card object
+ * @param {string|number} F_ContainerMasterL
+ * @param {string|number} F_ItemMaster
+ * @param {string|number} F_CategoryMaster
+ */
+export const getBarcodeValue = (jobCard, F_ContainerMasterL, F_ItemMaster, F_CategoryMaster) => {
   const container = jobCard.F_ContainerMasterL || F_ContainerMasterL || '';
   const item = jobCard.F_ItemMaster || F_ItemMaster || '';
   const component = jobCard.F_ComponentsMaster || '';
-  return `${container}${item}${component}`;
+  const category = F_CategoryMaster || jobCard.F_CategoryMaster || '';
+  const val = `${container}-${item}-${component}-${category}`;
+  console.log("getBarcodeValue generated:", val);
+  return val;
+};
+
+/**
+ * Parses a QR scanned value back into its component IDs.
+ * Supports both new format (- separated) and previous format (| separated).
+ * Supports both 4-part and 5-part values.
+ * @param {string} barcodeValue
+ * @returns {{ F_ContainerMasterL, F_ItemMaster, F_ComponentsMaster, F_CategoryMaster, F_MachineMaster }}
+ */
+export const parseBarcodeValue = (barcodeValue) => {
+  if (!barcodeValue) return null;
+  console.log("parseBarcodeValue parsing:", barcodeValue);
+  
+  // Try splitting by '-' first
+  let parts = barcodeValue.split('-');
+  if (parts.length >= 4) {
+    const parsed = {
+      F_ContainerMasterL: parts[0] || '',
+      F_ItemMaster: parts[1] || '',
+      F_ComponentsMaster: parts[2] || '',
+      F_CategoryMaster: parts[3] || '',
+      F_MachineMaster: parts[4] || '',
+    };
+    console.log("parseBarcodeValue successfully parsed using '-' separator:", parsed);
+    return parsed;
+  }
+  
+  // Fallback to '|' separator
+  parts = barcodeValue.split('|');
+  if (parts.length >= 4) {
+    const parsed = {
+      F_ContainerMasterL: parts[0] || '',
+      F_ItemMaster: parts[1] || '',
+      F_ComponentsMaster: parts[2] || '',
+      F_CategoryMaster: parts[3] || '',
+      F_MachineMaster: parts[4] || '',
+    };
+    console.log("parseBarcodeValue successfully parsed using '|' separator:", parsed);
+    return parsed;
+  }
+  
+  console.warn("parseBarcodeValue: Failed to parse barcodeValue. Expected at least 4 parts separated by '-' or '|'. Got parts:", parts);
+  return null;
 };

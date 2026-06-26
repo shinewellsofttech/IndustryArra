@@ -420,7 +420,7 @@ const WoodJobCard = ({
               <div class="header" style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #065f46; padding-bottom: 1px; height: 11mm; margin-bottom: 2mm;">
                 <span style="font-family: 'Copperplate Gothic Light'; font-size: 16px; font-weight: bold;">AARA DESIGN</span>
                 <div style="display: flex; align-items: center; padding-right: 2mm;">
-                  ${generateQRCodeSVG(getBarcodeValue(jobCard, F_ContainerMasterL, F_ItemMaster))}
+                  ${generateQRCodeSVG(getBarcodeValue(jobCard, F_ContainerMasterL, F_ItemMaster, F_CategoryMaster))}
                 </div>
               </div>
               
@@ -529,16 +529,16 @@ const WoodJobCard = ({
                 </tr>
                 ${machineDetails.map(machine => `
                   <tr>
-                    <td style="height: 9mm; padding: 1.5mm 1mm; vertical-align: middle; text-align: center; font-size: 11px; font-weight: 600;">${machine.MachineNo || ''}</td>
-                    <td style="height: 9mm; padding: 1.5mm 1mm; vertical-align: middle; text-align: center; font-size: 9px;">${machine.Date || ''}</td>
-                    <td style="height: 9mm; padding: 1.5mm 2mm; vertical-align: middle; text-align: left; font-size: 10px; font-weight: 500;">${machine.MachineName || ''}</td>
-                    <td style="height: 9mm; padding: 1.5mm 1mm; vertical-align: middle; text-align: center; font-size: 9px;">${machine.Process || ''}</td>
-                    <td style="height: 9mm; padding: 1.5mm 1mm; vertical-align: middle; text-align: center; font-size: 9px;">${machine.Quantity || ''}</td>
-                    <td style="height: 9mm; padding: 1.5mm 1mm; vertical-align: middle; text-align: center; font-size: 9px;">${machine.Rejection || ''}</td>
-                    <td style="height: 9mm; padding: 1.5mm 1mm; vertical-align: middle; text-align: center; font-size: 9px;">${machine.StartTime || ''}</td>
-                    <td style="height: 9mm; padding: 1.5mm 1mm; vertical-align: middle; text-align: center; font-size: 9px;">${machine.EndTime || ''}</td>
-                    <td style="height: 9mm; padding: 1.5mm 1mm; vertical-align: middle; text-align: center; font-size: 9px;">${machine.AllocatedTime || ''}</td>
-                    <td style="height: 9mm; padding: 1.5mm 1mm; vertical-align: middle; text-align: center; font-size: 9px;">${machine.UserName || ''}</td>
+                    <td style="height: 14mm; padding: 1.5mm 1mm; vertical-align: middle; text-align: center; font-size: 11px; font-weight: 600;">${machine.MachineNo || ''}</td>
+                    <td style="height: 14mm; padding: 1.5mm 1mm; vertical-align: middle; text-align: center; font-size: 9px;">${machine.Date || ''}</td>
+                    <td style="height: 14mm; padding: 1.5mm 2mm; vertical-align: middle; text-align: left; font-size: 10px; font-weight: 500;">${machine.MachineName || ''}</td>
+                    <td style="height: 14mm; padding: 1.5mm 1mm; vertical-align: middle; text-align: center; font-size: 9px;">${machine.Process || ''}</td>
+                    <td style="height: 14mm; padding: 1.5mm 1mm; vertical-align: middle; text-align: center; font-size: 9px;">${machine.Quantity || ''}</td>
+                    <td style="height: 14mm; padding: 1.5mm 1mm; vertical-align: middle; text-align: center; font-size: 9px;">${machine.Rejection || ''}</td>
+                    <td style="height: 14mm; padding: 1.5mm 1mm; vertical-align: middle; text-align: center; font-size: 9px;">${machine.StartTime || ''}</td>
+                    <td style="height: 14mm; padding: 1.5mm 1mm; vertical-align: middle; text-align: center; font-size: 9px;">${machine.EndTime || ''}</td>
+                    <td style="height: 14mm; padding: 1.5mm 1mm; vertical-align: middle; text-align: center; font-size: 9px;">${machine.AllocatedTime || ''}</td>
+                    <td style="height: 14mm; padding: 1.5mm 1mm; vertical-align: middle; text-align: center; font-size: 9px;">${machine.UserName || ''}</td>
                   </tr>
                 `).join('')}
               </table>
@@ -554,7 +554,7 @@ const WoodJobCard = ({
               <div class="header" style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #065f46; padding-bottom: 1px; height: 11mm; margin-bottom: 2mm;">
                 <span style="font-family: 'Copperplate Gothic Light'; font-size: 16px; font-weight: bold;">AARA DESIGN</span>
                 <div style="display: flex; align-items: center; padding-right: 2mm;">
-                  ${generateQRCodeSVG(getBarcodeValue(jobCard, F_ContainerMasterL, F_ItemMaster))}
+                  ${generateQRCodeSVG(getBarcodeValue(jobCard, F_ContainerMasterL, F_ItemMaster, F_CategoryMaster))}
                 </div>
               </div>
               
@@ -920,7 +920,7 @@ const WoodJobCard = ({
                     minHeight: "44px"
                   }}
                 >
-                  <div dangerouslySetInnerHTML={{ __html: generateQRCodeSVG(getBarcodeValue(jobCard, F_ContainerMasterL, F_ItemMaster)) }} />
+                  <div dangerouslySetInnerHTML={{ __html: generateQRCodeSVG(getBarcodeValue(jobCard, F_ContainerMasterL, F_ItemMaster, F_CategoryMaster)) }} />
                 </Col>
               </Row>
 
@@ -1724,6 +1724,7 @@ const WoodJobCard = ({
                         >
                           OPERATOR NAME
                         </th>
+
                       </tr>
                     </thead>
                     <tbody>
@@ -1889,6 +1890,7 @@ const WoodJobCard = ({
                               onChange={(e) => handleChange(machine.ID, e)}
                             />
                           </td>
+
                         </tr>
                       ))}
                     </tbody>
