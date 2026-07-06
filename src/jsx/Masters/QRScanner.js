@@ -1368,6 +1368,9 @@ const QRScanner = () => {
     console.log("Parsed IDs from QR Code:", ids);
     setParsedIds(ids);
 
+    // Set loading state immediately to display overlay and freeze inputs
+    setFetchLoading(true);
+
     // Stop the camera
     if (qrCodeRef.current && isCameraActive) {
       setIsTransitioning(true);
@@ -1384,6 +1387,8 @@ const QRScanner = () => {
     // Fetch job card data if we have valid IDs
     if (ids) {
       fetchJobCardData(ids);
+    } else {
+      setFetchLoading(false);
     }
   }, [fetchJobCardData, isCameraActive]);
 
@@ -1489,34 +1494,7 @@ const QRScanner = () => {
     setLastScanned(null);
   };
 
-  // ── If we have a job card loaded (or loading), show the job card view ──────
-  if (fetchLoading) {
-    return (
-      <div className="container-fluid">
-        <div
-          style={{
-            display: "flex",
-            flexDirection: "column",
-            alignItems: "center",
-            justifyContent: "center",
-            minHeight: 320,
-            gap: 20,
-          }}
-        >
-          <div
-            className="spinner-border"
-            role="status"
-            style={{ color: "#065f46", width: 56, height: 56, borderWidth: 5 }}
-          >
-            <span className="sr-only">Loading...</span>
-          </div>
-          <div style={{ color: "#065f46", fontWeight: 600, fontSize: 16 }}>
-            Loading Job Card…
-          </div>
-        </div>
-      </div>
-    );
-  }
+  // ── If we have a job card loaded, show the job card view ──────
 
   if (fetchError && !jobCardData) {
     return (
@@ -1625,7 +1603,29 @@ const QRScanner = () => {
                 </span>
               </div>
             </div>
-            <div className="card-body text-center d-flex flex-column justify-content-between align-items-center" style={{ minHeight: "440px", padding: "20px 20px" }}>
+            <div className="card-body text-center d-flex flex-column justify-content-between align-items-center" style={{ minHeight: "440px", padding: "20px 20px", position: "relative" }}>
+              {fetchLoading && (
+                <div style={{
+                  position: "absolute",
+                  top: 0,
+                  left: 0,
+                  right: 0,
+                  bottom: 0,
+                  backgroundColor: "rgba(255, 255, 255, 0.85)",
+                  zIndex: 20,
+                  display: "flex",
+                  flexDirection: "column",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  gap: "16px",
+                  borderRadius: "12px"
+                }}>
+                  <div className="spinner-border" role="status" style={{ color: "#065f46", width: "45px", height: "45px", borderWidth: 4 }}>
+                    <span className="sr-only">Loading...</span>
+                  </div>
+                  <div style={{ color: "#065f46", fontWeight: 600, fontSize: "14px" }}>Loading Job Card...</div>
+                </div>
+              )}
               
               {/* Scan Mode Segmented Control */}
               <div 
