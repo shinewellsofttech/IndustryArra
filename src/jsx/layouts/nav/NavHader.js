@@ -25,7 +25,7 @@ const NavHader = () => {
       <Link to="/dashboard" className="brand-logo">
        
           <Fragment>
-		  <img width={200} height={200} src={logo2} alt="" />
+		  <img src={logo2} alt="" style={{ width: "60px", height: "60px", objectFit: "contain" }} />
           </Fragment>
     
       </Link>

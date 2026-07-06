@@ -1,17 +1,7 @@
-// Common menu items for all users
-const commonMenuItems = [
-    {
-        title: 'JOB CARD',
-        to: 'JobCardForm',
-    },
-    {
-        title: 'CLOSING REPORT',
-        to: 'ClosingReport',
-    }
-];
+import React from 'react';
 
-// Admin menu items (F_UserType = 1) - structured into sections
-const adminMenuItems = [
+// Master list of all documentation / setup menu items
+const allDocumentationItems = [
     {
         title: 'SHIPMENT MASTER',
         to: 'ContainerMaster',
@@ -41,10 +31,6 @@ const adminMenuItems = [
         to: 'ItemMaster',
     },
     {
-        title: 'ITEM SUMMARY',
-        to: 'TotalItemSummary',
-    },
-    {
         title: 'COMPONENTMASTER',
         to: 'componentMaster',
     },
@@ -64,10 +50,6 @@ const adminMenuItems = [
         title: 'MACHINE MASTER',
         to: 'MachineMaster',
     },
-    // {
-    //     title: 'MACHINE COMPONENT REPORT',
-    //     to: 'MachineComponentMapReport',
-    // },
     {
         title: 'CREATE AL SLIP',
         to: 'AddALSlip',
@@ -76,23 +58,25 @@ const adminMenuItems = [
         title: 'AL SLIP',
         to: 'ALSlip',
     },
-  
     {
         title: 'ADD OTHER SLIP',
         to: 'AddOtherSlip',
     },
-
-    // {
-    //     title: 'WOOD REJECTION JOB CARDS',
-    //     to: 'ApproveJobCards',
-    // },
+    {
+        title: 'SUPERVISOR ENTRY',
+        to: 'SupervisorEntry',
+    }
 ];
 
-// Admin reporting items
-const adminReportingItems = [
+// Master list of all reporting menu items
+const allReportingItems = [
     {
         title: 'NEW REPORTING ENTRY',
         to: 'ReportingEntrySystem',
+    },
+    {
+        title: 'SCANNER REPORTING',
+        to: 'QRScanner',
     },
     {
         title: 'SHIPMENT REPORT',
@@ -113,80 +97,27 @@ const adminReportingItems = [
     {
         title: 'CLOSING REPORT',
         to: 'ClosingReport',
-    }
-
-    // {
-    //     title: 'SUPERVISOR ENTRY',
-    //     to: 'SupervisorEntry',
-    // },
-
-    // {
-    //     title: 'CONTAINER WISE REPORT',
-    //     to: 'Report_ContainerWise',
-    // },
-    // {
-    //     title: 'Report Entry',
-    //     to: 'ManualReportEntry',
-    // },
-    // {
-    //     title: 'CONTAINER REPORT',
-    //     to: 'ContainerReport',
-    // },
-    // {
-    //     title: 'TRANSFER',
-    //     to: 'Transfer',
-    // },
-   
-];
-
-// Supervisor menu items (F_UserType = 2)
-const supervisorMenuItems = [
+    },
     {
         title: 'MACHINE COMPONENT REPORT',
         to: 'MachineComponentMapReport',
-    },
-    {
-        title: 'CREATE AL SLIP',
-        to: 'AddALSlip',
-    },
-    {
-        title: 'AL SLIP',
-        to: 'ALSlip',
-    },
-    {
-        title: 'WOOD ISSUE',
-        to: 'AddWoodIssue',
-    },
-    {
-        title: 'ADD OTHER SLIP',
-        to: 'AddOtherSlip',
-    },
-    {
-        title: 'SUPERVISOR ENTRY',
-        to: 'SupervisorEntry',
     },
     {
         title: 'MANUAL REPORT ENTRY',
         to: 'ManualReportEntry',
-    }
-];
-
-// Operator menu items (F_UserType = 3)
-const operatorMenuItems = [
+    },
     {
-        title: 'MACHINE COMPONENT REPORT',
-        to: 'MachineComponentMapReport',
+        title: 'ITEM SUMMARY',
+        to: 'TotalItemSummary',
     }
 ];
 
+// Get all unique menu items for the module sync and general uses
 export const getAllUniqueMenuItems = () => {
     const all = [
         { title: 'DASHBOARD', to: 'dashboard' },
-        ...commonMenuItems,
-        ...adminMenuItems,
-        ...adminReportingItems,
-        ...supervisorMenuItems,
-        ...operatorMenuItems
+        ...allDocumentationItems,
+        ...allReportingItems
     ];
     const seen = new Set();
     return all.filter(item => {
@@ -197,24 +128,7 @@ export const getAllUniqueMenuItems = () => {
     });
 };
 
-const getMenuContent = () => {
-    const userData = JSON.parse(localStorage.getItem('authUser'));
-    const userType = userData?.userType;
-
-
-    // Return menu items based on user type
-    switch (userType) {
-        case 1: // Admin
-            return { adminMenuItems, adminReportingItems };
-        case 2: // Supervisor
-            return [...supervisorMenuItems, ...commonMenuItems];
-        case 3: // Operator
-            return [...operatorMenuItems, ...commonMenuItems];
-        default:
-            return commonMenuItems;
-    }
-};
-
+// Filter function based on role wise permission list
 const filterByPermissions = (menuList, permissions) => {
     if (!permissions || permissions.length === 0) {
         return menuList;
@@ -226,11 +140,10 @@ const filterByPermissions = (menuList, permissions) => {
     });
 };
 
+// Generate final menu list based on the user's rolewise permissions
 export const getMenuList = () => {
     const userData = JSON.parse(localStorage.getItem('authUser'));
-    const userType = userData?.userType;
     const permissions = userData?.permissions || [];
-    const menuData = getMenuContent();
 
     const baseMenu = [
         {
@@ -240,39 +153,26 @@ export const getMenuList = () => {
         }
     ];
 
-    if (userType === 1) { // Admin
-        const filteredAdminItems = filterByPermissions(menuData.adminMenuItems || [], permissions);
-        const filteredReportingItems = filterByPermissions(menuData.adminReportingItems || [], permissions);
+    const filteredDocumentation = filterByPermissions(allDocumentationItems, permissions);
+    const filteredReporting = filterByPermissions(allReportingItems, permissions);
 
-        return [
-            ...baseMenu,
-            ...(filteredAdminItems.length > 0 ? [{
-                title: 'DOCUMENTATION',
-                classsChange: 'mm-collapse',
-                iconStyle: <i className="flaticon-381-file"></i>,
-                customClass: 'section-header-menu',
-                content: filteredAdminItems
-            }] : []),
-            ...(filteredReportingItems.length > 0 ? [{
-                title: 'REPORTING',
-                classsChange: 'mm-collapse',
-                iconStyle: <i className="fas fa-chart-bar"></i>,
-                customClass: 'section-header-menu',
-                content: filteredReportingItems
-            }] : [])
-        ];
-    } else {
-        const filteredMenuData = filterByPermissions(menuData || [], permissions);
-        return [
-            ...baseMenu,
-            ...(filteredMenuData.length > 0 ? [{
-                title: 'MENU ITEMS',
-                classsChange: 'mm-collapse',
-                iconStyle: <i className="flaticon-381-list"></i>,
-                content: filteredMenuData
-            }] : [])
-        ];
-    }
+    return [
+        ...baseMenu,
+        ...(filteredDocumentation.length > 0 ? [{
+            title: 'DOCUMENTATION',
+            classsChange: 'mm-collapse',
+            iconStyle: <i className="flaticon-381-file"></i>,
+            customClass: 'section-header-menu',
+            content: filteredDocumentation
+        }] : []),
+        ...(filteredReporting.length > 0 ? [{
+            title: 'REPORTING',
+            classsChange: 'mm-collapse',
+            iconStyle: <i className="fas fa-chart-bar"></i>,
+            customClass: 'section-header-menu',
+            content: filteredReporting
+        }] : [])
+    ];
 };
 
 export const MenuList = getMenuList;

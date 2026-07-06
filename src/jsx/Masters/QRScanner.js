@@ -27,6 +27,39 @@ const playBeepSound = () => {
   }
 };
 
+const getMachineStatusText = (m) => {
+  if (!m) return "NOT STARTED";
+  const hasStarted = !!m.StartTime;
+  const hasEnded = !!m.EndTime;
+  if (hasStarted && !hasEnded) return "IN PROGRESS";
+  if (hasStarted && hasEnded) return "COMPLETED";
+  return "NOT STARTED";
+};
+
+const formatDateTime = (dateTimeStr) => {
+  if (!dateTimeStr) return "";
+  try {
+    const formattedStr = String(dateTimeStr).includes('T') ? dateTimeStr : String(dateTimeStr).replace(' ', 'T');
+    const d = new Date(formattedStr);
+    if (isNaN(d.getTime())) return dateTimeStr;
+    
+    const day = String(d.getDate()).padStart(2, '0');
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const year = d.getFullYear();
+    
+    let hours = d.getHours();
+    const minutes = String(d.getMinutes()).padStart(2, '0');
+    const ampm = hours >= 12 ? 'PM' : 'AM';
+    hours = hours % 12;
+    hours = hours ? hours : 12;
+    const formattedHours = String(hours).padStart(2, '0');
+    
+    return `${day}/${month}/${year} ${formattedHours}:${minutes} ${ampm}`;
+  } catch (e) {
+    return dateTimeStr;
+  }
+};
+
 // ─── Machine Control Panel Component ─────────────────────────────────────────
 const MachineControlPanel = ({ machine, onStart, onStop, actionLoading }) => {
   if (!machine) return null;
@@ -76,7 +109,20 @@ const MachineControlPanel = ({ machine, onStart, onStop, actionLoading }) => {
         </span>
       </div>
 
-      <div style={{ display: "flex", gap: "12px" }}>
+      {hasStarted && (
+        <div style={{ display: "flex", justifyContent: "space-between", fontSize: "12px", color: "#475569", marginBottom: "8px" }}>
+          <span style={{ fontWeight: 600 }}>Start Time:</span>
+          <span style={{ fontFamily: "monospace", fontSize: "11.5px" }}>{formatDateTime(machine.StartTime)}</span>
+        </div>
+      )}
+      {hasEnded && (
+        <div style={{ display: "flex", justifyContent: "space-between", fontSize: "12px", color: "#475569", marginBottom: "16px" }}>
+          <span style={{ fontWeight: 600 }}>End Time:</span>
+          <span style={{ fontFamily: "monospace", fontSize: "11.5px" }}>{formatDateTime(machine.EndTime)}</span>
+        </div>
+      )}
+
+      <div style={{ display: "flex", gap: "12px", marginTop: "12px" }}>
         <button
           onClick={onStart}
           disabled={actionLoading || hasEnded}
@@ -357,45 +403,86 @@ const ScannedWoodJobCard = ({
 
         {/* Machine Selection Dropdown & Control Panel */}
         <div style={{ padding: "20px", borderTop: "1px solid #e2e8f0", background: "#f8fafc" }}>
-          <div style={{ marginBottom: "16px" }}>
-            <label style={{ fontSize: "11px", fontWeight: 700, color: "#065f46", display: "block", marginBottom: "8px", letterSpacing: "0.5px" }}>
-              <i className="fas fa-desktop mr-2" style={{ color: "#065f46" }}></i> SELECT MACHINE FOR OPERATION
-            </label>
-            <select
-              value={selectedMachineId || ""}
-              onChange={(e) => onMachineSelect(e.target.value)}
-              style={{
-                width: "100%",
-                padding: "10px 14px",
-                borderRadius: "8px",
-                border: "1px solid #cbd5e1",
-                backgroundColor: "#fff",
-                fontSize: "14px",
-                fontWeight: 500,
-                color: "#1e293b",
-                outline: "none",
-                cursor: "pointer",
-                boxShadow: "0 1px 2px 0 rgba(0, 0, 0, 0.05)",
-                fontFamily: "Poppins, sans-serif"
-              }}
-            >
-              <option value="">-- Choose Machine --</option>
-              {machineList && machineList.map((m) => (
-                <option key={m.ID} value={m.ID}>
-                  {m.MachineName || "Unnamed Machine"} ({m.MachineNo || "N/A"}) - {m.Process || "No Process"}
-                </option>
-              ))}
-            </select>
-          </div>
+          {(() => {
+            const authUser = JSON.parse(localStorage.getItem("authUser") || "{}");
+            const machineMasterId = authUser?.machineMaster;
 
-          {machineData && (
-            <MachineControlPanel
-              machine={machineData}
-              onStart={onStartMachine}
-              onStop={onStopMachine}
-              actionLoading={actionLoading}
-            />
-          )}
+            if (machineMasterId) {
+              return machineData ? (
+                <div>
+                  <label style={{ fontSize: "11px", fontWeight: 700, color: "#065f46", display: "block", marginBottom: "8px", letterSpacing: "0.5px" }}>
+                    <i className="fas fa-desktop mr-2" style={{ color: "#065f46" }}></i> ASSIGNED MACHINE
+                  </label>
+                  <div style={{
+                    padding: "10px 14px",
+                    borderRadius: "8px",
+                    border: "1px solid #cbd5e1",
+                    backgroundColor: "#fff",
+                    fontSize: "14px",
+                    fontWeight: 600,
+                    color: "#1e293b",
+                    marginBottom: "16px"
+                  }}>
+                    {machineData.MachineName || "Unnamed Machine"} ({machineData.MachineNo || "N/A"}) - {getMachineStatusText(machineData)}
+                  </div>
+                  <MachineControlPanel
+                    machine={machineData}
+                    onStart={onStartMachine}
+                    onStop={onStopMachine}
+                    actionLoading={actionLoading}
+                  />
+                </div>
+              ) : (
+                <div className="alert alert-warning" style={{ margin: 0, fontSize: "13px" }}>
+                  Assigned machine is not mapped or not found for this Job Card.
+                </div>
+              );
+            }
+
+            return (
+              <>
+                <div style={{ marginBottom: "16px" }}>
+                  <label style={{ fontSize: "11px", fontWeight: 700, color: "#065f46", display: "block", marginBottom: "8px", letterSpacing: "0.5px" }}>
+                    <i className="fas fa-desktop mr-2" style={{ color: "#065f46" }}></i> SELECT MACHINE FOR OPERATION
+                  </label>
+                  <select
+                    value={selectedMachineId || ""}
+                    onChange={(e) => onMachineSelect(e.target.value)}
+                    style={{
+                      width: "100%",
+                      padding: "10px 14px",
+                      borderRadius: "8px",
+                      border: "1px solid #cbd5e1",
+                      backgroundColor: "#fff",
+                      fontSize: "14px",
+                      fontWeight: 500,
+                      color: "#1e293b",
+                      outline: "none",
+                      cursor: "pointer",
+                      boxShadow: "0 1px 2px 0 rgba(0, 0, 0, 0.05)",
+                      fontFamily: "Poppins, sans-serif"
+                    }}
+                  >
+                    <option value="">-- Choose Machine --</option>
+                    {machineList && machineList.map((m) => (
+                      <option key={m.ID} value={m.ID}>
+                        {m.MachineName || "Unnamed Machine"} ({m.MachineNo || "N/A"}) - {getMachineStatusText(m)}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                {machineData && (
+                  <MachineControlPanel
+                    machine={machineData}
+                    onStart={onStartMachine}
+                    onStop={onStopMachine}
+                    actionLoading={actionLoading}
+                  />
+                )}
+              </>
+            );
+          })()}
         </div>
       </div>
     </div>
@@ -557,45 +644,86 @@ const ScannedMetalJobCard = ({
 
         {/* Machine Selection Dropdown & Control Panel */}
         <div style={{ padding: "20px", borderTop: "1px solid #e2e8f0", background: "#f8fafc" }}>
-          <div style={{ marginBottom: "16px" }}>
-            <label style={{ fontSize: "11px", fontWeight: 700, color: "#1e3a8a", display: "block", marginBottom: "8px", letterSpacing: "0.5px" }}>
-              <i className="fas fa-desktop mr-2" style={{ color: "#1e3a8a" }}></i> SELECT MACHINE FOR OPERATION
-            </label>
-            <select
-              value={selectedMachineId || ""}
-              onChange={(e) => onMachineSelect(e.target.value)}
-              style={{
-                width: "100%",
-                padding: "10px 14px",
-                borderRadius: "8px",
-                border: "1px solid #cbd5e1",
-                backgroundColor: "#fff",
-                fontSize: "14px",
-                fontWeight: 500,
-                color: "#1e293b",
-                outline: "none",
-                cursor: "pointer",
-                boxShadow: "0 1px 2px 0 rgba(0, 0, 0, 0.05)",
-                fontFamily: "Poppins, sans-serif"
-              }}
-            >
-              <option value="">-- Choose Machine --</option>
-              {machineList && machineList.map((m) => (
-                <option key={m.ID} value={m.ID}>
-                  {m.MachineName || "Unnamed Machine"} ({m.MachineNo || "N/A"}) - {m.Process || "No Process"}
-                </option>
-              ))}
-            </select>
-          </div>
+          {(() => {
+            const authUser = JSON.parse(localStorage.getItem("authUser") || "{}");
+            const machineMasterId = authUser?.machineMaster;
 
-          {machineData && (
-            <MachineControlPanel
-              machine={machineData}
-              onStart={onStartMachine}
-              onStop={onStopMachine}
-              actionLoading={actionLoading}
-            />
-          )}
+            if (machineMasterId) {
+              return machineData ? (
+                <div>
+                  <label style={{ fontSize: "11px", fontWeight: 700, color: "#1e3a8a", display: "block", marginBottom: "8px", letterSpacing: "0.5px" }}>
+                    <i className="fas fa-desktop mr-2" style={{ color: "#1e3a8a" }}></i> ASSIGNED MACHINE
+                  </label>
+                  <div style={{
+                    padding: "10px 14px",
+                    borderRadius: "8px",
+                    border: "1px solid #cbd5e1",
+                    backgroundColor: "#fff",
+                    fontSize: "14px",
+                    fontWeight: 600,
+                    color: "#1e293b",
+                    marginBottom: "16px"
+                  }}>
+                    {machineData.MachineName || "Unnamed Machine"} ({machineData.MachineNo || "N/A"}) - {getMachineStatusText(machineData)}
+                  </div>
+                  <MachineControlPanel
+                    machine={machineData}
+                    onStart={onStartMachine}
+                    onStop={onStopMachine}
+                    actionLoading={actionLoading}
+                  />
+                </div>
+              ) : (
+                <div className="alert alert-warning" style={{ margin: 0, fontSize: "13px" }}>
+                  Assigned machine is not mapped or not found for this Job Card.
+                </div>
+              );
+            }
+
+            return (
+              <>
+                <div style={{ marginBottom: "16px" }}>
+                  <label style={{ fontSize: "11px", fontWeight: 700, color: "#1e3a8a", display: "block", marginBottom: "8px", letterSpacing: "0.5px" }}>
+                    <i className="fas fa-desktop mr-2" style={{ color: "#1e3a8a" }}></i> SELECT MACHINE FOR OPERATION
+                  </label>
+                  <select
+                    value={selectedMachineId || ""}
+                    onChange={(e) => onMachineSelect(e.target.value)}
+                    style={{
+                      width: "100%",
+                      padding: "10px 14px",
+                      borderRadius: "8px",
+                      border: "1px solid #cbd5e1",
+                      backgroundColor: "#fff",
+                      fontSize: "14px",
+                      fontWeight: 500,
+                      color: "#1e293b",
+                      outline: "none",
+                      cursor: "pointer",
+                      boxShadow: "0 1px 2px 0 rgba(0, 0, 0, 0.05)",
+                      fontFamily: "Poppins, sans-serif"
+                    }}
+                  >
+                    <option value="">-- Choose Machine --</option>
+                    {machineList && machineList.map((m) => (
+                      <option key={m.ID} value={m.ID}>
+                        {m.MachineName || "Unnamed Machine"} ({m.MachineNo || "N/A"}) - {getMachineStatusText(m)}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                {machineData && (
+                  <MachineControlPanel
+                    machine={machineData}
+                    onStart={onStartMachine}
+                    onStop={onStopMachine}
+                    actionLoading={actionLoading}
+                  />
+                )}
+              </>
+            );
+          })()}
         </div>
       </div>
     </div>
@@ -798,45 +926,86 @@ const ScannedMDFJobCard = ({
 
         {/* Machine Selection Dropdown & Control Panel */}
         <div style={{ padding: "20px", borderTop: "1px solid #e2e8f0", background: "#f8fafc" }}>
-          <div style={{ marginBottom: "16px" }}>
-            <label style={{ fontSize: "11px", fontWeight: 700, color: "#c2410c", display: "block", marginBottom: "8px", letterSpacing: "0.5px" }}>
-              <i className="fas fa-desktop mr-2" style={{ color: "#c2410c" }}></i> SELECT MACHINE FOR OPERATION
-            </label>
-            <select
-              value={selectedMachineId || ""}
-              onChange={(e) => onMachineSelect(e.target.value)}
-              style={{
-                width: "100%",
-                padding: "10px 14px",
-                borderRadius: "8px",
-                border: "1px solid #cbd5e1",
-                backgroundColor: "#fff",
-                fontSize: "14px",
-                fontWeight: 500,
-                color: "#1e293b",
-                outline: "none",
-                cursor: "pointer",
-                boxShadow: "0 1px 2px 0 rgba(0, 0, 0, 0.05)",
-                fontFamily: "Poppins, sans-serif"
-              }}
-            >
-              <option value="">-- Choose Machine --</option>
-              {machineList && machineList.map((m) => (
-                <option key={m.ID} value={m.ID}>
-                  {m.MachineName || "Unnamed Machine"} ({m.MachineNo || "N/A"}) - {m.Process || "No Process"}
-                </option>
-              ))}
-            </select>
-          </div>
+          {(() => {
+            const authUser = JSON.parse(localStorage.getItem("authUser") || "{}");
+            const machineMasterId = authUser?.machineMaster;
 
-          {machineData && (
-            <MachineControlPanel
-              machine={machineData}
-              onStart={onStartMachine}
-              onStop={onStopMachine}
-              actionLoading={actionLoading}
-            />
-          )}
+            if (machineMasterId) {
+              return machineData ? (
+                <div>
+                  <label style={{ fontSize: "11px", fontWeight: 700, color: "#c2410c", display: "block", marginBottom: "8px", letterSpacing: "0.5px" }}>
+                    <i className="fas fa-desktop mr-2" style={{ color: "#c2410c" }}></i> ASSIGNED MACHINE
+                  </label>
+                  <div style={{
+                    padding: "10px 14px",
+                    borderRadius: "8px",
+                    border: "1px solid #cbd5e1",
+                    backgroundColor: "#fff",
+                    fontSize: "14px",
+                    fontWeight: 600,
+                    color: "#1e293b",
+                    marginBottom: "16px"
+                  }}>
+                    {machineData.MachineName || "Unnamed Machine"} ({machineData.MachineNo || "N/A"}) - {getMachineStatusText(machineData)}
+                  </div>
+                  <MachineControlPanel
+                    machine={machineData}
+                    onStart={onStartMachine}
+                    onStop={onStopMachine}
+                    actionLoading={actionLoading}
+                  />
+                </div>
+              ) : (
+                <div className="alert alert-warning" style={{ margin: 0, fontSize: "13px" }}>
+                  Assigned machine is not mapped or not found for this Job Card.
+                </div>
+              );
+            }
+
+            return (
+              <>
+                <div style={{ marginBottom: "16px" }}>
+                  <label style={{ fontSize: "11px", fontWeight: 700, color: "#c2410c", display: "block", marginBottom: "8px", letterSpacing: "0.5px" }}>
+                    <i className="fas fa-desktop mr-2" style={{ color: "#c2410c" }}></i> SELECT MACHINE FOR OPERATION
+                  </label>
+                  <select
+                    value={selectedMachineId || ""}
+                    onChange={(e) => onMachineSelect(e.target.value)}
+                    style={{
+                      width: "100%",
+                      padding: "10px 14px",
+                      borderRadius: "8px",
+                      border: "1px solid #cbd5e1",
+                      backgroundColor: "#fff",
+                      fontSize: "14px",
+                      fontWeight: 500,
+                      color: "#1e293b",
+                      outline: "none",
+                      cursor: "pointer",
+                      boxShadow: "0 1px 2px 0 rgba(0, 0, 0, 0.05)",
+                      fontFamily: "Poppins, sans-serif"
+                    }}
+                  >
+                    <option value="">-- Choose Machine --</option>
+                    {machineList && machineList.map((m) => (
+                      <option key={m.ID} value={m.ID}>
+                        {m.MachineName || "Unnamed Machine"} ({m.MachineNo || "N/A"}) - {getMachineStatusText(m)}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                {machineData && (
+                  <MachineControlPanel
+                    machine={machineData}
+                    onStart={onStartMachine}
+                    onStop={onStopMachine}
+                    actionLoading={actionLoading}
+                  />
+                )}
+              </>
+            );
+          })()}
         </div>
       </div>
     </div>
@@ -1149,9 +1318,18 @@ const QRScanner = () => {
       
       setMachineList(jobCardMachines);
 
-      // Find matching machine ONLY if a valid F_MachineMaster ID was parsed in QR
+      const authUser = JSON.parse(localStorage.getItem("authUser") || "{}");
+      const machineMasterId = authUser?.machineMaster;
+
+      // Find matching machine: priority is authUser's machineMasterId, then scanned F_MachineMaster
       let matchingMachine = null;
-      if (ids.F_MachineMaster) {
+      if (machineMasterId) {
+        matchingMachine = jobCardMachines.find(
+          (m) =>
+            String(m.ID) === String(machineMasterId) ||
+            String(m.F_MachineMaster) === String(machineMasterId)
+        );
+      } else if (ids.F_MachineMaster) {
         matchingMachine = jobCardMachines.find(
           (m) =>
             String(m.ID) === String(ids.F_MachineMaster) ||

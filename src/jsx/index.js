@@ -361,7 +361,7 @@ const Markup = () => {
       "JobCardForm", "MachineComponentMapReport", "MachineMaster", "ManualReportEntry", 
       "ModuleMaster", "ReportingEntrySystem", "PermissionMatrix", "ContainerEntrySystem", 
       "ContainerMaster", "ContainerMasterReport", "ContainerEntryReport", "SupervisorEntry", 
-      "UserMasterCrud", "UserRole", "WoodComponentReport", "AddWoodIssue"
+      "UserMasterCrud", "UserRole", "WoodComponentReport", "AddWoodIssue", "QRScanner"
     ];
 
     if (allModulesList.some(m => m.toLowerCase() === checkPath.toLowerCase())) {
