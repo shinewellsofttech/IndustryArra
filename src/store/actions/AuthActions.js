@@ -56,39 +56,74 @@ export function Logout(navigate) {
 
 export function loginAction(email, password, navigate) {
     return (dispatch) => {
-        axios.post(API_WEB_URLS.BASE+'ValidateLogin/0/token', { email, password })
+        const formData = new FormData();
+        formData.append("email", email);
+        formData.append("password", password);
+
+        axios.post(API_WEB_URLS.BASE+'ValidateLogin/0/token', formData)
             .then((response) => { 
+                console.log("-------------------------",response.data.data.response)
                if (response.data.data.response[0].Id == -1  || response.data.data.response[0].Id == -2){
                 dispatch(loginFailedAction('Incorrect Username or Password'));
                }
                else {
-                // Set user data in localStorage
-                const userData = {
-                    id: response.data.data.response[0].Id,
-                    userName: response.data.data.response[0].UserName,
-                    isLoginable: response.data.data.response[0].IsLoginable,
-                    dateOfCreation: response.data.data.response[0].DateOfCreation,
-                    userType: response.data.data.response[0].F_UserType,
-                    machineMaster: response.data.data.response[0].F_MachineMaster,
-                    name: response.data.data.response[0].Name,
-                    expiresIn: 3600 // 1 hour in seconds
-                };
+                const userRole = parseInt(response.data.data.response[0].F_UserRole, 10);
                 
-                // Save to localStorage
-                localStorage.setItem('authUser', JSON.stringify(userData));
-                
-                // Run logout timer
-                runLogoutTimer(
-                    dispatch,
-                    userData.expiresIn * 1000,
-                    navigate
-                );
-                
-                // Dispatch login success
-                dispatch(loginConfirmedAction(userData));
-                
-                // Navigate to dashboard
-                navigate('/dashboard');
+                // Fetch RoleWisePermission
+                axios.get(API_WEB_URLS.BASE + 'Masters/0/token/RoleWisePermission/Id/' + userRole)
+                    .then((permResponse) => {
+                        const permissions = permResponse.data.data?.dataList || [];
+                        
+                        // Set user data in localStorage
+                        const userData = {
+                            id: response.data.data.response[0].Id,
+                            userName: response.data.data.response[0].UserName,
+                            isLoginable: response.data.data.response[0].IsActive,
+                            dateOfCreation: response.data.data.response[0].DateOfCreation,
+                            userType: userRole,
+                            machineMaster: response.data.data.response[0].F_MachineMaster,
+                            name: response.data.data.response[0].Name,
+                            roleNames: response.data.data.response[0].RoleNames,
+                            expiresIn: 3600, // 1 hour in seconds
+                            permissions: permissions
+                        };
+                        
+                        // Save to localStorage
+                        localStorage.setItem('authUser', JSON.stringify(userData));
+                        
+                        // Run logout timer
+                        runLogoutTimer(
+                            dispatch,
+                            userData.expiresIn * 1000,
+                            navigate
+                        );
+                        
+                        // Dispatch login success
+                        dispatch(loginConfirmedAction(userData));
+                        
+                        // Navigate to dashboard
+                        navigate('/dashboard');
+                    })
+                    .catch((err) => {
+                        console.error("Failed to fetch permissions", err);
+                        // Fallback without permissions
+                        const userData = {
+                            id: response.data.data.response[0].Id,
+                            userName: response.data.data.response[0].UserName,
+                            isLoginable: response.data.data.response[0].IsActive,
+                            dateOfCreation: response.data.data.response[0].DateOfCreation,
+                            userType: userRole,
+                            machineMaster: response.data.data.response[0].F_MachineMaster,
+                            name: response.data.data.response[0].Name,
+                            roleNames: response.data.data.response[0].RoleNames,
+                            expiresIn: 3600,
+                            permissions: []
+                        };
+                        localStorage.setItem('authUser', JSON.stringify(userData));
+                        runLogoutTimer(dispatch, userData.expiresIn * 1000, navigate);
+                        dispatch(loginConfirmedAction(userData));
+                        navigate('/dashboard');
+                    });
                }                
             })
             .catch((error) => {

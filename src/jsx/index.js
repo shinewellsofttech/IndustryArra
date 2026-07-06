@@ -146,6 +146,13 @@ import AddEdit_MachineMaster from "./Masters/AddEdit_MachineMaster";
 import TotalItemSummary from "./Masters/TotalItemSummary";
 import ReportingEntrySystem from "./NewReportingSystem/ReportingEntrySystem";
 import QRScanner from "./Masters/QRScanner";
+import AddEdit_ModuleMaster from "./Masters/AddEdit_ModuleMaster";
+import PageList_ModuleMaster from "./Masters/PageList_ModuleMaster";
+import AddEdit_UserRole from "./Masters/AddEdit_UserRole";
+import PageList_UserRole from "./Masters/PageList_UserRole";
+import AddEdit_UserMasterCrud from "./Masters/AddEdit_UserMasterCrud";
+import PageList_UserMasterCrud from "./Masters/PageList_UserMasterCrud";
+import PermissionMetrixs from "./Masters/PermisstionMetrixs";
 
 const Markup = () => {
   const { menuToggle } = useContext(ThemeContext);
@@ -247,6 +254,17 @@ const Markup = () => {
     { url: "AddCategory", component: <AddEdit_CategoryMaster/> },
     { url: "CategoryMaster", component: <PageList_CategoryMaster/> },
 
+    { url: "ModuleMaster", component: <PageList_ModuleMaster/> },
+    { url: "AddModule", component: <AddEdit_ModuleMaster/> },
+
+    { url: "UserRole", component: <PageList_UserRole/> },
+    { url: "AddUserRole", component: <AddEdit_UserRole/> },
+
+    { url: "UserMasterCrud", component: <PageList_UserMasterCrud/> },
+    { url: "AddUserMasterCrud", component: <AddEdit_UserMasterCrud/> },
+
+    { url: "PermissionMatrix", component: <PermissionMetrixs/> },
+
     { url: "AddCard", component: <AddEdit_CardMaster/> },
     { url: "CardMaster", component: <PageList_CardMaster/> },
 
@@ -292,6 +310,67 @@ const Markup = () => {
   path = path[path.length - 1];
 
   let pagePath = path.split("-").includes("page");
+  const userData = JSON.parse(localStorage.getItem('authUser'));
+  const permissions = userData?.permissions || [];
+
+  const getParentPath = (url) => {
+    switch (url) {
+      case 'AddModule': return 'ModuleMaster';
+      case 'AddUserRole': return 'UserRole';
+      case 'AddUserMasterCrud': return 'UserMasterCrud';
+      case 'AddContainer': return 'ContainerMaster';
+      case 'AddComponent':
+      case 'AddMultipleComponent': return 'ComponentMaster';
+      case 'AddCategory': return 'CategoryMaster';
+      case 'AddCard': return 'CardMaster';
+      case 'AddItem': return 'ItemMaster';
+      case 'AddMachine': return 'MachineMaster';
+      case 'EditWoodIssue': return 'AddWoodIssue';
+      default: return url;
+    }
+  };
+
+  const filteredRoutes = allroutes.filter(route => {
+    if (!permissions || permissions.length === 0) return true;
+
+    const publicPages = [
+      'dashboard', 'todo', 'widget-basic', 'ecom-product-grid', 'ecom-product-list', 
+      'ecom-product-detail', 'ecom-product-order', 'ecom-checkout', 'ecom-invoice', 
+      'ecom-customers', 'form-element', 'form-wizard', 'form-ckeditor', 'form-pickers', 
+      'form-validation', 'table-filtering', 'table-sorting', 'table-datatable-basic', 
+      'table-bootstrap-basic'
+    ];
+    if (publicPages.includes(route.url)) return true;
+
+    const checkPath = getParentPath(route.url);
+    const perm = permissions.find(p => (p.ModulePath || p.Path)?.toLowerCase() === checkPath.toLowerCase());
+
+    if (perm) {
+      if (route.url.startsWith('Add')) {
+        return perm.IsAdd || perm.IsView;
+      }
+      if (route.url.startsWith('Edit')) {
+        return perm.IsEdit || perm.IsView;
+      }
+      return perm.IsView;
+    }
+
+    const allModulesList = [
+      "AddOtherSlip", "ALSlip", "CardMaster", "CategoryMaster", "ClosingReport", 
+      "componentMaster", "AddALSlip", "dashboard", "TotalItemSummary", "ItemMaster", 
+      "JobCardForm", "MachineComponentMapReport", "MachineMaster", "ManualReportEntry", 
+      "ModuleMaster", "ReportingEntrySystem", "PermissionMatrix", "ContainerEntrySystem", 
+      "ContainerMaster", "ContainerMasterReport", "ContainerEntryReport", "SupervisorEntry", 
+      "UserMasterCrud", "UserRole", "WoodComponentReport", "AddWoodIssue"
+    ];
+
+    if (allModulesList.some(m => m.toLowerCase() === checkPath.toLowerCase())) {
+      return false;
+    }
+
+    return true;
+  });
+
   return (
     <>
      
@@ -304,7 +383,7 @@ const Markup = () => {
           <Route path='page-error-503' element={<Error503/>} />
           <Route path='/*' element={<Error404/>} />
           <Route  element={<MainLayout />} > 
-              {allroutes.map((data, i) => (
+              {filteredRoutes.map((data, i) => (
                 <Route
                   key={i}
                   exact
