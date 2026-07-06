@@ -199,8 +199,9 @@ const ScannedWoodJobCard = ({
   onRescan 
 }) => {
   const cell = (label, value, labelStyle = {}, valueStyle = {}) => (
-    <div style={{ display: "flex", borderBottom: "1px solid #e2e8f0" }}>
+    <div className="responsive-cell" style={{ display: "flex", borderBottom: "1px solid #e2e8f0" }}>
       <div
+        className="responsive-cell-label"
         style={{
           width: "38%",
           padding: "10px 14px",
@@ -215,6 +216,7 @@ const ScannedWoodJobCard = ({
         {label}
       </div>
       <div
+        className="responsive-cell-value"
         style={{
           flex: 1,
           padding: "10px 14px",
@@ -233,6 +235,7 @@ const ScannedWoodJobCard = ({
     <div className="container-fluid" style={{ fontFamily: "Poppins, sans-serif" }}>
       {/* Header Banner */}
       <div
+        className="responsive-banner"
         style={{
           background: "linear-gradient(135deg, #065f46 0%, #047857 100%)",
           borderRadius: "12px 12px 0 0",
@@ -283,8 +286,8 @@ const ScannedWoodJobCard = ({
         }}
       >
         {/* Main Grid */}
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr" }}>
-          <div style={{ borderRight: "1px solid #e2e8f0" }}>
+        <div className="responsive-grid-2" style={{ display: "grid", gridTemplateColumns: "1fr 1fr" }}>
+          <div className="responsive-border-r" style={{ borderRight: "1px solid #e2e8f0" }}>
             {cell("WOOD MACHINE CENTRE", "JOB CARD")}
             {cell("SHIPMENT NO", jobCard.ContainerNumber)}
             {cell("PRODUCT CODE", jobCard.ProductCode)}
@@ -299,8 +302,8 @@ const ScannedWoodJobCard = ({
         </div>
 
         {/* Batch Code and Component Qty */}
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr" }}>
-          <div style={{ borderRight: "1px solid #e2e8f0" }}>
+        <div className="responsive-grid-2" style={{ display: "grid", gridTemplateColumns: "1fr 1fr" }}>
+          <div className="responsive-border-r" style={{ borderRight: "1px solid #e2e8f0" }}>
             {cell("BATCH CODE", jobCard.BatchCode)}
           </div>
           <div>
@@ -386,7 +389,7 @@ const ScannedWoodJobCard = ({
           >
             FINAL DIMENSIONS (mm)
           </div>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr" }}>
+          <div className="responsive-grid-3" style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr" }}>
             {cell("Length (L)", jobCard.F1 ? (jobCard.F1 % 1 === 0 ? Math.round(jobCard.F1) : jobCard.F1.toFixed(2)) : "")}
             {cell("Width (W)", jobCard.F2 ? (jobCard.F2 % 1 === 0 ? Math.round(jobCard.F2) : jobCard.F2.toFixed(2)) : "")}
             {cell("Thickness (T)", jobCard.F3 ? (jobCard.F3 % 1 === 0 ? Math.round(jobCard.F3) : jobCard.F3.toFixed(2)) : "")}
@@ -503,8 +506,9 @@ const ScannedMetalJobCard = ({
   onRescan 
 }) => {
   const cell = (label, value, labelStyle = {}, valueStyle = {}) => (
-    <div style={{ display: "flex", borderBottom: "1px solid #e2e8f0" }}>
+    <div className="responsive-cell" style={{ display: "flex", borderBottom: "1px solid #e2e8f0" }}>
       <div
+        className="responsive-cell-label"
         style={{
           width: "38%",
           padding: "10px 14px",
@@ -519,6 +523,7 @@ const ScannedMetalJobCard = ({
         {label}
       </div>
       <div
+        className="responsive-cell-value"
         style={{
           flex: 1,
           padding: "10px 14px",
@@ -537,6 +542,7 @@ const ScannedMetalJobCard = ({
     <div className="container-fluid" style={{ fontFamily: "Poppins, sans-serif" }}>
       {/* Header Banner */}
       <div
+        className="responsive-banner"
         style={{
           background: "linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%)",
           borderRadius: "12px 12px 0 0",
@@ -587,8 +593,8 @@ const ScannedMetalJobCard = ({
         }}
       >
         {/* Main Grid */}
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr" }}>
-          <div style={{ borderRight: "1px solid #e2e8f0" }}>
+        <div className="responsive-grid-2" style={{ display: "grid", gridTemplateColumns: "1fr 1fr" }}>
+          <div className="responsive-border-r" style={{ borderRight: "1px solid #e2e8f0" }}>
             {cell("WOOD MACHINE CENTRE", "JOB CARD")}
             {cell("SHIPMENT NO", jobCard.ContainerNumber)}
             {cell("ITEM NAME", jobCard.ItemName)}
@@ -603,8 +609,8 @@ const ScannedMetalJobCard = ({
         </div>
 
         {/* Batch Code Fields */}
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr" }}>
-          <div style={{ borderRight: "1px solid #e2e8f0" }}>
+        <div className="responsive-grid-2" style={{ display: "grid", gridTemplateColumns: "1fr 1fr" }}>
+          <div className="responsive-border-r" style={{ borderRight: "1px solid #e2e8f0" }}>
             {cell("BATCH CODE OF MATERIAL", jobCard.BatchCode)}
           </div>
           <div>
@@ -627,7 +633,7 @@ const ScannedMetalJobCard = ({
           >
             FINAL DIMENSIONS (mm)
           </div>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr" }}>
+          <div className="responsive-grid-3" style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr" }}>
             {cell("Length", jobCard.F1 ? (jobCard.F1 % 1 === 0 ? Math.round(jobCard.F1) : jobCard.F1.toFixed(2)) : "")}
             {cell("Width", jobCard.F2 ? (jobCard.F2 % 1 === 0 ? Math.round(jobCard.F2) : jobCard.F2.toFixed(2)) : "")}
             {cell("Thickness", jobCard.F3 ? (jobCard.F3 % 1 === 0 ? Math.round(jobCard.F3) : jobCard.F3.toFixed(2)) : "")}
@@ -744,8 +750,9 @@ const ScannedMDFJobCard = ({
   onRescan 
 }) => {
   const cell = (label, value, labelStyle = {}, valueStyle = {}) => (
-    <div style={{ display: "flex", borderBottom: "1px solid #e2e8f0" }}>
+    <div className="responsive-cell" style={{ display: "flex", borderBottom: "1px solid #e2e8f0" }}>
       <div
+        className="responsive-cell-label"
         style={{
           width: "38%",
           padding: "10px 14px",
@@ -760,6 +767,7 @@ const ScannedMDFJobCard = ({
         {label}
       </div>
       <div
+        className="responsive-cell-value"
         style={{
           flex: 1,
           padding: "10px 14px",
@@ -778,6 +786,7 @@ const ScannedMDFJobCard = ({
     <div className="container-fluid" style={{ fontFamily: "Poppins, sans-serif" }}>
       {/* Header Banner */}
       <div
+        className="responsive-banner"
         style={{
           background: "linear-gradient(135deg, #c2410c 0%, #ea580c 100%)",
           borderRadius: "12px 12px 0 0",
@@ -828,8 +837,8 @@ const ScannedMDFJobCard = ({
         }}
       >
         {/* Main Grid */}
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr" }}>
-          <div style={{ borderRight: "1px solid #e2e8f0" }}>
+        <div className="responsive-grid-2" style={{ display: "grid", gridTemplateColumns: "1fr 1fr" }}>
+          <div className="responsive-border-r" style={{ borderRight: "1px solid #e2e8f0" }}>
             {cell("SHIPMENT NO", jobCard.ContainerNumber)}
             {cell("INSPECTION DATE", jobCard.InspectionDate)}
             {cell("ITEM CODE", jobCard.ProductCode)}
@@ -909,7 +918,7 @@ const ScannedMDFJobCard = ({
           >
             FINAL COMPONENT DIMENSION (mm)
           </div>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr" }}>
+          <div className="responsive-grid-3" style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr" }}>
             {cell("Length", jobCard.F1 ? (jobCard.F1 % 1 === 0 ? Math.round(jobCard.F1) : jobCard.F1.toFixed(2)) : "")}
             {cell("Width", jobCard.F2 ? (jobCard.F2 % 1 === 0 ? Math.round(jobCard.F2) : jobCard.F2.toFixed(2)) : "")}
             {cell("Thickness", jobCard.F3 ? (jobCard.F3 % 1 === 0 ? Math.round(jobCard.F3) : jobCard.F3.toFixed(2)) : "")}
@@ -1027,8 +1036,49 @@ const ScannedJobCardView = ({
 }) => {
   const cat = String(parsedIds?.F_CategoryMaster || jobCard?.F_CategoryMaster || "");
   
+  const responsiveStyles = (
+    <style>{`
+      @media (max-width: 767px) {
+        .responsive-banner {
+          flex-direction: column !important;
+          align-items: stretch !important;
+          gap: 12px !important;
+          text-align: center !important;
+          padding: 16px !important;
+        }
+        .responsive-banner button {
+          justify-content: center !important;
+          width: 100% !important;
+        }
+        .responsive-grid-2 {
+          grid-template-columns: 1fr !important;
+        }
+        .responsive-grid-3 {
+          grid-template-columns: 1fr !important;
+        }
+        .responsive-border-r {
+          border-right: none !important;
+        }
+        .responsive-cell {
+          flex-direction: column !important;
+          align-items: stretch !important;
+        }
+        .responsive-cell-label {
+          width: 100% !important;
+          border-right: none !important;
+          border-bottom: 1px dashed #e2e8f0 !important;
+          padding: 6px 12px !important;
+        }
+        .responsive-cell-value {
+          padding: 6px 12px !important;
+        }
+      }
+    `}</style>
+  );
+
+  let viewComponent = null;
   if (cat === "4" || cat === "16") {
-    return (
+    viewComponent = (
       <ScannedMetalJobCard
         jobCard={jobCard}
         parsedIds={parsedIds}
@@ -1043,7 +1093,7 @@ const ScannedJobCardView = ({
       />
     );
   } else if (cat === "5") {
-    return (
+    viewComponent = (
       <ScannedMDFJobCard
         jobCard={jobCard}
         parsedIds={parsedIds}
@@ -1058,7 +1108,7 @@ const ScannedJobCardView = ({
       />
     );
   } else {
-    return (
+    viewComponent = (
       <ScannedWoodJobCard
         jobCard={jobCard}
         parsedIds={parsedIds}
@@ -1073,6 +1123,13 @@ const ScannedJobCardView = ({
       />
     );
   }
+
+  return (
+    <>
+      {responsiveStyles}
+      {viewComponent}
+    </>
+  );
 };
 
 // ─── Main QR Scanner Component ─────────────────────────────────────────────────
@@ -1441,20 +1498,15 @@ const QRScanner = () => {
     await new Promise((resolve) => setTimeout(resolve, 100));
 
     try {
-      const readerEl = document.getElementById("reader");
-      const elementWidth = readerEl ? readerEl.clientWidth : 300;
-      const qrboxSize = Math.max(250, Math.floor(elementWidth * 0.7));
-
       await qrCodeRef.current.start(
         { facingMode: "environment" },
         {
           fps: 15,
-          videoConstraints: {
-            facingMode: "environment",
-            width: { min: 640, ideal: 1280, max: 1920 },
-            height: { min: 480, ideal: 720, max: 1080 }
-          },
-          qrbox: { width: qrboxSize, height: qrboxSize }
+          qrbox: (viewfinderWidth, viewfinderHeight) => {
+            const minEdge = Math.min(viewfinderWidth, viewfinderHeight);
+            const size = Math.max(250, Math.floor(minEdge * 0.7));
+            return { width: size, height: size };
+          }
         },
         handleScanSuccess,
         () => {} // Silent failure
