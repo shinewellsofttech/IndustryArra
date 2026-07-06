@@ -6,11 +6,12 @@ import * as Yup from "yup";
 import { Fn_AddEditData, Fn_DisplayData, Fn_FillListData } from "../../store/Functions";
 import { useDispatch } from "react-redux";
 import { API_WEB_URLS } from "../../constants/constAPI";
+import swal from "sweetalert";
 
 const ValidationSchema = Yup.object().shape({
   Name: Yup.string().required("Name is required"),
   Code: Yup.string().required("Code is required"),
-  Description: Yup.string(),
+  Description: Yup.string().nullable(),
 });
 
 const AddEdit_UserRole = () => {
@@ -61,8 +62,19 @@ const AddEdit_UserRole = () => {
         true,
         "memberid",
         navigate,
-        "/UserRole"
-      )
+        null
+      ).then((res) => {
+        console.log("AddEdit_UserRole resolved with:", res);
+        swal("Success", state.id === 0 ? "User Role created successfully!" : "User Role updated successfully!", "success", {
+          buttons: false,
+          timer: 1500,
+        }).then(() => {
+          navigate("/UserRole");
+        });
+      }).catch((err) => {
+        console.error("AddEdit_UserRole rejected with:", err);
+        swal("Error", typeof err === "string" ? err : "Failed to save data", "error");
+      });
     } catch (error) {
       console.error("Error submitting form:", error);
       alert("An error occurred while submitting the form. Please try again.");

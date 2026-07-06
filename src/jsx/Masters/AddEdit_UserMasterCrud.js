@@ -6,6 +6,7 @@ import * as Yup from "yup";
 import { Fn_AddEditData, Fn_DisplayData, Fn_FillListData } from "../../store/Functions";
 import { useDispatch } from "react-redux";
 import { API_WEB_URLS } from "../../constants/constAPI";
+import swal from "sweetalert";
 
 const ValidationSchema = Yup.object().shape({
   Name: Yup.string().required("Name is required"),
@@ -13,8 +14,8 @@ const ValidationSchema = Yup.object().shape({
   EmployeeCode: Yup.string().required("Employee Code is required"),
   PasswordHash: Yup.string().required("Password is required"),
   F_UserRole: Yup.number().min(1, "User Role is required"),
-  Email: Yup.string().email("Invalid email format"),
-  MobileNo: Yup.string(),
+  Email: Yup.string().email("Invalid email format").nullable(),
+  MobileNo: Yup.string().nullable(),
 });
 
 const AddEdit_UserMasterCrud = () => {
@@ -100,8 +101,19 @@ const AddEdit_UserMasterCrud = () => {
         true,
         "memberid",
         navigate,
-        "/UserMasterCrud"
-      )
+        null
+      ).then((res) => {
+        console.log("AddEdit_UserMasterCrud resolved with:", res);
+        swal("Success", state.id === 0 ? "User Master created successfully!" : "User Master updated successfully!", "success", {
+          buttons: false,
+          timer: 1500,
+        }).then(() => {
+          navigate("/UserMasterCrud");
+        });
+      }).catch((err) => {
+        console.error("AddEdit_UserMasterCrud rejected with:", err);
+        swal("Error", typeof err === "string" ? err : "Failed to save data", "error");
+      });
     } catch (error) {
       console.error("Error submitting form:", error);
       alert("An error occurred while submitting the form. Please try again.");

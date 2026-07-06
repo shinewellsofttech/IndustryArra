@@ -7,6 +7,7 @@ import { Fn_AddEditData, Fn_DisplayData, Fn_FillListData } from "../../store/Fun
 import { useDispatch } from "react-redux";
 import { API_WEB_URLS } from "../../constants/constAPI";
 import { getAllUniqueMenuItems } from "../layouts/nav/Menu";
+import swal from "sweetalert";
 
 
 
@@ -94,8 +95,19 @@ const AddEdit_ModuleMaster = () => {
         true,
         "memberid",
         navigate,
-        "/ModuleMaster"
-      )
+        null
+      ).then((res) => {
+        console.log("AddEdit_ModuleMaster resolved with:", res);
+        swal("Success", state.id === 0 ? "Module created successfully!" : "Module updated successfully!", "success", {
+          buttons: false,
+          timer: 1500,
+        }).then(() => {
+          navigate("/ModuleMaster");
+        });
+      }).catch((err) => {
+        console.error("AddEdit_ModuleMaster rejected with:", err);
+        swal("Error", typeof err === "string" ? err : "Failed to save data", "error");
+      });
     } catch (error) {
       console.error("Error submitting form:", error);
       alert("An error occurred while submitting the form. Please try again.");

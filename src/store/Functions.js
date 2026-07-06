@@ -143,6 +143,7 @@ export const Fn_DeleteData = (dispatch, setState, id, apiURL, apiURL_Display) =>
             arguList: arguList,
             apiURL: apiURL,
             callback: response => {
+                console.log("Fn_AddEditData callback response:", response);
                 // Handle error response with success: false and id: -2
                 if (response?.data?.success === false && (response?.data?.data?.id === -2 || response?.data?.id === -2 || response?.data?.id === -1)) {
                     const errorMessage = response.data.message || 'Add details first.';
@@ -155,10 +156,16 @@ export const Fn_DeleteData = (dispatch, setState, id, apiURL, apiURL_Display) =>
                     console.log('arguList', arguList);
 
                     // Safely extract resData
-                    const resData = response.data.response ? response.data.response[0] : response.data.data;
+                    let resData = response.data;
+                    if (response.data && response.data.response) {
+                        resData = response.data.response[0];
+                    } else if (response.data && response.data.data) {
+                        resData = response.data.data;
+                    }
+                    const resId = resData ? (resData.Id ?? resData.id) : undefined;
 
                     // Handle conflict (-2) immediately
-                    if (resData.Id === -2) {
+                    if (resId === -2) {
                         // Show toast/alert if you want
                         // showToastWithCloseButton("error", "Add item details first.");
                         console.log('Add item details first.');
@@ -168,28 +175,30 @@ export const Fn_DeleteData = (dispatch, setState, id, apiURL, apiURL_Display) =>
 
                     // Now process based on getid and resData
                     if (getid === 'certificate') {
-                        if (resData.Id > 0) {
+                        if (resId > 0 && resData) {
                             setState(resData.RegNo);
                         }
-                    } else if (resData && resData.Id > 0) {
+                    } else if (resData && resId > 0) {
                         setState(true);
                         localStorage.setItem("YesBank", JSON.stringify(resData));
                     } else if (getid === 'TenderH') {
-                        setState(prevState => ({
-                            ...prevState,
-                            F_TenderFileMasterH: resData.id
-                        }));
+                        if (resData) {
+                            setState(prevState => ({
+                                ...prevState,
+                                F_TenderFileMasterH: resId
+                            }));
+                        }
                     }
 
                     // Success: Add / Update
                     if (arguList.id === 0) {
                         // showToastWithCloseButton("success", "Data added successfully");
                         resolve(resData);
-                        navigate(forward, { state: { Id: 0 } });
+                        if (forward) navigate(forward, { state: { Id: 0 } });
                     } else {
                         // showToastWithCloseButton("success", "Data updated successfully");
                         resolve(resData);
-                        navigate(forward, { state: { Id: 0 } });
+                        if (forward) navigate(forward, { state: { Id: 0 } });
                     }
 
                 }else if (response?.data?.data?.id==-2) {

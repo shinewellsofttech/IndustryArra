@@ -412,11 +412,14 @@ const PermissionMetrixs = () => {
                                                             }}
                                                         >
                                                             <option value="0">-- Select Module --</option>
-                                                            {dropdowns.modules.map(module => (
-                                                                <option key={module.Id} value={module.Id}>
-                                                                    {module.Name || `Module ${module.Id}`}
-                                                                </option>
-                                                            ))}
+                                                            {dropdowns.modules.map(module => {
+                                                                const displayName = (module.Name?.toLowerCase() === "user master crud" || module.Name?.toLowerCase() === "user_master_crud") ? "USER MASTER" : module.Name;
+                                                                return (
+                                                                    <option key={module.Id} value={module.Id}>
+                                                                        {displayName || `Module ${module.Id}`}
+                                                                    </option>
+                                                                );
+                                                            })}
                                                         </select>
                                                     </td>
                                                     <td className="text-center bg-white">

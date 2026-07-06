@@ -11,7 +11,7 @@ const allDocumentationItems = [
         to: 'ModuleMaster',
     },
     {
-        title: 'USER MASTER CRUD',
+        title: 'USER MASTER',
         to: 'UserMasterCrud',
     },
     {

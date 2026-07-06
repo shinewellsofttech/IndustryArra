@@ -52,7 +52,7 @@ const PageList_ModuleMaster = () => {
                     state.FillArray.map((row, idx) => (
                       <tr key={row.Id || idx}>
                         <td>{idx + 1}</td>
-                        <td>{row.Name}</td>
+                        <td>{(row.Name?.toLowerCase() === "user master crud" || row.Name?.toLowerCase() === "user_master_crud") ? "USER MASTER" : row.Name}</td>
                         <td>{row.Path}</td>
                         <td>{row.IsActive ? "Yes" : "No"}</td>
                         <td>
