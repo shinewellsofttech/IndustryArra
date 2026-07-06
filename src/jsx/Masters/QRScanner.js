@@ -1603,15 +1603,22 @@ const QRScanner = () => {
                 </span>
               </div>
             </div>
-            <div className="card-body text-center d-flex flex-column justify-content-center align-items-center" style={{ minHeight: "440px", padding: "20px 20px" }}>
-              {fetchLoading ? (
+            <div className="card-body text-center d-flex flex-column justify-content-between align-items-center" style={{ minHeight: "440px", padding: "20px 20px", position: "relative" }}>
+              {fetchLoading && (
                 <div style={{
+                  position: "absolute",
+                  top: 0,
+                  left: 0,
+                  right: 0,
+                  bottom: 0,
+                  backgroundColor: "#ffffff",
+                  zIndex: 99,
                   display: "flex",
                   flexDirection: "column",
                   alignItems: "center",
                   justifyContent: "center",
                   gap: "20px",
-                  padding: "40px"
+                  borderRadius: "12px"
                 }}>
                   <div className="spinner-border" role="status" style={{ color: "#065f46", width: "56px", height: "56px", borderWidth: "5px" }}>
                     <span className="sr-only">Loading...</span>
@@ -1623,211 +1630,209 @@ const QRScanner = () => {
                     </p>
                   </div>
                 </div>
-              ) : (
-                <>
-                  {/* Scan Mode Segmented Control */}
-                  <div 
-                    style={{
-                      display: "flex",
-                      background: "#f1f5f9",
-                      padding: "4px",
-                      borderRadius: "8px",
-                      width: "100%",
-                      maxWidth: "400px",
-                      marginBottom: "20px"
-                    }}
-                  >
-                    <button
-                      style={{
-                        flex: 1,
-                        padding: "8px 12px",
-                        borderRadius: "6px",
-                        border: "none",
-                        fontWeight: 600,
-                        fontSize: "13px",
-                        transition: "all 0.2s",
-                        background: scanMode === "camera" ? "#fff" : "transparent",
-                        color: scanMode === "camera" ? "#0f172a" : "#64748b",
-                        boxShadow: scanMode === "camera" ? "0 1px 3px rgba(0,0,0,0.1)" : "none"
-                      }}
-                      onClick={() => handleModeChange("camera")}
-                    >
-                      <i className="fas fa-camera" style={{ marginRight: 6 }}></i>
-                      Live Camera
-                    </button>
-                    <button
-                      style={{
-                        flex: 1,
-                        padding: "8px 12px",
-                        borderRadius: "6px",
-                        border: "none",
-                        fontWeight: 600,
-                        fontSize: "13px",
-                        transition: "all 0.2s",
-                        background: scanMode === "file" ? "#fff" : "transparent",
-                        color: scanMode === "file" ? "#0f172a" : "#64748b",
-                        boxShadow: scanMode === "file" ? "0 1px 3px rgba(0,0,0,0.1)" : "none"
-                      }}
-                      onClick={() => handleModeChange("file")}
-                    >
-                      <i className="fas fa-upload" style={{ marginRight: 6 }}></i>
-                      Upload Image
-                    </button>
+              )}
+
+              {/* Scan Mode Segmented Control */}
+              <div 
+                style={{
+                  display: "flex",
+                  background: "#f1f5f9",
+                  padding: "4px",
+                  borderRadius: "8px",
+                  width: "100%",
+                  maxWidth: "400px",
+                  marginBottom: "20px"
+                }}
+              >
+                <button
+                  style={{
+                    flex: 1,
+                    padding: "8px 12px",
+                    borderRadius: "6px",
+                    border: "none",
+                    fontWeight: 600,
+                    fontSize: "13px",
+                    transition: "all 0.2s",
+                    background: scanMode === "camera" ? "#fff" : "transparent",
+                    color: scanMode === "camera" ? "#0f172a" : "#64748b",
+                    boxShadow: scanMode === "camera" ? "0 1px 3px rgba(0,0,0,0.1)" : "none"
+                  }}
+                  onClick={() => handleModeChange("camera")}
+                >
+                  <i className="fas fa-camera" style={{ marginRight: 6 }}></i>
+                  Live Camera
+                </button>
+                <button
+                  style={{
+                    flex: 1,
+                    padding: "8px 12px",
+                    borderRadius: "6px",
+                    border: "none",
+                    fontWeight: 600,
+                    fontSize: "13px",
+                    transition: "all 0.2s",
+                    background: scanMode === "file" ? "#fff" : "transparent",
+                    color: scanMode === "file" ? "#0f172a" : "#64748b",
+                    boxShadow: scanMode === "file" ? "0 1px 3px rgba(0,0,0,0.1)" : "none"
+                  }}
+                  onClick={() => handleModeChange("file")}
+                >
+                  <i className="fas fa-upload" style={{ marginRight: 6 }}></i>
+                  Upload Image
+                </button>
+              </div>
+
+              {/* Hidden file input */}
+              <input
+                type="file"
+                ref={fileInputRef}
+                onChange={handleFileUpload}
+                accept="image/*"
+                style={{ display: "none" }}
+              />
+
+              {/* Reader container: always in DOM so clientWidth is available */}
+              <div
+                style={{
+                  position: "relative",
+                  width: "100%",
+                  maxWidth: "400px",
+                  margin: "0 auto",
+                  boxShadow: isCameraActive ? "0 10px 25px -5px rgba(0,0,0,0.1)" : "none",
+                  display: scanMode === "camera" ? "block" : "none"
+                }}
+              >
+                {isCameraActive && (
+                  <>
+                    <div className="laser-line"></div>
+                    <div className="viewfinder-corner corner-tl"></div>
+                    <div className="viewfinder-corner corner-tr"></div>
+                    <div className="viewfinder-corner corner-bl"></div>
+                    <div className="viewfinder-corner corner-br"></div>
+                  </>
+                )}
+
+                <div
+                  id="reader"
+                  style={{
+                    width: "100%",
+                    border: isCameraActive ? "2px solid #065f46" : "none",
+                    borderRadius: "12px",
+                    overflow: "hidden",
+                    backgroundColor: "#000000",
+                    display: isCameraActive ? "block" : "none"
+                  }}
+                ></div>
+
+                {!isCameraActive && (
+                  <div style={{
+                    width: "100%",
+                    height: "280px",
+                    border: "2px dashed #065f46",
+                    borderRadius: "12px",
+                    backgroundColor: "#f8f9fa",
+                    display: "flex",
+                    flexDirection: "column",
+                    justifyContent: "center",
+                    alignItems: "center",
+                    padding: "20px"
+                  }}>
+                    <div className="mb-3 d-flex justify-content-center align-items-center" style={{ width: "70px", height: "70px", borderRadius: "50%", backgroundColor: "#e6f4ea" }}>
+                      <i className="fas fa-camera" style={{ fontSize: "2rem", color: "#065f46" }}></i>
+                    </div>
+                    <h5 className="font-w700 text-dark mb-1" style={{ fontSize: "1.1rem" }}>Camera is Offline</h5>
+                    <p className="text-muted fs-13 text-center mb-0" style={{ maxWidth: "260px" }}>
+                      Tap the button below to turn on the camera and scan a QR Code.
+                    </p>
                   </div>
+                )}
+              </div>
 
-                  {/* Hidden file input */}
-                  <input
-                    type="file"
-                    ref={fileInputRef}
-                    onChange={handleFileUpload}
-                    accept="image/*"
-                    style={{ display: "none" }}
-                  />
+              {/* Upload panel view */}
+              {scanMode === "file" && (
+                <div
+                  onClick={() => fileInputRef.current && fileInputRef.current.click()}
+                  style={{
+                    width: "100%",
+                    maxWidth: "400px",
+                    height: "280px",
+                    border: "2px dashed #0284c7",
+                    borderRadius: "12px",
+                    backgroundColor: "#f0f9ff",
+                    display: "flex",
+                    flexDirection: "column",
+                    justifyContent: "center",
+                    alignItems: "center",
+                    padding: "20px",
+                    cursor: "pointer",
+                    transition: "all 0.2s",
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.backgroundColor = "#e0f2fe";
+                    e.currentTarget.style.borderColor = "#0369a1";
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.backgroundColor = "#f0f9ff";
+                    e.currentTarget.style.borderColor = "#0284c7";
+                  }}
+                >
+                  <div className="mb-3 d-flex justify-content-center align-items-center" style={{ width: "70px", height: "70px", borderRadius: "50%", backgroundColor: "#e0f2fe" }}>
+                    <i className="fas fa-cloud-upload-alt" style={{ fontSize: "2rem", color: "#0284c7" }}></i>
+                  </div>
+                  <h5 className="font-w700 text-dark mb-1" style={{ fontSize: "1.1rem" }}>Upload QR Image</h5>
+                  <p className="text-muted fs-13 text-center mb-0" style={{ maxWidth: "260px" }}>
+                    Click here to select an image from your device containing the QR Code.
+                  </p>
+                </div>
+              )}
 
-                  {/* Reader container: always in DOM so clientWidth is available */}
-                  <div
-                    style={{
-                      position: "relative",
-                      width: "100%",
-                      maxWidth: "400px",
-                      margin: "0 auto",
-                      boxShadow: isCameraActive ? "0 10px 25px -5px rgba(0,0,0,0.1)" : "none",
-                      display: scanMode === "camera" ? "block" : "none"
-                    }}
+              <div className="w-100 mt-4" style={{ maxWidth: "400px" }}>
+                {scanMode === "file" ? (
+                  <button
+                    className="btn btn-info btn-block py-2.5 font-w700 fs-16 shadow-sm text-white"
+                    style={{ backgroundColor: "#0284c7", borderColor: "#0284c7", borderRadius: "6px", transition: "all 0.2s" }}
+                    onClick={() => fileInputRef.current && fileInputRef.current.click()}
                   >
-                    {isCameraActive && (
+                    <i className="fas fa-image mr-2"></i> SELECT IMAGE FILE
+                  </button>
+                ) : !isCameraActive ? (
+                  <button
+                    className="btn btn-primary btn-block py-2.5 font-w700 fs-16 shadow-sm"
+                    style={{ backgroundColor: "#065f46", borderColor: "#065f46", borderRadius: "6px", transition: "all 0.2s" }}
+                    onClick={startCamera}
+                    disabled={isTransitioning}
+                  >
+                    {isTransitioning ? (
                       <>
-                        <div className="laser-line"></div>
-                        <div className="viewfinder-corner corner-tl"></div>
-                        <div className="viewfinder-corner corner-tr"></div>
-                        <div className="viewfinder-corner corner-bl"></div>
-                        <div className="viewfinder-corner corner-br"></div>
+                        <span className="spinner-border spinner-border-sm mr-2" role="status" aria-hidden="true"></span>
+                        Starting Camera...
+                      </>
+                    ) : (
+                      <>
+                        <i className="fas fa-power-off mr-2"></i> TURN ON CAMERA
                       </>
                     )}
-
-                    <div
-                      id="reader"
-                      style={{
-                        width: "100%",
-                        border: isCameraActive ? "2px solid #065f46" : "none",
-                        borderRadius: "12px",
-                        overflow: "hidden",
-                        backgroundColor: "#000000",
-                        display: isCameraActive ? "block" : "none"
-                      }}
-                    ></div>
-
-                    {!isCameraActive && (
-                      <div style={{
-                        width: "100%",
-                        height: "280px",
-                        border: "2px dashed #065f46",
-                        borderRadius: "12px",
-                        backgroundColor: "#f8f9fa",
-                        display: "flex",
-                        flexDirection: "column",
-                        justifyContent: "center",
-                        alignItems: "center",
-                        padding: "20px"
-                      }}>
-                        <div className="mb-3 d-flex justify-content-center align-items-center" style={{ width: "70px", height: "70px", borderRadius: "50%", backgroundColor: "#e6f4ea" }}>
-                          <i className="fas fa-camera" style={{ fontSize: "2rem", color: "#065f46" }}></i>
-                        </div>
-                        <h5 className="font-w700 text-dark mb-1" style={{ fontSize: "1.1rem" }}>Camera is Offline</h5>
-                        <p className="text-muted fs-13 text-center mb-0" style={{ maxWidth: "260px" }}>
-                          Tap the button below to turn on the camera and scan a QR Code.
-                        </p>
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Upload panel view */}
-                  {scanMode === "file" && (
-                    <div
-                      onClick={() => fileInputRef.current && fileInputRef.current.click()}
-                      style={{
-                        width: "100%",
-                        maxWidth: "400px",
-                        height: "280px",
-                        border: "2px dashed #0284c7",
-                        borderRadius: "12px",
-                        backgroundColor: "#f0f9ff",
-                        display: "flex",
-                        flexDirection: "column",
-                        justifyContent: "center",
-                        alignItems: "center",
-                        padding: "20px",
-                        cursor: "pointer",
-                        transition: "all 0.2s",
-                      }}
-                      onMouseEnter={(e) => {
-                        e.currentTarget.style.backgroundColor = "#e0f2fe";
-                        e.currentTarget.style.borderColor = "#0369a1";
-                      }}
-                      onMouseLeave={(e) => {
-                        e.currentTarget.style.backgroundColor = "#f0f9ff";
-                        e.currentTarget.style.borderColor = "#0284c7";
-                      }}
-                    >
-                      <div className="mb-3 d-flex justify-content-center align-items-center" style={{ width: "70px", height: "70px", borderRadius: "50%", backgroundColor: "#e0f2fe" }}>
-                        <i className="fas fa-cloud-upload-alt" style={{ fontSize: "2rem", color: "#0284c7" }}></i>
-                      </div>
-                      <h5 className="font-w700 text-dark mb-1" style={{ fontSize: "1.1rem" }}>Upload QR Image</h5>
-                      <p className="text-muted fs-13 text-center mb-0" style={{ maxWidth: "260px" }}>
-                        Click here to select an image from your device containing the QR Code.
-                      </p>
-                    </div>
-                  )}
-
-                  <div className="w-100 mt-4" style={{ maxWidth: "400px" }}>
-                    {scanMode === "file" ? (
-                      <button
-                        className="btn btn-info btn-block py-2.5 font-w700 fs-16 shadow-sm text-white"
-                        style={{ backgroundColor: "#0284c7", borderColor: "#0284c7", borderRadius: "6px", transition: "all 0.2s" }}
-                        onClick={() => fileInputRef.current && fileInputRef.current.click()}
-                      >
-                        <i className="fas fa-image mr-2"></i> SELECT IMAGE FILE
-                      </button>
-                    ) : !isCameraActive ? (
-                      <button
-                        className="btn btn-primary btn-block py-2.5 font-w700 fs-16 shadow-sm"
-                        style={{ backgroundColor: "#065f46", borderColor: "#065f46", borderRadius: "6px", transition: "all 0.2s" }}
-                        onClick={startCamera}
-                        disabled={isTransitioning}
-                      >
-                        {isTransitioning ? (
-                          <>
-                            <span className="spinner-border spinner-border-sm mr-2" role="status" aria-hidden="true"></span>
-                            Starting Camera...
-                          </>
-                        ) : (
-                          <>
-                            <i className="fas fa-power-off mr-2"></i> TURN ON CAMERA
-                          </>
-                        )}
-                      </button>
+                  </button>
+                ) : (
+                  <button
+                    className="btn btn-danger btn-block py-2.5 font-w700 fs-16 shadow-sm"
+                    style={{ borderRadius: "6px" }}
+                    onClick={stopCamera}
+                    disabled={isTransitioning}
+                  >
+                    {isTransitioning ? (
+                      <>
+                        <span className="spinner-border spinner-border-sm mr-2" role="status" aria-hidden="true"></span>
+                        Stopping Camera...
+                      </>
                     ) : (
-                      <button
-                        className="btn btn-danger btn-block py-2.5 font-w700 fs-16 shadow-sm"
-                        style={{ borderRadius: "6px" }}
-                        onClick={stopCamera}
-                        disabled={isTransitioning}
-                      >
-                        {isTransitioning ? (
-                          <>
-                            <span className="spinner-border spinner-border-sm mr-2" role="status" aria-hidden="true"></span>
-                            Stopping Camera...
-                          </>
-                        ) : (
-                          <>
-                            <i className="fas fa-stop mr-2"></i> TURN OFF CAMERA
-                          </>
-                        )}
-                      </button>
+                      <>
+                        <i className="fas fa-stop mr-2"></i> TURN OFF CAMERA
+                      </>
                     )}
-                  </div>
-                </>
-              )}
+                  </button>
+                )}
+              </div>
             </div>
           </div>
         </div>
