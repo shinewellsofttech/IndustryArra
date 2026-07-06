@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useRef } from "react";
 import { useDispatch } from "react-redux";
 import { useNavigate } from "react-router-dom";
+import swal from "sweetalert";
 import PageTitle from "../layouts/PageTitle";
 import { Fn_FillListData, Fn_AddEditData } from "../../store/Functions";
 import { API_WEB_URLS } from "../../constants/constAPI";
@@ -273,10 +274,10 @@ const PermissionMetrixs = () => {
                 null
             );
             
-            alert("Permissions saved successfully!");
+            swal("Success", "Permissions saved successfully!", "success");
         } catch (error) {
             console.error("Failed to save permissions", error);
-            alert("Failed to save permissions. Please try again.");
+            swal("Error", "Failed to save permissions. Please try again.", "error");
         }
     };
 

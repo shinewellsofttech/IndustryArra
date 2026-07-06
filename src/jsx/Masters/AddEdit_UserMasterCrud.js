@@ -94,7 +94,7 @@ const AddEdit_UserMasterCrud = () => {
       
       Fn_AddEditData(
         dispatch,
-        setState,
+        () => {},
         { arguList: { id: state.id, formData } },
         API_URL_SAVE,
         true,

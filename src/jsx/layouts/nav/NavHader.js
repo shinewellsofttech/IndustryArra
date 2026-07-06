@@ -22,12 +22,29 @@ const NavHader = () => {
   );
   return (
     <div className="nav-header">
+      <style>{`
+        .brand-logo img {
+          height: 75px !important;
+          width: auto !important;
+          max-width: 240px !important;
+          object-fit: contain !important;
+          transition: all 0.2s ease-in-out !important;
+        }
+        #main-wrapper.menu-toggle .brand-logo img {
+          height: 35px !important;
+          max-width: 35px !important;
+        }
+        @media only screen and (max-width: 767px) {
+          .brand-logo img {
+            height: 35px !important;
+            max-width: 35px !important;
+          }
+        }
+      `}</style>
       <Link to="/dashboard" className="brand-logo">
-       
-          <Fragment>
-		  <img src={logo2} alt="" style={{ width: "60px", height: "60px", objectFit: "contain" }} />
-          </Fragment>
-    
+        <Fragment>
+          <img src={logo2} alt="" />
+        </Fragment>
       </Link>
 
       <div
