@@ -1429,6 +1429,12 @@ const QRScanner = () => {
     setParsedIds(null);
     setLastScanned(null);
 
+    // Make the reader element visible first so html5-qrcode can mount to it
+    setIsCameraActive(true);
+
+    // Wait a short moment (100ms) for React to render the visible reader container
+    await new Promise((resolve) => setTimeout(resolve, 100));
+
     try {
       const readerEl = document.getElementById("reader");
       const elementWidth = readerEl ? readerEl.clientWidth : 300;
@@ -1448,9 +1454,9 @@ const QRScanner = () => {
         handleScanSuccess,
         () => {} // Silent failure
       );
-      setIsCameraActive(true);
     } catch (err) {
       console.error("Failed to start camera:", err);
+      setIsCameraActive(false);
       alert("Could not access camera. Please check camera permissions and make sure you are using HTTPS.");
     } finally {
       setIsTransitioning(false);
