@@ -1544,6 +1544,8 @@ const QRScanner = () => {
     setFetchError(null);
     setParsedIds(null);
     setLastScanned(null);
+    // Automatically restart the camera when clicking rescan/try again
+    startCamera();
   };
 
   // ── If we have a job card loaded, show the job card view ──────
