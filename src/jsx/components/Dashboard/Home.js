@@ -345,11 +345,7 @@ const Home = () => {
   return (
     <div className="container-fluid py-4">
       {/* Page Header */}
-      <div className="d-flex flex-wrap justify-content-between align-items-center mb-4">
-        <div>
-          <h2 className="font-w600 mb-1 text-primary">Machine Performance & Delay Dashboard</h2>
-          <p className="text-muted mb-0">Real-time tracking of machine statuses and delayed workflow transitions</p>
-        </div>
+      <div className="d-flex flex-wrap justify-content-end align-items-center mb-4">
         <div className="d-flex align-items-center mt-3 mt-md-0">
           <Badge bg="info" className="p-2 me-3 fs-14" style={{ cursor: "pointer" }} onClick={() => setShowThresholdInput(!showThresholdInput)}>
             <i className="fas fa-clock me-1"></i> Threshold: {thresholdVal} Hours
