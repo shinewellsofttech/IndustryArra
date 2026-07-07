@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback } from "react";
 import { Row, Col, Button, Table, Card, Badge, Form, Spinner, Modal } from "react-bootstrap";
 import axios from "axios";
 import { Doughnut, Bar } from "react-chartjs-2";
-import { API_WEB_URLS } from "../../../constants/constAPI";
+import { API_WEB_URLS } from "../../constants/constAPI";
 import {
   Chart as ChartJS,
   CategoryScale,
@@ -65,7 +65,7 @@ const formatDelayText = (hoursVal) => {
   return m > 0 ? `${h}h ${m}m` : `${h}h`;
 };
 
-const Home = () => {
+const MachineDelayDashboard = () => {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -748,4 +748,4 @@ const Home = () => {
   );
 };
 
-export default Home;
+export default MachineDelayDashboard;

@@ -79,6 +79,10 @@ const allReportingItems = [
         to: 'QRScanner',
     },
     {
+        title: 'MACHINE DASHBOARD',
+        to: 'MachineDelayDashboard',
+    },
+    {
         title: 'SHIPMENT REPORT',
         to: 'ContainerEntryReport',
     },
@@ -134,7 +138,7 @@ const filterByPermissions = (menuList, permissions) => {
         return menuList;
     }
     return menuList.filter(item => {
-        if (item.to === 'dashboard') return true;
+        if (item.to === 'dashboard' || item.to === 'MachineDelayDashboard') return true;
         const perm = permissions.find(p => (p.ModulePath || p.Path)?.toLowerCase() === item.to?.toLowerCase());
         return perm ? perm.IsView : false;
     });

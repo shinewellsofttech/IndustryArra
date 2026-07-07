@@ -146,6 +146,7 @@ import AddEdit_MachineMaster from "./Masters/AddEdit_MachineMaster";
 import TotalItemSummary from "./Masters/TotalItemSummary";
 import ReportingEntrySystem from "./NewReportingSystem/ReportingEntrySystem";
 import QRScanner from "./Masters/QRScanner";
+import MachineDelayDashboard from "./Reports/MachineDelayDashboard";
 import AddEdit_ModuleMaster from "./Masters/AddEdit_ModuleMaster";
 import PageList_ModuleMaster from "./Masters/PageList_ModuleMaster";
 import AddEdit_UserRole from "./Masters/AddEdit_UserRole";
@@ -303,6 +304,7 @@ const Markup = () => {
     { url: "ContainerMasterReport", component: <ContainerMasterReport/> },
     { url: "ReportingEntrySystem", component: <ReportingEntrySystem/> },
     { url: "QRScanner", component: <QRScanner/> },
+    { url: "MachineDelayDashboard", component: <MachineDelayDashboard/> },
 
   ];
   let path = window.location.pathname;
