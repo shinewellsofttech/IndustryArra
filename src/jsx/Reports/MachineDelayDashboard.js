@@ -495,6 +495,7 @@ const MachineDelayDashboard = () => {
                     <thead className="thead-light">
                       <tr>
                         <th>Machine</th>
+                        <th>Shipment No</th>
                         <th>Job Card No</th>
                         <th>Started At</th>
                         <th>Running For</th>
@@ -505,11 +506,12 @@ const MachineDelayDashboard = () => {
                     <tbody>
                       {filteredRunning.length > 0 ? (
                         filteredRunning.map((m) => (
-                          <tr key={m.JobCardLineId}>
+                          <tr key={m.JobCardLineId} className={m.IsDelayedRun ? "table-danger-light text-danger font-weight-bold" : ""}>
                             <td>
                               <span className="fw-bold">{m.MachineName}</span>
                               <div className="text-xs text-muted">{m.MachineCode}</div>
                             </td>
+                            <td>{m.ShipmentNo || <span className="text-muted">N/A</span>}</td>
                             <td>
                               <Badge bg="light" text="primary" className="fs-12 p-2" style={{ cursor: "pointer" }} onClick={() => handleViewJobCardFlow(m.JobCardMasterId, m.JobCardNo)}>
                                 {m.JobCardNo}
@@ -517,9 +519,14 @@ const MachineDelayDashboard = () => {
                             </td>
                             <td>{formatDateTime(m.StartTime)}</td>
                             <td>
-                              <Badge bg="success" className="p-2 fs-11">
+                              <Badge bg={m.IsDelayedRun ? "danger" : "success"} className="p-2 fs-11">
                                 {formatDelayText(m.RunningMinutes / 60.0)}
                               </Badge>
+                              {m.IsDelayedRun ? (
+                                <span className="text-danger ms-2 fw-bold text-xs d-block mt-1">
+                                  <i className="fas fa-exclamation-triangle me-1"></i>ALERT (DELAY)
+                                </span>
+                              ) : null}
                             </td>
                             <td>{m.OperatorName || <span className="text-muted">N/A</span>}</td>
                             <td className="text-center">
@@ -531,7 +538,7 @@ const MachineDelayDashboard = () => {
                         ))
                       ) : (
                         <tr>
-                          <td colSpan="6" className="text-center text-muted py-4">
+                          <td colSpan="7" className="text-center text-muted py-4">
                             No running machines match your filters.
                           </td>
                         </tr>
@@ -559,6 +566,7 @@ const MachineDelayDashboard = () => {
                   <Table className="align-items-center table-flush mb-0" hover>
                     <thead className="thead-light">
                       <tr>
+                        <th>Shipment No</th>
                         <th>Job Card</th>
                         <th>From Machine</th>
                         <th>Finished</th>
@@ -571,6 +579,7 @@ const MachineDelayDashboard = () => {
                       {filteredDelayed.length > 0 ? (
                         filteredDelayed.map((t, idx) => (
                           <tr key={idx}>
+                            <td>{t.ShipmentNo || <span className="text-muted">N/A</span>}</td>
                             <td>
                               <Badge bg="light" text="primary" className="fs-12 p-2" style={{ cursor: "pointer" }} onClick={() => handleViewJobCardFlow(t.JobCardMasterId, t.JobCardNo)}>
                                 {t.JobCardNo}
@@ -605,7 +614,7 @@ const MachineDelayDashboard = () => {
                         ))
                       ) : (
                         <tr>
-                          <td colSpan="6" className="text-center text-muted py-4">
+                          <td colSpan="7" className="text-center text-muted py-4">
                             No delayed transitions match your filters.
                           </td>
                         </tr>
