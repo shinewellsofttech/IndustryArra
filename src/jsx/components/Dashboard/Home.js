@@ -83,6 +83,7 @@ const Home = () => {
   const [shipmentSearch, setShipmentSearch] = useState("");
   const [jobCardSearch, setJobCardSearch] = useState("");
   const [slipsSearch, setSlipsSearch] = useState("");
+  const [expandedNodes, setExpandedNodes] = useState({});
 
   // Job card drilldown flow state
   const [selectedJobCardId, setSelectedJobCardId] = useState(null);
@@ -340,6 +341,95 @@ const Home = () => {
         setSelectedMachineFilter(chartStats[idx].MachineName);
       }
     },
+  };
+
+  // Group logs by ParentContainerNo to construct visual trees
+  const buildContainerTree = (logs) => {
+    const parentMap = {};
+    const childSet = new Set();
+
+    logs.forEach(log => {
+      const parent = log.ParentContainerNo || "Unknown Source";
+      const child = log.CurrentContainerNo || "Unknown Target";
+      childSet.add(child);
+      
+      if (!parentMap[parent]) {
+        parentMap[parent] = [];
+      }
+      parentMap[parent].push(log);
+    });
+
+    // Find root parents (parents that are not children of any other transition in this list)
+    const roots = Object.keys(parentMap).filter(parent => !childSet.has(parent));
+    const finalRoots = roots.length > 0 ? roots : Object.keys(parentMap);
+
+    return { parentMap, roots: finalRoots };
+  };
+
+  const renderTreeNodes = (parentMap, roots) => {
+    return roots.map((root, idx) => {
+      const children = parentMap[root] || [];
+      const isExpanded = expandedNodes[root] !== false; // expanded by default
+
+      return (
+        <div key={root || idx} className="tree-node mb-3 pb-2 border-bottom border-light">
+          <div className="d-flex align-items-center mb-2" style={{ cursor: "pointer" }} onClick={() => toggleNode(root)}>
+            <span className="me-2 text-primary">
+              <i className={`fas ${isExpanded ? "fa-minus-square" : "fa-plus-square"} fs-16`}></i>
+            </span>
+            <span className="badge bg-light text-dark p-2 fs-12 border shadow-sm">
+              <i className="fas fa-box-open me-2 text-warning"></i>
+              <strong>Source Container: {root}</strong> ({children.length} Splits/Joins)
+            </span>
+          </div>
+
+          {isExpanded && (
+            <div className="ps-4 ms-2" style={{ borderLeft: "2px dashed #9bc5ff" }}>
+              {children.map((child, cIdx) => (
+                <div key={child.Id || cIdx} className="tree-child-node d-flex align-items-start mb-2 pt-1 position-relative">
+                  <Card className="w-100 shadow-none border bg-light mb-0 ms-2">
+                    <Card.Body className="p-3 d-flex flex-wrap align-items-center justify-content-between">
+                      <div className="d-flex align-items-center flex-wrap">
+                        <Badge bg="primary" className="me-3 p-2 fs-11 shadow-sm">
+                          <i className="fas fa-arrow-right me-1"></i>
+                          Target: {child.CurrentContainerNo}
+                        </Badge>
+                        <span className="me-3 text-xs text-dark">
+                          <strong>Item:</strong> <span className="fw-bold">{child.ItemCode}</span> ({child.ItemName})
+                        </span>
+                        <span className="me-3 text-xs text-dark">
+                          <strong>Qty:</strong> <strong className="text-success">{child.Quantity}</strong>
+                        </span>
+                        <span className="text-xs text-dark">
+                          <strong>Contract:</strong>{" "}
+                          {child.IsTikamoon ? (
+                            <Badge bg="dark" className="p-1 fs-10">Tikamoon (No Contract)</Badge>
+                          ) : child.ContractNo ? (
+                            <Badge bg="info" className="p-2 fs-11 text-white">{child.ContractNo}</Badge>
+                          ) : (
+                            <span className="text-muted">No Contract</span>
+                          )}
+                        </span>
+                      </div>
+                      <small className="text-muted text-xs ms-auto mt-2 mt-sm-0">
+                        <i className="far fa-clock me-1"></i> {formatDateTime(child.TransactionDate)}
+                      </small>
+                    </Card.Body>
+                  </Card>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      );
+    });
+  };
+
+  const toggleNode = (nodeName) => {
+    setExpandedNodes(prev => ({
+      ...prev,
+      [nodeName]: prev[nodeName] === false ? true : false
+    }));
   };
 
   return (
@@ -676,7 +766,7 @@ const Home = () => {
         <Card.Header className="bg-white py-3 border-bottom d-flex justify-content-between align-items-center flex-wrap">
           <h5 className="mb-0 text-dark fw-bold">
             <i className="fas fa-random text-primary me-2"></i>
-            Container Breakdown & Join Tracking Logs
+            Container Breakdown & Join Tracking Logs (Tree View)
           </h5>
           <div className="d-flex align-items-center mt-2 mt-md-0" style={{ maxWidth: "350px", width: "100%" }}>
             <Form.Control
@@ -688,69 +778,17 @@ const Home = () => {
             />
           </div>
         </Card.Header>
-        <Card.Body className="p-0">
-          <div className="table-responsive">
-            <Table className="align-items-center table-flush mb-0" hover>
-              <thead className="thead-light">
-                <tr>
-                  <th>Item Code</th>
-                  <th>Item Name</th>
-                  <th>Contract No</th>
-                  <th>Qty</th>
-                  <th>Source Container (Previous)</th>
-                  <th>Destination Container (Current)</th>
-                  <th>Transaction Date</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filteredBreakdown.length > 0 ? (
-                  filteredBreakdown.map((b) => (
-                    <tr key={b.Id}>
-                      <td className="fw-bold">{b.ItemCode}</td>
-                      <td className="text-muted">{b.ItemName}</td>
-                      <td>
-                        {b.IsTikamoon ? (
-                          <Badge bg="dark" className="p-2 fs-11">
-                            Tikamoon (No Contract)
-                          </Badge>
-                        ) : b.ContractNo ? (
-                          <span className="fw-bold text-primary">{b.ContractNo}</span>
-                        ) : (
-                          <span className="text-muted">No Contract</span>
-                        )}
-                      </td>
-                      <td className="fw-bold text-success">{b.Quantity}</td>
-                      <td>
-                        {b.ParentContainerNo ? (
-                          <Badge bg="secondary" className="p-2 fs-11">
-                            {b.ParentContainerNo}
-                          </Badge>
-                        ) : (
-                          <span className="text-muted">N/A</span>
-                        )}
-                      </td>
-                      <td>
-                        {b.CurrentContainerNo ? (
-                          <Badge bg="primary" className="p-2 fs-11">
-                            {b.CurrentContainerNo}
-                          </Badge>
-                        ) : (
-                          <span className="text-muted">N/A</span>
-                        )}
-                      </td>
-                      <td>{formatDateTime(b.TransactionDate)}</td>
-                    </tr>
-                  ))
-                ) : (
-                  <tr>
-                    <td colSpan="7" className="text-center text-muted py-4">
-                      No container breakdown or join tracking logs found.
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </Table>
-          </div>
+        <Card.Body className="p-4">
+          {filteredBreakdown.length > 0 ? (
+            (() => {
+              const { parentMap, roots } = buildContainerTree(filteredBreakdown);
+              return renderTreeNodes(parentMap, roots);
+            })()
+          ) : (
+            <p className="text-center text-muted py-4 mb-0">
+              No container breakdown or join tracking logs found.
+            </p>
+          )}
         </Card.Body>
       </Card>
 
