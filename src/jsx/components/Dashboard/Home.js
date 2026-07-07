@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from "react";
-import { Row, Col, Button, Table, Card, Badge, Form, Spinner, Modal } from "react-bootstrap";
+import { Row, Col, Button, Table, Card, Badge, Form, Spinner, Modal, Tabs, Tab } from "react-bootstrap";
 import axios from "axios";
 import { Doughnut, Bar } from "react-chartjs-2";
 import { API_WEB_URLS } from "../../../constants/constAPI";
@@ -78,6 +78,11 @@ const Home = () => {
   const [thresholdVal, setThresholdVal] = useState(4);
   const [isUpdatingThreshold, setIsUpdatingThreshold] = useState(false);
   const [showThresholdInput, setShowThresholdInput] = useState(false);
+  // Active Tab & Search Filters for Tabs
+  const [activeTab, setActiveTab] = useState("machines");
+  const [shipmentSearch, setShipmentSearch] = useState("");
+  const [jobCardSearch, setJobCardSearch] = useState("");
+  const [slipsSearch, setSlipsSearch] = useState("");
 
   // Job card drilldown flow state
   const [selectedJobCardId, setSelectedJobCardId] = useState(null);
@@ -205,6 +210,47 @@ const Home = () => {
   const runningMachines = data?.runningMachines || [];
   const delayedTransitions = data?.delayedTransitions || [];
   const chartStats = data?.chartStats || [];
+  const breakdownLogs = data?.breakdownLogs || [];
+  const recentJobCards = data?.recentJobCards || [];
+  const recentWoodIssues = data?.recentWoodIssues || [];
+  const recentSlips = data?.recentSlips || [];
+
+  // Filter lists based on search parameters
+  const filteredBreakdown = breakdownLogs.filter((b) => {
+    if (!shipmentSearch) return true;
+    const s = shipmentSearch.toLowerCase();
+    return (
+      (b.ItemCode && b.ItemCode.toLowerCase().includes(s)) ||
+      (b.ItemName && b.ItemName.toLowerCase().includes(s)) ||
+      (b.ContractNo && b.ContractNo.toLowerCase().includes(s)) ||
+      (b.ParentContainerNo && b.ParentContainerNo.toLowerCase().includes(s)) ||
+      (b.CurrentContainerNo && b.CurrentContainerNo.toLowerCase().includes(s))
+    );
+  });
+
+  const filteredJobCards = recentJobCards.filter((j) => {
+    if (!jobCardSearch) return true;
+    const s = jobCardSearch.toLowerCase();
+    return (
+      (j.JobCardNo && j.JobCardNo.toLowerCase().includes(s)) ||
+      (j.ProductCode && j.ProductCode.toLowerCase().includes(s)) ||
+      (j.ItemCode && j.ItemCode.toLowerCase().includes(s)) ||
+      (j.ItemName && j.ItemName.toLowerCase().includes(s)) ||
+      (j.ContainerNo && j.ContainerNo.toLowerCase().includes(s))
+    );
+  });
+
+  const filteredSlips = recentSlips.filter((sl) => {
+    if (!slipsSearch) return true;
+    const s = slipsSearch.toLowerCase();
+    return (
+      (sl.SlipType && sl.SlipType.toLowerCase().includes(s)) ||
+      (sl.SlipName && sl.SlipName.toLowerCase().includes(s)) ||
+      (sl.ALCode && sl.ALCode.toLowerCase().includes(s)) ||
+      (sl.ItemCode && sl.ItemCode.toLowerCase().includes(s)) ||
+      (sl.ContainerNo && sl.ContainerNo.toLowerCase().includes(s))
+    );
+  });
 
   // Filter lists based on selected states
   const filteredRunning = runningMachines.filter((m) => {
@@ -415,218 +461,526 @@ const Home = () => {
         </Col>
       </Row>
 
-      {/* Chart Section */}
-      <Row className="mb-4">
-        <Col lg={4} className="mb-4 mb-lg-0">
-          <Card className="h-100 shadow-sm">
-            <Card.Header className="bg-white border-0 py-3">
-              <h5 className="mb-0 text-dark font-w500">Machine Status Ratio</h5>
-              <small className="text-muted">Click segment to filter table lists</small>
-            </Card.Header>
-            <Card.Body className="d-flex align-items-center justify-content-center" style={{ minHeight: "260px" }}>
-              <div style={{ height: "230px", width: "100%" }}>
-                <Doughnut data={donutData} options={donutOptions} />
-              </div>
-            </Card.Body>
-          </Card>
-        </Col>
+      <Tabs activeKey={activeTab} onSelect={(k) => setActiveTab(k)} className="mb-4 custom-tabs-pills">
+        <Tab eventKey="machines" title={<span><i className="fas fa-desktop me-2"></i>Machine Status & Delays</span>}>
+          {/* Chart Section */}
+          <Row className="mb-4">
+            <Col lg={4} className="mb-4 mb-lg-0">
+              <Card className="h-100 shadow-sm">
+                <Card.Header className="bg-white border-0 py-3">
+                  <h5 className="mb-0 text-dark font-w500">Machine Status Ratio</h5>
+                  <small className="text-muted">Click segment to filter table lists</small>
+                </Card.Header>
+                <Card.Body className="d-flex align-items-center justify-content-center" style={{ minHeight: "260px" }}>
+                  <div style={{ height: "230px", width: "100%" }}>
+                    <Doughnut data={donutData} options={donutOptions} />
+                  </div>
+                </Card.Body>
+              </Card>
+            </Col>
 
-        <Col lg={8}>
-          <Card className="h-100 shadow-sm">
-            <Card.Header className="bg-white border-0 py-3 d-flex justify-content-between align-items-center">
+            <Col lg={8}>
+              <Card className="h-100 shadow-sm">
+                <Card.Header className="bg-white border-0 py-3 d-flex justify-content-between align-items-center">
+                  <div>
+                    <h5 className="mb-0 text-dark font-w500">Delays by Completion Machine</h5>
+                    <small className="text-muted">Click bars to filter by completion machine</small>
+                  </div>
+                </Card.Header>
+                <Card.Body className="d-flex align-items-center justify-content-center" style={{ minHeight: "260px" }}>
+                  {chartStats.length > 0 ? (
+                    <div style={{ height: "230px", width: "100%" }}>
+                      <Bar data={barData} options={barOptions} />
+                    </div>
+                  ) : (
+                    <div className="text-center text-muted">
+                      <i className="fas fa-chart-bar fs-2 mb-2 d-block"></i>
+                      No delayed transitions reported to generate chart.
+                    </div>
+                  )}
+                </Card.Body>
+              </Card>
+            </Col>
+          </Row>
+
+          {/* Filters Summary & Reset */}
+          {(selectedCategory !== "ALL" || selectedMachineFilter) && (
+            <div className="alert alert-primary d-flex justify-content-between align-items-center p-3 mb-4 shadow-sm">
               <div>
-                <h5 className="mb-0 text-dark font-w500">Delays by Completion Machine</h5>
-                <small className="text-muted">Click bars to filter by completion machine</small>
+                <strong>Active Filters:</strong>{" "}
+                {selectedCategory !== "ALL" && (
+                  <Badge bg="light" text="primary" className="me-2 p-2">
+                    Status: {selectedCategory}
+                  </Badge>
+                )}
+                {selectedMachineFilter && (
+                  <Badge bg="light" text="primary" className="p-2">
+                    Machine: {selectedMachineFilter}
+                  </Badge>
+                )}
+              </div>
+              <Button variant="light" className="btn-sm text-primary fw-bold" onClick={handleClearFilters}>
+                <i className="fas fa-times-circle me-1"></i> Clear Filters
+              </Button>
+            </div>
+          )}
+
+          {/* Dashboard Tables */}
+          <Row>
+            {/* Table 1: Running Machines */}
+            {(selectedCategory === "ALL" || selectedCategory === "RUNNING") && (
+              <Col lg={filteredDelayed.length === 0 ? 12 : 6} className="mb-4">
+                <Card className="shadow-sm border-0 h-100">
+                  <Card.Header className="bg-white py-3 border-bottom d-flex justify-content-between align-items-center">
+                    <h5 className="mb-0 text-dark fw-bold">
+                      <i className="fas fa-circle text-success me-2 animate-pulse"></i>
+                      Currently Running Machines ({filteredRunning.length})
+                    </h5>
+                  </Card.Header>
+                  <Card.Body className="p-0">
+                    <div className="table-responsive">
+                      <Table className="align-items-center table-flush mb-0" hover>
+                        <thead className="thead-light">
+                          <tr>
+                            <th>Machine</th>
+                            <th>Shipment No</th>
+                            <th>Job Card No</th>
+                            <th>Started At</th>
+                            <th>Running For</th>
+                            <th>Operator</th>
+                            <th className="text-center">Action</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {filteredRunning.length > 0 ? (
+                            filteredRunning.map((m) => (
+                              <tr key={m.JobCardLineId} className={m.IsDelayedRun ? "table-danger text-danger font-weight-bold" : ""}>
+                                <td>
+                                  <span className="fw-bold">{m.MachineName}</span>
+                                  <div className="text-xs text-muted">{m.MachineCode}</div>
+                                </td>
+                                <td>{m.ShipmentNo || <span className="text-muted">N/A</span>}</td>
+                                <td>
+                                  <Badge bg="light" text="primary" className="fs-12 p-2" style={{ cursor: "pointer" }} onClick={() => handleViewJobCardFlow(m.JobCardMasterId, m.JobCardNo)}>
+                                    {m.JobCardNo}
+                                  </Badge>
+                                </td>
+                                <td>{formatDateTime(m.StartTime)}</td>
+                                <td>
+                                  <Badge bg={m.IsDelayedRun ? "danger" : "success"} className="p-2 fs-11">
+                                    {formatDelayText(m.RunningMinutes / 60.0)}
+                                  </Badge>
+                                  {m.IsDelayedRun ? (
+                                    <span className="text-danger ms-2 fw-bold text-xs d-block mt-1">
+                                      <i className="fas fa-exclamation-triangle me-1"></i>ALERT (DELAY)
+                                    </span>
+                                  ) : null}
+                                </td>
+                                <td>{m.OperatorName || <span className="text-muted">N/A</span>}</td>
+                                <td className="text-center">
+                                  <Button variant="info" className="btn-xs" onClick={() => handleViewJobCardFlow(m.JobCardMasterId, m.JobCardNo)}>
+                                    <i className="fas fa-eye me-1"></i> View Flow
+                                  </Button>
+                                </td>
+                              </tr>
+                            ))
+                          ) : (
+                            <tr>
+                              <td colSpan="7" className="text-center text-muted py-4">
+                                No running machines match your filters.
+                              </td>
+                            </tr>
+                          )}
+                        </tbody>
+                      </Table>
+                    </div>
+                  </Card.Body>
+                </Card>
+              </Col>
+            )}
+
+            {/* Table 2: Delayed Transitions */}
+            {(selectedCategory === "ALL" || selectedCategory === "DELAYED") && (
+              <Col lg={filteredRunning.length === 0 ? 12 : 6} className="mb-4">
+                <Card className="shadow-sm border-0 h-100">
+                  <Card.Header className="bg-white py-3 border-bottom d-flex justify-content-between align-items-center">
+                    <h5 className="mb-0 text-dark fw-bold text-warning">
+                      <i className="fas fa-exclamation-circle me-2"></i>
+                      Delayed Transitions ({filteredDelayed.length})
+                    </h5>
+                  </Card.Header>
+                  <Card.Body className="p-0">
+                    <div className="table-responsive">
+                      <Table className="align-items-center table-flush mb-0" hover>
+                        <thead className="thead-light">
+                          <tr>
+                            <th>Shipment No</th>
+                            <th>Job Card</th>
+                            <th>From Machine</th>
+                            <th>Finished</th>
+                            <th>To Machine</th>
+                            <th>Idle Time</th>
+                            <th className="text-center">Action</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {filteredDelayed.length > 0 ? (
+                            filteredDelayed.map((t, idx) => (
+                              <tr key={idx}>
+                                <td>{t.ShipmentNo || <span className="text-muted">N/A</span>}</td>
+                                <td>
+                                  <Badge bg="light" text="primary" className="fs-12 p-2" style={{ cursor: "pointer" }} onClick={() => handleViewJobCardFlow(t.JobCardMasterId, t.JobCardNo)}>
+                                    {t.JobCardNo}
+                                  </Badge>
+                                </td>
+                                <td>
+                                  <span className="fw-bold">{t.CurrentMachineName}</span>
+                                  <div className="text-xs text-muted">{t.CurrentMachineCode}</div>
+                                </td>
+                                <td>{formatDateTime(t.CurrentEndTime)}</td>
+                                <td>
+                                  {t.NextMachineName ? (
+                                    <>
+                                      <span className="fw-bold">{t.NextMachineName}</span>
+                                      <div className="text-xs text-muted">{t.NextMachineCode}</div>
+                                    </>
+                                  ) : (
+                                    <span className="text-muted">None (Last step)</span>
+                                  )}
+                                </td>
+                                <td>
+                                  <Badge bg="danger" className="p-2 fs-11">
+                                    {formatDelayText(t.DelayHours)}
+                                  </Badge>
+                                </td>
+                                <td className="text-center">
+                                  <Button variant="info" className="btn-xs" onClick={() => handleViewJobCardFlow(t.JobCardMasterId, t.JobCardNo)}>
+                                    <i className="fas fa-eye me-1"></i> View Flow
+                                  </Button>
+                                </td>
+                              </tr>
+                            ))
+                          ) : (
+                            <tr>
+                              <td colSpan="7" className="text-center text-muted py-4">
+                                No delayed transitions match your filters.
+                              </td>
+                            </tr>
+                          )}
+                        </tbody>
+                      </Table>
+                    </div>
+                  </Card.Body>
+                </Card>
+              </Col>
+            )}
+          </Row>
+        </Tab>
+
+        {/* Tab 2: Shipments & Breakdown Tracking */}
+        <Tab eventKey="shipments" title={<span><i className="fas fa-truck-loading me-2"></i>Shipments & Breakdown</span>}>
+          <Card className="shadow-sm border-0 mb-4">
+            <Card.Header className="bg-white py-3 border-bottom d-flex justify-content-between align-items-center flex-wrap">
+              <h5 className="mb-0 text-dark fw-bold">
+                <i className="fas fa-random text-primary me-2"></i>
+                Container Breakdown & Join Tracking Logs
+              </h5>
+              <div className="d-flex align-items-center mt-2 mt-md-0" style={{ maxWidth: "350px", width: "100%" }}>
+                <Form.Control
+                  type="text"
+                  placeholder="Search by Contract, Item, Container..."
+                  value={shipmentSearch}
+                  onChange={(e) => setShipmentSearch(e.target.value)}
+                  size="sm"
+                />
               </div>
             </Card.Header>
-            <Card.Body className="d-flex align-items-center justify-content-center" style={{ minHeight: "260px" }}>
-              {chartStats.length > 0 ? (
-                <div style={{ height: "230px", width: "100%" }}>
-                  <Bar data={barData} options={barOptions} />
-                </div>
-              ) : (
-                <div className="text-center text-muted">
-                  <i className="fas fa-chart-bar fs-2 mb-2 d-block"></i>
-                  No delayed transitions reported to generate chart.
-                </div>
-              )}
+            <Card.Body className="p-0">
+              <div className="table-responsive">
+                <Table className="align-items-center table-flush mb-0" hover>
+                  <thead className="thead-light">
+                    <tr>
+                      <th>Item Code</th>
+                      <th>Item Name</th>
+                      <th>Contract No</th>
+                      <th>Qty</th>
+                      <th>Source Container (Previous)</th>
+                      <th>Destination Container (Current)</th>
+                      <th>Transaction Date</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filteredBreakdown.length > 0 ? (
+                      filteredBreakdown.map((b) => (
+                        <tr key={b.Id}>
+                          <td className="fw-bold">{b.ItemCode}</td>
+                          <td className="text-muted">{b.ItemName}</td>
+                          <td>
+                            {b.IsTikamoon ? (
+                              <Badge bg="dark" className="p-2 fs-11">
+                                Tikamoon (No Contract)
+                              </Badge>
+                            ) : b.ContractNo ? (
+                              <span className="fw-bold text-primary">{b.ContractNo}</span>
+                            ) : (
+                              <span className="text-muted">No Contract</span>
+                            )}
+                          </td>
+                          <td className="fw-bold text-success">{b.Quantity}</td>
+                          <td>
+                            {b.ParentContainerNo ? (
+                              <Badge bg="secondary" className="p-2 fs-11">
+                                {b.ParentContainerNo}
+                              </Badge>
+                            ) : (
+                              <span className="text-muted">N/A</span>
+                            )}
+                          </td>
+                          <td>
+                            {b.CurrentContainerNo ? (
+                              <Badge bg="primary" className="p-2 fs-11">
+                                {b.CurrentContainerNo}
+                              </Badge>
+                            ) : (
+                              <span className="text-muted">N/A</span>
+                            )}
+                          </td>
+                          <td>{formatDateTime(b.TransactionDate)}</td>
+                        </tr>
+                      ))
+                    ) : (
+                      <tr>
+                        <td colSpan="7" className="text-center text-muted py-4">
+                          No container breakdown or join tracking logs found.
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </Table>
+              </div>
             </Card.Body>
           </Card>
-        </Col>
-      </Row>
+        </Tab>
 
-      {/* Filters Summary & Reset */}
-      {(selectedCategory !== "ALL" || selectedMachineFilter) && (
-        <div className="alert alert-primary d-flex justify-content-between align-items-center p-3 mb-4 shadow-sm">
-          <div>
-            <strong>Active Filters:</strong>{" "}
-            {selectedCategory !== "ALL" && (
-              <Badge bg="light" text="primary" className="me-2 p-2">
-                Status: {selectedCategory}
-              </Badge>
-            )}
-            {selectedMachineFilter && (
-              <Badge bg="light" text="primary" className="p-2">
-                Machine: {selectedMachineFilter}
-              </Badge>
-            )}
-          </div>
-          <Button variant="light" className="btn-sm text-primary fw-bold" onClick={handleClearFilters}>
-            <i className="fas fa-times-circle me-1"></i> Clear Filters
-          </Button>
-        </div>
-      )}
-
-      {/* Dashboard Tables */}
-      <Row>
-        {/* Table 1: Running Machines */}
-        {(selectedCategory === "ALL" || selectedCategory === "RUNNING") && (
-          <Col lg={filteredDelayed.length === 0 ? 12 : 6} className="mb-4">
-            <Card className="shadow-sm border-0 h-100">
-              <Card.Header className="bg-white py-3 border-bottom d-flex justify-content-between align-items-center">
-                <h5 className="mb-0 text-dark fw-bold">
-                  <i className="fas fa-circle text-success me-2 animate-pulse"></i>
-                  Currently Running Machines ({filteredRunning.length})
-                </h5>
-              </Card.Header>
-              <Card.Body className="p-0">
-                <div className="table-responsive">
-                  <Table className="align-items-center table-flush mb-0" hover>
-                    <thead className="thead-light">
-                      <tr>
-                        <th>Machine</th>
-                        <th>Shipment No</th>
-                        <th>Job Card No</th>
-                        <th>Started At</th>
-                        <th>Running For</th>
-                        <th>Operator</th>
-                        <th className="text-center">Action</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {filteredRunning.length > 0 ? (
-                        filteredRunning.map((m) => (
-                          <tr key={m.JobCardLineId} className={m.IsDelayedRun ? "table-danger-light text-danger font-weight-bold" : ""}>
-                            <td>
-                              <span className="fw-bold">{m.MachineName}</span>
-                              <div className="text-xs text-muted">{m.MachineCode}</div>
-                            </td>
-                            <td>{m.ShipmentNo || <span className="text-muted">N/A</span>}</td>
-                            <td>
-                              <Badge bg="light" text="primary" className="fs-12 p-2" style={{ cursor: "pointer" }} onClick={() => handleViewJobCardFlow(m.JobCardMasterId, m.JobCardNo)}>
-                                {m.JobCardNo}
-                              </Badge>
-                            </td>
-                            <td>{formatDateTime(m.StartTime)}</td>
-                            <td>
-                              <Badge bg={m.IsDelayedRun ? "danger" : "success"} className="p-2 fs-11">
-                                {formatDelayText(m.RunningMinutes / 60.0)}
-                              </Badge>
-                              {m.IsDelayedRun ? (
-                                <span className="text-danger ms-2 fw-bold text-xs d-block mt-1">
-                                  <i className="fas fa-exclamation-triangle me-1"></i>ALERT (DELAY)
-                                </span>
-                              ) : null}
-                            </td>
-                            <td>{m.OperatorName || <span className="text-muted">N/A</span>}</td>
-                            <td className="text-center">
-                              <Button variant="info" className="btn-xs" onClick={() => handleViewJobCardFlow(m.JobCardMasterId, m.JobCardNo)}>
-                                <i className="fas fa-eye me-1"></i> View Flow
-                              </Button>
+        {/* Tab 3: Job Cards & Wood Issues */}
+        <Tab eventKey="jobcards" title={<span><i className="fas fa-clipboard-list me-2"></i>Job Cards & Wood Issues</span>}>
+          <Row>
+            {/* Table 1: Recent Job Cards */}
+            <Col lg={6} className="mb-4">
+              <Card className="shadow-sm border-0 h-100">
+                <Card.Header className="bg-white py-3 border-bottom d-flex justify-content-between align-items-center flex-wrap">
+                  <h5 className="mb-0 text-dark fw-bold">
+                    <i className="fas fa-file-invoice text-info me-2"></i>
+                    Recent Job Cards
+                  </h5>
+                  <div className="d-flex align-items-center mt-2 mt-md-0" style={{ maxWidth: "250px", width: "100%" }}>
+                    <Form.Control
+                      type="text"
+                      placeholder="Search Job Cards..."
+                      value={jobCardSearch}
+                      onChange={(e) => setJobCardSearch(e.target.value)}
+                      size="sm"
+                    />
+                  </div>
+                </Card.Header>
+                <Card.Body className="p-0">
+                  <div className="table-responsive">
+                    <Table className="align-items-center table-flush mb-0" hover>
+                      <thead className="thead-light">
+                        <tr>
+                          <th>Job Card No</th>
+                          <th>Product Code</th>
+                          <th>Qty</th>
+                          <th>Type</th>
+                          <th>Container</th>
+                          <th>Created At</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {filteredJobCards.length > 0 ? (
+                          filteredJobCards.map((j) => (
+                            <tr key={j.ID}>
+                              <td>
+                                <Badge 
+                                  bg="light" 
+                                  text="primary" 
+                                  className="fs-12 p-2" 
+                                  style={{ cursor: "pointer" }} 
+                                  onClick={() => handleViewJobCardFlow(j.ID, j.JobCardNo)}
+                                >
+                                  {j.JobCardNo}
+                                </Badge>
+                              </td>
+                              <td>
+                                <span className="fw-bold">{j.ProductCode}</span>
+                                <div className="text-xs text-muted">{j.ItemCode}</div>
+                              </td>
+                              <td className="fw-bold">{j.OrderQty}</td>
+                              <td>
+                                {j.IsSample ? (
+                                  <Badge bg="warning" text="dark" className="p-2 fs-11">
+                                    Sample
+                                  </Badge>
+                                ) : (
+                                  <Badge bg="success" className="p-2 fs-11">
+                                    Regular
+                                  </Badge>
+                                )}
+                              </td>
+                              <td>
+                                {j.ContainerNo ? (
+                                  <Badge bg="dark" className="p-2 fs-11">
+                                    {j.ContainerNo}
+                                  </Badge>
+                                ) : (
+                                  <span className="text-muted">N/A</span>
+                                )}
+                              </td>
+                              <td>{formatDateTime(j.DateOfCreation)}</td>
+                            </tr>
+                          ))
+                        ) : (
+                          <tr>
+                            <td colSpan="6" className="text-center text-muted py-4">
+                              No recent job cards found.
                             </td>
                           </tr>
-                        ))
-                      ) : (
-                        <tr>
-                          <td colSpan="7" className="text-center text-muted py-4">
-                            No running machines match your filters.
-                          </td>
-                        </tr>
-                      )}
-                    </tbody>
-                  </Table>
-                </div>
-              </Card.Body>
-            </Card>
-          </Col>
-        )}
+                        )}
+                      </tbody>
+                    </Table>
+                  </div>
+                </Card.Body>
+              </Card>
+            </Col>
 
-        {/* Table 2: Delayed Transitions */}
-        {(selectedCategory === "ALL" || selectedCategory === "DELAYED") && (
-          <Col lg={filteredRunning.length === 0 ? 12 : 6} className="mb-4">
-            <Card className="shadow-sm border-0 h-100">
-              <Card.Header className="bg-white py-3 border-bottom d-flex justify-content-between align-items-center">
-                <h5 className="mb-0 text-dark fw-bold text-warning">
-                  <i className="fas fa-exclamation-circle me-2"></i>
-                  Delayed Transitions ({filteredDelayed.length})
-                </h5>
-              </Card.Header>
-              <Card.Body className="p-0">
-                <div className="table-responsive">
-                  <Table className="align-items-center table-flush mb-0" hover>
-                    <thead className="thead-light">
-                      <tr>
-                        <th>Shipment No</th>
-                        <th>Job Card</th>
-                        <th>From Machine</th>
-                        <th>Finished</th>
-                        <th>To Machine</th>
-                        <th>Idle Time</th>
-                        <th className="text-center">Action</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {filteredDelayed.length > 0 ? (
-                        filteredDelayed.map((t, idx) => (
-                          <tr key={idx}>
-                            <td>{t.ShipmentNo || <span className="text-muted">N/A</span>}</td>
-                            <td>
-                              <Badge bg="light" text="primary" className="fs-12 p-2" style={{ cursor: "pointer" }} onClick={() => handleViewJobCardFlow(t.JobCardMasterId, t.JobCardNo)}>
-                                {t.JobCardNo}
-                              </Badge>
-                            </td>
-                            <td>
-                              <span className="fw-bold">{t.CurrentMachineName}</span>
-                              <div className="text-xs text-muted">{t.CurrentMachineCode}</div>
-                            </td>
-                            <td>{formatDateTime(t.CurrentEndTime)}</td>
-                            <td>
-                              {t.NextMachineName ? (
-                                <>
-                                  <span className="fw-bold">{t.NextMachineName}</span>
-                                  <div className="text-xs text-muted">{t.NextMachineCode}</div>
-                                </>
-                              ) : (
-                                <span className="text-muted">None (Last step)</span>
-                              )}
-                            </td>
-                            <td>
-                              <Badge bg="danger" className="p-2 fs-11">
-                                {formatDelayText(t.DelayHours)}
-                              </Badge>
-                            </td>
-                            <td className="text-center">
-                              <Button variant="info" className="btn-xs" onClick={() => handleViewJobCardFlow(t.JobCardMasterId, t.JobCardNo)}>
-                                <i className="fas fa-eye me-1"></i> View Flow
-                              </Button>
+            {/* Table 2: Recent Wood Issues */}
+            <Col lg={6} className="mb-4">
+              <Card className="shadow-sm border-0 h-100">
+                <Card.Header className="bg-white py-3 border-bottom">
+                  <h5 className="mb-0 text-dark fw-bold">
+                    <i className="fas fa-tree text-success me-2"></i>
+                    Recent Wood Issues
+                  </h5>
+                </Card.Header>
+                <Card.Body className="p-0">
+                  <div className="table-responsive">
+                    <Table className="align-items-center table-flush mb-0" hover>
+                      <thead className="thead-light">
+                        <tr>
+                          <th>Container</th>
+                          <th>Item Details</th>
+                          <th>Batch</th>
+                          <th>Qty</th>
+                          <th>Total Issue CFT</th>
+                          <th>Created At</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {recentWoodIssues.length > 0 ? (
+                          recentWoodIssues.map((w) => (
+                            <tr key={w.ID}>
+                              <td>
+                                <Badge bg="dark" className="p-2 fs-11">
+                                  {w.ContainerNo || "N/A"}
+                                </Badge>
+                              </td>
+                              <td>
+                                <span className="fw-bold">{w.ItemCode}</span>
+                                <div className="text-xs text-muted text-truncate" style={{ maxWidth: "200px" }}>{w.ItemName}</div>
+                              </td>
+                              <td>{w.BatchNo || <span className="text-muted">N/A</span>}</td>
+                              <td className="fw-bold">{w.Quantity}</td>
+                              <td className="text-info fw-bold">{w.TotalIssueCFT}</td>
+                              <td>{formatDateTime(w.DateOfCreation)}</td>
+                            </tr>
+                          ))
+                        ) : (
+                          <tr>
+                            <td colSpan="6" className="text-center text-muted py-4">
+                              No wood issues found.
                             </td>
                           </tr>
-                        ))
-                      ) : (
-                        <tr>
-                          <td colSpan="7" className="text-center text-muted py-4">
-                            No delayed transitions match your filters.
+                        )}
+                      </tbody>
+                    </Table>
+                  </div>
+                </Card.Body>
+              </Card>
+            </Col>
+          </Row>
+        </Tab>
+
+        {/* Tab 4: AL & Other Slips */}
+        <Tab eventKey="slips" title={<span><i className="fas fa-receipt me-2"></i>AL & Other Slips</span>}>
+          <Card className="shadow-sm border-0 mb-4">
+            <Card.Header className="bg-white py-3 border-bottom d-flex justify-content-between align-items-center flex-wrap">
+              <h5 className="mb-0 text-dark fw-bold">
+                <i className="fas fa-file-signature text-secondary me-2"></i>
+                Recent Slips (AL & Other Slips)
+              </h5>
+              <div className="d-flex align-items-center mt-2 mt-md-0" style={{ maxWidth: "300px", width: "100%" }}>
+                <Form.Control
+                  type="text"
+                  placeholder="Search Slips..."
+                  value={slipsSearch}
+                  onChange={(e) => setSlipsSearch(e.target.value)}
+                  size="sm"
+                />
+              </div>
+            </Card.Header>
+            <Card.Body className="p-0">
+              <div className="table-responsive">
+                <Table className="align-items-center table-flush mb-0" hover>
+                  <thead className="thead-light">
+                    <tr>
+                      <th>Slip Type</th>
+                      <th>Slip Name</th>
+                      <th>AL Code</th>
+                      <th>Component Qty</th>
+                      <th>Container</th>
+                      <th>Item Code</th>
+                      <th>Created At</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filteredSlips.length > 0 ? (
+                      filteredSlips.map((sl) => (
+                        <tr key={sl.Id}>
+                          <td>
+                            <Badge bg={sl.SlipType === "AL Slip" ? "primary" : "secondary"} className="p-2 fs-11">
+                              {sl.SlipType}
+                            </Badge>
                           </td>
+                          <td>{sl.SlipName || <span className="text-muted">N/A</span>}</td>
+                          <td className="fw-bold">{sl.ALCode || <span className="text-muted">N/A</span>}</td>
+                          <td className="fw-bold text-dark">{sl.ComponentQty}</td>
+                          <td>
+                            {sl.ContainerNo ? (
+                              <Badge bg="dark" className="p-2 fs-11">
+                                {sl.ContainerNo}
+                              </Badge>
+                            ) : (
+                              <span className="text-muted">N/A</span>
+                            )}
+                          </td>
+                          <td>{sl.ItemCode}</td>
+                          <td>{formatDateTime(sl.DateOfCreation)}</td>
                         </tr>
-                      )}
-                    </tbody>
-                  </Table>
-                </div>
-              </Card.Body>
-            </Card>
-          </Col>
-        )}
-      </Row>
+                      ))
+                    ) : (
+                      <tr>
+                        <td colSpan="7" className="text-center text-muted py-4">
+                          No recent slips found.
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </Table>
+              </div>
+            </Card.Body>
+          </Card>
+        </Tab>
+      </Tabs>
 
       {/* Drill-down Flow Modal */}
       <Modal show={showFlowModal} onHide={() => setShowFlowModal(false)} size="lg" centered>
