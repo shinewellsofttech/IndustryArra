@@ -154,6 +154,7 @@ import PageList_UserRole from "./Masters/PageList_UserRole";
 import AddEdit_UserMasterCrud from "./Masters/AddEdit_UserMasterCrud";
 import PageList_UserMasterCrud from "./Masters/PageList_UserMasterCrud";
 import PermissionMetrixs from "./Masters/PermisstionMetrixs";
+import GlobalOptions from "./Masters/GlobalOptions";
 
 const Markup = () => {
   const { menuToggle } = useContext(ThemeContext);
@@ -305,6 +306,7 @@ const Markup = () => {
     { url: "ReportingEntrySystem", component: <ReportingEntrySystem/> },
     { url: "QRScanner", component: <QRScanner/> },
     { url: "MachineDelayDashboard", component: <MachineDelayDashboard/> },
+    { url: "GlobalOptions", component: <GlobalOptions/> },
 
   ];
   let path = window.location.pathname;

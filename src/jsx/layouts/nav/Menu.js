@@ -65,6 +65,10 @@ const allDocumentationItems = [
     {
         title: 'SUPERVISOR ENTRY',
         to: 'SupervisorEntry',
+    },
+    {
+        title: 'GLOBAL OPTIONS',
+        to: 'GlobalOptions',
     }
 ];
 
@@ -138,7 +142,7 @@ const filterByPermissions = (menuList, permissions) => {
         return menuList;
     }
     return menuList.filter(item => {
-        if (item.to === 'dashboard' || item.to === 'MachineDelayDashboard') return true;
+        if (item.to === 'dashboard' || item.to === 'MachineDelayDashboard' || item.to === 'GlobalOptions') return true;
         const perm = permissions.find(p => (p.ModulePath || p.Path)?.toLowerCase() === item.to?.toLowerCase());
         return perm ? perm.IsView : false;
     });
