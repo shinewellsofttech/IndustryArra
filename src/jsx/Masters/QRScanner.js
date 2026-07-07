@@ -4,6 +4,8 @@ import { parseBarcodeValue } from "./BarcodeHelper";
 import { Fn_GetReport, Fn_AddEditData } from "../../store/Functions";
 import { useDispatch } from "react-redux";
 import { useNavigate } from "react-router-dom";
+import { HubConnectionBuilder, HttpTransportType } from "@microsoft/signalr";
+import { API_WEB_URLS } from "../../constants/constAPI";
 
 // Play a physical scanner sound using the Web Audio API
 const playBeepSound = () => {
@@ -60,12 +62,38 @@ const formatDateTime = (dateTimeStr) => {
   }
 };
 
+// Helper to get formatted option label with real-time status and fallback process
+const getMachineOptionLabel = (m) => {
+  if (!m) return "";
+  const hasStarted = m.StartTime && String(m.StartTime).trim() !== "";
+  const hasEnded = m.EndTime && String(m.EndTime).trim() !== "";
+  const isEngagedElsewhere = m.EngagedJobCardNo && String(m.EngagedJobCardNo).trim() !== "";
+
+  let statusLabel = "";
+  if (hasStarted && !hasEnded) {
+    statusLabel = "🟡 IN PROGRESS";
+  } else if (hasStarted && hasEnded) {
+    statusLabel = "🟢 COMPLETED";
+  } else if (isEngagedElsewhere) {
+    statusLabel = `⚠️ BUSY (ON ${m.EngagedJobCardNo})`;
+  } else {
+    statusLabel = "🔴 NOT STARTED";
+  }
+
+  const machineName = m.MachineName || "Unnamed Machine";
+  const machineNo = m.MachineNo || "N/A";
+  const processStr = m.Process && String(m.Process).trim() !== "" ? m.Process : "General Operations";
+
+  return `${statusLabel} | ${machineName} (${machineNo}) - ${processStr}`;
+};
+
 // ─── Machine Control Panel Component ─────────────────────────────────────────
-const MachineControlPanel = ({ machine, onStart, onStop, actionLoading }) => {
+const MachineControlPanel = ({ machine, onStart, onStop, actionLoading, isPrevStarted = true, prevMachineName = "" }) => {
   if (!machine) return null;
 
   const hasStarted = !!machine.StartTime;
   const hasEnded = !!machine.EndTime;
+  const isEngagedElsewhere = machine.EngagedJobCardNo && String(machine.EngagedJobCardNo).trim() !== "";
 
   let statusText = "NOT STARTED";
   let badgeColor = "#64748b";
@@ -79,6 +107,10 @@ const MachineControlPanel = ({ machine, onStart, onStop, actionLoading }) => {
     statusText = "COMPLETED";
     badgeColor = "#16a34a";
     badgeBg = "#dcfce7";
+  } else if (isEngagedElsewhere) {
+    statusText = `BUSY (ON ${machine.EngagedJobCardNo})`;
+    badgeColor = "#dc2626";
+    badgeBg = "#fee2e2";
   }
 
   return (
@@ -125,7 +157,7 @@ const MachineControlPanel = ({ machine, onStart, onStop, actionLoading }) => {
       <div style={{ display: "flex", gap: "12px", marginTop: "12px" }}>
         <button
           onClick={onStart}
-          disabled={actionLoading || hasEnded}
+          disabled={actionLoading || hasStarted || hasEnded || !isPrevStarted || isEngagedElsewhere}
           style={{
             flex: 1,
             display: "flex",
@@ -135,11 +167,11 @@ const MachineControlPanel = ({ machine, onStart, onStop, actionLoading }) => {
             padding: "10px 16px",
             borderRadius: "8px",
             border: "none",
-            backgroundColor: hasEnded ? "#cbd5e1" : "#16a34a",
+            backgroundColor: (hasStarted || hasEnded || !isPrevStarted || isEngagedElsewhere) ? "#cbd5e1" : "#16a34a",
             color: "#fff",
             fontWeight: 600,
             fontSize: "13px",
-            cursor: hasEnded ? "not-allowed" : "pointer",
+            cursor: (hasStarted || hasEnded || !isPrevStarted || isEngagedElsewhere) ? "not-allowed" : "pointer",
             transition: "all 0.2s",
             opacity: actionLoading ? 0.7 : 1,
           }}
@@ -181,6 +213,20 @@ const MachineControlPanel = ({ machine, onStart, onStop, actionLoading }) => {
           STOP
         </button>
       </div>
+
+      {!isPrevStarted && (
+        <div style={{ color: "#dc2626", fontSize: "12.5px", fontWeight: 600, marginTop: "12px", textAlign: "left", display: "flex", alignItems: "center", gap: "6px" }}>
+          <i className="fas fa-exclamation-triangle"></i>
+          <span>Please start the previous machine ({prevMachineName || "preceding machine"}) first.</span>
+        </div>
+      )}
+
+      {isEngagedElsewhere && (
+        <div style={{ color: "#dc2626", fontSize: "12.5px", fontWeight: 600, marginTop: "12px", textAlign: "left", display: "flex", alignItems: "center", gap: "6px" }}>
+          <i className="fas fa-exclamation-triangle"></i>
+          <span>This machine is currently active on Job Card No: {machine.EngagedJobCardNo}. Please end that operation first.</span>
+        </div>
+      )}
     </div>
   );
 };
@@ -198,6 +244,15 @@ const ScannedWoodJobCard = ({
   actionLoading, 
   onRescan 
 }) => {
+  const currentIndex = machineList && machineData 
+    ? machineList.findIndex(m => String(m.ID) === String(machineData.ID)) 
+    : -1;
+  const prevMachine = currentIndex > 0 ? machineList[currentIndex - 1] : null;
+  const isPrevStarted = currentIndex > 0 
+    ? (prevMachine && prevMachine.StartTime && String(prevMachine.StartTime).trim() !== "") 
+    : true;
+  const prevMachineName = prevMachine ? `${prevMachine.MachineName || "Unnamed Machine"} (${prevMachine.MachineNo || "N/A"})` : "";
+
   const cell = (label, value, labelStyle = {}, valueStyle = {}) => (
     <div className="responsive-cell" style={{ display: "flex", borderBottom: "1px solid #e2e8f0" }}>
       <div
@@ -426,13 +481,15 @@ const ScannedWoodJobCard = ({
                     color: "#1e293b",
                     marginBottom: "16px"
                   }}>
-                    {machineData.MachineName || "Unnamed Machine"} ({machineData.MachineNo || "N/A"}) - {getMachineStatusText(machineData)}
+                    {getMachineOptionLabel(machineData)}
                   </div>
                   <MachineControlPanel
                     machine={machineData}
                     onStart={onStartMachine}
                     onStop={onStopMachine}
                     actionLoading={actionLoading}
+                    isPrevStarted={isPrevStarted}
+                    prevMachineName={prevMachineName}
                   />
                 </div>
               ) : (
@@ -469,7 +526,7 @@ const ScannedWoodJobCard = ({
                     <option value="">-- Choose Machine --</option>
                     {machineList && machineList.map((m) => (
                       <option key={m.ID} value={m.ID}>
-                        {m.MachineName || "Unnamed Machine"} ({m.MachineNo || "N/A"}) - {getMachineStatusText(m)}
+                        {getMachineOptionLabel(m)}
                       </option>
                     ))}
                   </select>
@@ -481,6 +538,8 @@ const ScannedWoodJobCard = ({
                     onStart={onStartMachine}
                     onStop={onStopMachine}
                     actionLoading={actionLoading}
+                    isPrevStarted={isPrevStarted}
+                    prevMachineName={prevMachineName}
                   />
                 )}
               </>
@@ -505,6 +564,15 @@ const ScannedMetalJobCard = ({
   actionLoading, 
   onRescan 
 }) => {
+  const currentIndex = machineList && machineData 
+    ? machineList.findIndex(m => String(m.ID) === String(machineData.ID)) 
+    : -1;
+  const prevMachine = currentIndex > 0 ? machineList[currentIndex - 1] : null;
+  const isPrevStarted = currentIndex > 0 
+    ? (prevMachine && prevMachine.StartTime && String(prevMachine.StartTime).trim() !== "") 
+    : true;
+  const prevMachineName = prevMachine ? `${prevMachine.MachineName || "Unnamed Machine"} (${prevMachine.MachineNo || "N/A"})` : "";
+
   const cell = (label, value, labelStyle = {}, valueStyle = {}) => (
     <div className="responsive-cell" style={{ display: "flex", borderBottom: "1px solid #e2e8f0" }}>
       <div
@@ -670,13 +738,15 @@ const ScannedMetalJobCard = ({
                     color: "#1e293b",
                     marginBottom: "16px"
                   }}>
-                    {machineData.MachineName || "Unnamed Machine"} ({machineData.MachineNo || "N/A"}) - {getMachineStatusText(machineData)}
+                    {getMachineOptionLabel(machineData)}
                   </div>
                   <MachineControlPanel
                     machine={machineData}
                     onStart={onStartMachine}
                     onStop={onStopMachine}
                     actionLoading={actionLoading}
+                    isPrevStarted={isPrevStarted}
+                    prevMachineName={prevMachineName}
                   />
                 </div>
               ) : (
@@ -713,7 +783,7 @@ const ScannedMetalJobCard = ({
                     <option value="">-- Choose Machine --</option>
                     {machineList && machineList.map((m) => (
                       <option key={m.ID} value={m.ID}>
-                        {m.MachineName || "Unnamed Machine"} ({m.MachineNo || "N/A"}) - {getMachineStatusText(m)}
+                        {getMachineOptionLabel(m)}
                       </option>
                     ))}
                   </select>
@@ -725,6 +795,8 @@ const ScannedMetalJobCard = ({
                     onStart={onStartMachine}
                     onStop={onStopMachine}
                     actionLoading={actionLoading}
+                    isPrevStarted={isPrevStarted}
+                    prevMachineName={prevMachineName}
                   />
                 )}
               </>
@@ -749,6 +821,15 @@ const ScannedMDFJobCard = ({
   actionLoading, 
   onRescan 
 }) => {
+  const currentIndex = machineList && machineData 
+    ? machineList.findIndex(m => String(m.ID) === String(machineData.ID)) 
+    : -1;
+  const prevMachine = currentIndex > 0 ? machineList[currentIndex - 1] : null;
+  const isPrevStarted = currentIndex > 0 
+    ? (prevMachine && prevMachine.StartTime && String(prevMachine.StartTime).trim() !== "") 
+    : true;
+  const prevMachineName = prevMachine ? `${prevMachine.MachineName || "Unnamed Machine"} (${prevMachine.MachineNo || "N/A"})` : "";
+
   const cell = (label, value, labelStyle = {}, valueStyle = {}) => (
     <div className="responsive-cell" style={{ display: "flex", borderBottom: "1px solid #e2e8f0" }}>
       <div
@@ -955,13 +1036,15 @@ const ScannedMDFJobCard = ({
                     color: "#1e293b",
                     marginBottom: "16px"
                   }}>
-                    {machineData.MachineName || "Unnamed Machine"} ({machineData.MachineNo || "N/A"}) - {getMachineStatusText(machineData)}
+                    {getMachineOptionLabel(machineData)}
                   </div>
                   <MachineControlPanel
                     machine={machineData}
                     onStart={onStartMachine}
                     onStop={onStopMachine}
                     actionLoading={actionLoading}
+                    isPrevStarted={isPrevStarted}
+                    prevMachineName={prevMachineName}
                   />
                 </div>
               ) : (
@@ -998,7 +1081,7 @@ const ScannedMDFJobCard = ({
                     <option value="">-- Choose Machine --</option>
                     {machineList && machineList.map((m) => (
                       <option key={m.ID} value={m.ID}>
-                        {m.MachineName || "Unnamed Machine"} ({m.MachineNo || "N/A"}) - {getMachineStatusText(m)}
+                        {getMachineOptionLabel(m)}
                       </option>
                     ))}
                   </select>
@@ -1010,6 +1093,8 @@ const ScannedMDFJobCard = ({
                     onStart={onStartMachine}
                     onStop={onStopMachine}
                     actionLoading={actionLoading}
+                    isPrevStarted={isPrevStarted}
+                    prevMachineName={prevMachineName}
                   />
                 )}
               </>
@@ -1150,13 +1235,15 @@ const QRScanner = () => {
   const fileInputRef = useRef(null);
 
   const qrCodeRef = useRef(null);
+  const isCameraActiveRef = useRef(false);
+  const isScanningRef = useRef(false);
   const dispatch = useDispatch();
   const navigate = useNavigate();
 
   const API_URL_JOBCARD   = "GetJobCard/0/token";
   const API_URL_JOBCARDL  = "GetJobCardL/0/token";
 
-  // Helper to format date to SQL server format YYYY-MM-DD HH:mm:ss
+  // Helper to format date to SQL server format YYYY-MM-DDTHH:mm:ss (SSMS format)
   const getFormattedDateTime = () => {
     const date = new Date();
     const pad = (num) => String(num).padStart(2, "0");
@@ -1168,7 +1255,7 @@ const QRScanner = () => {
     const min = pad(date.getMinutes());
     const ss = pad(date.getSeconds());
     
-    return `${yyyy}-${mm}-${dd} ${hh}:${min}:${ss}`;
+    return `${yyyy}-${mm}-${dd}T${hh}:${min}:${ss}`;
   };
 
   const handleMachineSelect = (machineId) => {
@@ -1185,16 +1272,10 @@ const QRScanner = () => {
       const nowStr = getFormattedDateTime();
       
       const vFormData = new FormData();
-      // Append all existing fields from machineData
-      Object.keys(machineData).forEach(key => {
-        const val = machineData[key];
-        vFormData.append(key, val !== null && val !== undefined ? String(val) : "");
-      });
-      // Explicitly set/override target fields
-      vFormData.set("Id", machineData.ID);
-      vFormData.set("UserId", user?.id || "");
-      vFormData.set("StartDate", nowStr);
-      vFormData.set("EndDate", machineData.EndTime || "");
+      vFormData.append("F_JobCardMaster", machineData.F_JobCardMaster || jobCardData?.ID || parsedIds?.F_JobCardMaster || "");
+      vFormData.append("F_MachineMaster", machineData.F_MachineMaster || parsedIds?.F_MachineMaster || selectedMachineId || "");
+      vFormData.append("NewDate", nowStr);
+      vFormData.append("Type", "1");
 
       console.log("--- handleStartMachine: Appended Form Data ---");
       for (let [key, val] of vFormData.entries()) {
@@ -1205,7 +1286,7 @@ const QRScanner = () => {
         dispatch,
         (s) => {}, // Dummy state setter
         { arguList: { id: 0, formData: vFormData } },
-        "TransferL/0/token",
+        "UpdateTransferDateByJobCard/0/token",
         true,
         "Id",
         () => {}, // Dummy navigate
@@ -1226,7 +1307,7 @@ const QRScanner = () => {
       alert("Machine started successfully!");
     } catch (err) {
       console.error("Error starting machine:", err);
-      alert("Failed to start machine. Please try again.");
+      alert(typeof err === "string" ? err : "Failed to start machine. Please try again.");
     } finally {
       setActionLoading(false);
     }
@@ -1240,16 +1321,10 @@ const QRScanner = () => {
       const nowStr = getFormattedDateTime();
       
       const vFormData = new FormData();
-      // Append all existing fields from machineData
-      Object.keys(machineData).forEach(key => {
-        const val = machineData[key];
-        vFormData.append(key, val !== null && val !== undefined ? String(val) : "");
-      });
-      // Explicitly set/override target fields
-      vFormData.set("Id", machineData.ID);
-      vFormData.set("UserId", user?.id || "");
-      vFormData.set("StartDate", machineData.StartTime || "");
-      vFormData.set("EndDate", nowStr);
+      vFormData.append("F_JobCardMaster", machineData.F_JobCardMaster || jobCardData?.ID || parsedIds?.F_JobCardMaster || "");
+      vFormData.append("F_MachineMaster", machineData.F_MachineMaster || parsedIds?.F_MachineMaster || selectedMachineId || "");
+      vFormData.append("NewDate", nowStr);
+      vFormData.append("Type", "2");
 
       console.log("--- handleStopMachine: Appended Form Data ---");
       for (let [key, val] of vFormData.entries()) {
@@ -1260,7 +1335,7 @@ const QRScanner = () => {
         dispatch,
         (s) => {}, // Dummy state setter
         { arguList: { id: 0, formData: vFormData } },
-        "TransferL/0/token",
+        "UpdateTransferDateByJobCard/0/token",
         true,
         "Id",
         () => {}, // Dummy navigate
@@ -1294,7 +1369,9 @@ const QRScanner = () => {
     return () => {
       if (qrCodeRef.current) {
         try {
-          qrCodeRef.current.stop().catch(() => {});
+          if (isCameraActiveRef.current) {
+            qrCodeRef.current.stop().catch(() => {});
+          }
         } catch (e) {}
       }
     };
@@ -1308,14 +1385,16 @@ const QRScanner = () => {
   };
 
   // Fetch job card + machine data from scanned IDs
-  const fetchJobCardData = useCallback(async (ids) => {
+  const fetchJobCardData = useCallback(async (ids, isSilent = false) => {
     if (!ids) return;
-    setFetchLoading(true);
-    setFetchError(null);
-    setJobCardData(null);
-    setMachineData(null);
-    setMachineList([]);
-    setSelectedMachineId("");
+    if (!isSilent) {
+      setFetchLoading(true);
+      setFetchError(null);
+      setJobCardData(null);
+      setMachineData(null);
+      setMachineList([]);
+      setSelectedMachineId("");
+    }
 
     try {
       let vformData = new FormData();
@@ -1378,13 +1457,18 @@ const QRScanner = () => {
       const authUser = JSON.parse(localStorage.getItem("authUser") || "{}");
       const machineMasterId = authUser?.machineMaster;
 
-      // Find matching machine: priority is authUser's machineMasterId, then scanned F_MachineMaster
+      // Find matching machine: priority is authUser's machineMasterId, then previously selectedMachineId, then scanned F_MachineMaster
+      const currentSelectedId = selectedMachineIdRef.current;
       let matchingMachine = null;
       if (machineMasterId) {
         matchingMachine = jobCardMachines.find(
           (m) =>
             String(m.ID) === String(machineMasterId) ||
             String(m.F_MachineMaster) === String(machineMasterId)
+        );
+      } else if (currentSelectedId) {
+        matchingMachine = jobCardMachines.find(
+          (m) => String(m.ID) === String(currentSelectedId)
         );
       } else if (ids.F_MachineMaster) {
         matchingMachine = jobCardMachines.find(
@@ -1403,21 +1487,88 @@ const QRScanner = () => {
       }
 
       if (!matchingCard) {
-        setFetchError("Job card not found for the scanned QR code.");
+        if (!isSilent) {
+          setFetchError("Job card not found for the scanned QR code.");
+        }
       }
     } catch (err) {
       console.error("Error fetching job card data:", err);
-      setFetchError("Failed to load job card. Please try again.");
+      if (!isSilent) {
+        setFetchError("Failed to load job card. Please try again.");
+      }
     } finally {
-      setFetchLoading(false);
+      if (!isSilent) {
+        setFetchLoading(false);
+      }
     }
   }, [dispatch]);
 
+  const jobCardDataRef = useRef(null);
+  const parsedIdsRef = useRef(null);
+  const selectedMachineIdRef = useRef("");
+
+  useEffect(() => {
+    jobCardDataRef.current = jobCardData;
+  }, [jobCardData]);
+
+  useEffect(() => {
+    parsedIdsRef.current = parsedIds;
+  }, [parsedIds]);
+
+  useEffect(() => {
+    selectedMachineIdRef.current = selectedMachineId;
+  }, [selectedMachineId]);
+
+  // Establish SignalR connection for real-time updates
+  useEffect(() => {
+    let connection = null;
+
+    const startSignalR = async () => {
+      try {
+        const hubUrl = API_WEB_URLS.BASE.replace("/api/V1/", "/qrScannerHub").replace("/api/v1/", "/qrScannerHub");
+        console.log("🔌 Connecting to SignalR Hub at:", hubUrl);
+
+        connection = new HubConnectionBuilder()
+          .withUrl(hubUrl)
+          .withAutomaticReconnect()
+          .build();
+
+        connection.on("ReceiveUpdate", (updatedJobCardId) => {
+          console.log("⚡ SignalR Update Received. Broadcasting refresh...");
+          const currentParsedIds = parsedIdsRef.current;
+          
+          if (currentParsedIds) {
+            console.log("🔄 Syncing local scanner view with database...");
+            fetchJobCardData(currentParsedIds, true);
+          }
+        });
+
+        await connection.start();
+        console.log("✅ SignalR Connected Successfully!");
+      } catch (err) {
+        console.warn("❌ SignalR Connection Failed:", err);
+      }
+    };
+
+    startSignalR();
+
+    return () => {
+      if (connection) {
+        connection.stop().catch(err => console.warn("Error stopping SignalR connection:", err));
+      }
+    };
+  }, [fetchJobCardData]);
+
   // Handler for successful scans
   const handleScanSuccess = useCallback(async (decodedText) => {
+    if (!isScanningRef.current) {
+      console.log("Duplicate scan detected and ignored.");
+      return;
+    }
+    isScanningRef.current = false;
+
     console.log("QR Code Scanned successfully! Decoded Text:", decodedText);
     playBeepSound();
-    const now = Date.now();
     setLastScanned(decodedText);
 
     // Parse the 5 IDs from the scanned QR code
@@ -1429,11 +1580,12 @@ const QRScanner = () => {
     setFetchLoading(true);
 
     // Stop the camera
-    if (qrCodeRef.current && isCameraActive) {
+    if (qrCodeRef.current && isCameraActiveRef.current) {
       setIsTransitioning(true);
       try {
         await qrCodeRef.current.stop();
         setIsCameraActive(false);
+        isCameraActiveRef.current = false;
       } catch (err) {
         console.error("Failed to stop camera after scan:", err);
       } finally {
@@ -1447,14 +1599,14 @@ const QRScanner = () => {
     } else {
       setFetchLoading(false);
     }
-  }, [fetchJobCardData, isCameraActive]);
+  }, [fetchJobCardData]);
 
   // Toggle between Camera and File scan modes
   const handleModeChange = async (mode) => {
     if (mode === scanMode) return;
     setScanMode(mode);
     setFetchError(null);
-    if (mode === "file" && isCameraActive) {
+    if (mode === "file" && isCameraActiveRef.current) {
       await stopCamera();
     }
   };
@@ -1470,11 +1622,13 @@ const QRScanner = () => {
       if (!qrCodeRef.current) {
         qrCodeRef.current = new Html5Qrcode("reader");
       }
+      isScanningRef.current = true;
       const decodedText = await qrCodeRef.current.scanFile(file, false);
       await handleScanSuccess(decodedText);
     } catch (err) {
       console.error("Error scanning uploaded image:", err);
       setFetchError("Could not find any valid QR code in the uploaded image. Please ensure the QR code is clear and try again.");
+      isScanningRef.current = false;
     }
   };
 
@@ -1482,6 +1636,21 @@ const QRScanner = () => {
   const startCamera = async () => {
     if (!qrCodeRef.current || isTransitioning) return;
     setIsTransitioning(true);
+
+    // If camera is somehow already running, stop it first to reset state
+    try {
+      if (qrCodeRef.current && (qrCodeRef.current.isScanning || qrCodeRef.current.getState)) {
+        const isScanning = typeof qrCodeRef.current.isScanning === 'boolean'
+          ? qrCodeRef.current.isScanning
+          : (typeof qrCodeRef.current.getState === 'function' && qrCodeRef.current.getState() === 2);
+        if (isScanning) {
+          await qrCodeRef.current.stop();
+        }
+      }
+    } catch (e) {
+      console.warn("Error stopping active scanner session before restart:", e);
+    }
+
     // Reset job card view when starting new scan
     setJobCardData(null);
     setMachineData(null);
@@ -1493,11 +1662,13 @@ const QRScanner = () => {
 
     // Make the reader element visible first so html5-qrcode can mount to it
     setIsCameraActive(true);
+    isCameraActiveRef.current = true;
 
-    // Wait a short moment (100ms) for React to render the visible reader container
-    await new Promise((resolve) => setTimeout(resolve, 100));
+    // Wait a short moment (200ms) for React to render the visible reader container
+    await new Promise((resolve) => setTimeout(resolve, 200));
 
     try {
+      isScanningRef.current = true;
       await qrCodeRef.current.start(
         { facingMode: "environment" },
         {
@@ -1514,6 +1685,8 @@ const QRScanner = () => {
     } catch (err) {
       console.error("Failed to start camera:", err);
       setIsCameraActive(false);
+      isCameraActiveRef.current = false;
+      isScanningRef.current = false;
       alert("Could not access camera. Please check camera permissions and make sure you are using HTTPS.");
     } finally {
       setIsTransitioning(false);
@@ -1526,15 +1699,18 @@ const QRScanner = () => {
     setIsTransitioning(true);
 
     try {
-      await qrCodeRef.current.stop();
+      if (isCameraActiveRef.current) {
+        await qrCodeRef.current.stop();
+      }
       setIsCameraActive(false);
+      isCameraActiveRef.current = false;
+      isScanningRef.current = false;
     } catch (err) {
       console.error("Failed to stop camera:", err);
     } finally {
       setIsTransitioning(false);
     }
   };
-
 
   const handleRescan = () => {
     setJobCardData(null);
@@ -1549,47 +1725,6 @@ const QRScanner = () => {
   };
 
   // ── If we have a job card loaded, show the job card view ──────
-
-  if (fetchError && !jobCardData) {
-    return (
-      <div className="container-fluid">
-        <div
-          style={{
-            border: "1px solid #fca5a5",
-            borderRadius: 12,
-            padding: 32,
-            textAlign: "center",
-            background: "#fff5f5",
-          }}
-        >
-          <i className="fas fa-exclamation-triangle" style={{ fontSize: 48, color: "#dc2626", marginBottom: 16 }}></i>
-          <h5 style={{ color: "#dc2626", fontWeight: 700 }}>Failed to Load Job Card</h5>
-          <p style={{ color: "#7f1d1d" }}>{fetchError}</p>
-          {lastScanned && (
-            <p style={{ color: "#6b7280", fontSize: 13 }}>
-              Scanned: <code style={{ background: "#f1f5f9", padding: "2px 6px", borderRadius: 4 }}>{lastScanned}</code>
-            </p>
-          )}
-          <button
-            onClick={handleRescan}
-            style={{
-              background: "#065f46",
-              color: "#fff",
-              border: "none",
-              padding: "12px 28px",
-              borderRadius: 8,
-              fontWeight: 700,
-              cursor: "pointer",
-              marginTop: 8,
-            }}
-          >
-            <i className="fas fa-redo" style={{ marginRight: 8 }}></i>
-            Try Again
-          </button>
-        </div>
-      </div>
-    );
-  }
 
   if (jobCardData) {
     return (
@@ -1658,6 +1793,16 @@ const QRScanner = () => {
               </div>
             </div>
             <div className="card-body text-center d-flex flex-column justify-content-between align-items-center" style={{ minHeight: "440px", padding: "20px 20px", position: "relative" }}>
+              {fetchError && (
+                <div className="alert alert-danger w-100 mb-3 alert-dismissible fade show" role="alert" style={{ fontSize: "13px", borderRadius: "8px", textAlign: "left" }}>
+                  <i className="fas fa-exclamation-triangle mr-2"></i>
+                  <strong>Error:</strong> {fetchError}
+                  <button type="button" className="btn-close" style={{ float: "right", background: "none", border: "none", color: "#721c24", fontWeight: "bold", fontSize: "16px", cursor: "pointer", padding: "0 5px" }} onClick={() => setFetchError(null)} aria-label="Close">
+                    &times;
+                  </button>
+                </div>
+              )}
+
               {fetchLoading && (
                 <div style={{
                   position: "absolute",

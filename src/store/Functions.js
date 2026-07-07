@@ -214,11 +214,8 @@ export const Fn_DeleteData = (dispatch, setState, id, apiURL, apiURL_Display) =>
                 }
                 else {
                     // Failure Case
-                    if (arguList.id === 0) {
-                        reject('Some error occurred while adding data');
-                    } else {
-                        reject('Some error occurred while updating data');
-                    }
+                    const errorMsg = response?.message || (response?.data?.message) || (arguList.id === 0 ? 'Some error occurred while adding data' : 'Some error occurred while updating data');
+                    reject(errorMsg);
                 }
             },
         };
