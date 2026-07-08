@@ -71,7 +71,7 @@ const GlobalOptions = () => {
 
   // Initialize form values from database options
   useEffect(() => {
-    if (options.length > 0) {
+    if (options && options.length > 0) {
       const opt = options.find((o) => o.OptionKey === "MachineDelayThresholdHours") || options[0];
       if (opt) {
         setThresholdValue(opt.OptionValue || "");
