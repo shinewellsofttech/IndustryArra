@@ -1,6 +1,4 @@
-/// Menu
-// import Metismenu from "metismenujs";
-import React, { useContext, useEffect,useReducer, useState } from "react";
+import React, { useContext, useReducer, useState } from "react";
 /// Scroll
 import PerfectScrollbar from "react-perfect-scrollbar";
 import {Collapse} from 'react-bootstrap';
@@ -9,9 +7,7 @@ import { Link } from "react-router-dom";
 import {useScrollPosition} from "@n8tb1t/use-scroll-position";
 import { ThemeContext } from "../../../context/ThemeContext";
 import {MenuList} from './Menu';
-/// Image
-//import profile from "../../../images/profile/pic1.jpg";
-import plus from "../../../images/plus.png";
+import { openSidebar, scheduleSidebarClose } from "./sidebarHover";
 
 
 const reducer = (previousState, updatedState) => ({
@@ -28,23 +24,16 @@ const initialState = {
 
 
 const SideBar = () => {
-	var d = new Date();
-	
+
   const {
 		iconHover,
 		sidebarposition,
 		headerposition,
 		sidebarLayout,
-    ChangeIconSidebar,
+  } = useContext(ThemeContext);
   
-	} = useContext(ThemeContext);
+  const [state, setState] = useReducer(reducer, initialState);
 
-  const [state, setState] = useReducer(reducer, initialState);	
-  let handleheartBlast = document.querySelector('.heart');
-  function heartBlast(){
-    return handleheartBlast.classList.toggle("heart-blast");
-  }
-  
  	const [hideOnScroll, setHideOnScroll] = useState(true)
 	useScrollPosition(
 		({ prevPos, currPos }) => {
@@ -76,9 +65,9 @@ const SideBar = () => {
   
   return (
     <div 
-      onMouseEnter={()=>ChangeIconSidebar(true)}
-      onMouseLeave={()=>ChangeIconSidebar(false)}
-      className={`deznav  border-right ${iconHover} ${
+      onMouseEnter={openSidebar}
+      onMouseLeave={() => scheduleSidebarClose()}
+      className={`deznav border-right ${iconHover} ${
         sidebarposition.value === "fixed" &&
         sidebarLayout.value === "horizontal" &&
         headerposition.value === "static"
