@@ -128,7 +128,6 @@ import WoodIssue from "./Masters/WoodIssue";
 import AddWoodIssue from "./Masters/AddWoodIssue";
 import OtherSlips from "./Masters/OtherSlips";
 import AddOtherSlip from "./Masters/AddOtherSlip";
-import SupervisorEntry from "./Masters/SupervisorEntry";
 import ApproveJobCards from "./Masters/ApproveJobCards";
 import PageList_ClosingReport from "./Masters/PageList_ClosingReport";
 import PageList_RejectionStore from "./Masters/PageList_RejectionStore";
@@ -290,7 +289,6 @@ const Markup = () => {
     { url: "MachineMaster", component: <PageList_MachineMaster/> },
     { url: "AddMachine", component: <AddEdit_MachineMaster/> },
 
-    { url: "SupervisorEntry", component: <SupervisorEntry/> },
     { url: "ApproveJobCards", component: <ApproveJobCards/> },
     { url: "ClosingReport", component: <PageList_ClosingReport/> },
     { url: "RejectionStore", component: <PageList_RejectionStore/> },
@@ -364,7 +362,7 @@ const Markup = () => {
       "componentMaster", "AddALSlip", "dashboard", "TotalItemSummary", "ItemMaster", 
       "JobCardForm", "MachineComponentMapReport", "MachineMaster", "ManualReportEntry", 
       "ModuleMaster", "ReportingEntrySystem", "PermissionMatrix", "ContainerEntrySystem", 
-      "ContainerMaster", "ContainerMasterReport", "ContainerEntryReport", "SupervisorEntry", 
+      "ContainerMaster", "ContainerMasterReport", "ContainerEntryReport", 
       "UserMasterCrud", "UserRole", "WoodComponentReport", "AddWoodIssue", "QRScanner"
     ];
 

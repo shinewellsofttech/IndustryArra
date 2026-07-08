@@ -64,10 +64,6 @@ const allDocumentationItems = [
         to: 'AddOtherSlip',
     },
     {
-        title: 'SUPERVISOR ENTRY',
-        to: 'SupervisorEntry',
-    },
-    {
         title: 'GLOBAL OPTIONS',
         to: 'GlobalOptions',
     }
@@ -82,10 +78,6 @@ const allReportingItems = [
     {
         title: 'SCANNER REPORTING',
         to: 'QRScanner',
-    },
-    {
-        title: 'MACHINE DASHBOARD',
-        to: 'MachineDelayDashboard',
     },
     {
         title: 'CONTAINER TRACK REPORT',
