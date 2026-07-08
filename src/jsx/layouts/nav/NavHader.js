@@ -12,7 +12,7 @@ const NavHader = () => {
       onMouseLeave={() => scheduleSidebarClose()}
     >
       <Link to="/dashboard" className="brand-logo">
-        <img src={logo2} alt="AARA" />
+        <img src={logo2} alt="AARA" style={{ height: '38px', width: 'auto', objectFit: 'contain' }} />
       </Link>
 
       {/* Hamburger lines — visual indicator, hover-controlled now */}
