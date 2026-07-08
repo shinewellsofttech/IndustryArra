@@ -1,7 +1,9 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { Row, Col, Button, Card, Form, Spinner, Alert } from "react-bootstrap";
+import { useDispatch } from "react-redux";
 import axios from "axios";
 import { API_WEB_URLS } from "../../constants/constAPI";
+import { Fn_FillListData } from "../../store/Functions";
 
 const GlobalOptions = () => {
   const [options, setOptions] = useState([]);
@@ -23,46 +25,44 @@ const GlobalOptions = () => {
   const userId = userData.id || userData.UserId || 0;
   const userToken = userData.token || userData.UserToken || "token";
 
+  const dispatch = useDispatch();
+
   // Fetch global options
   const fetchOptions = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
-      const response = await axios.get(
-        `${API_WEB_URLS.BASE}MachineDelayDashboard/GlobalOptions/${userId}/${userToken}`
+      await Fn_FillListData(
+        dispatch,
+        setOptions,
+        "gridData",
+        `MachineDelayDashboard/GlobalOptions/${userId}/${userToken}`
       );
-      if (response.data && response.data.success && response.data.data) {
-        setOptions(response.data.data);
-      } else {
-        setError(response.data.message || "Failed to load global options.");
-      }
     } catch (err) {
       console.error("Global options fetch error:", err);
-      setError(err.response?.data?.message || err.message || "An error occurred.");
+      setError(err.message || "An error occurred.");
     } finally {
       setLoading(false);
     }
-  }, [userId, userToken]);
+  }, [dispatch, userId, userToken]);
 
   const fetchMachines = useCallback(async () => {
     setMachineLoading(true);
     setMachineError(null);
     try {
-      const response = await axios.get(
-        `${API_WEB_URLS.BASE}${API_WEB_URLS.MASTER}/0/token/MachineMaster/Id/0`
+      await Fn_FillListData(
+        dispatch,
+        setMachines,
+        "gridData",
+        `${API_WEB_URLS.MASTER}/0/token/MachineMaster/Id/0`
       );
-      if (response.data && response.data.dataList) {
-        setMachines(response.data.dataList);
-      } else {
-        setMachineError("No dataList returned from machine master API.");
-      }
     } catch (err) {
       console.error("Error fetching machines in GlobalOptions:", err);
-      setMachineError(err.response?.data?.message || err.message || "Failed to load machines.");
+      setMachineError(err.message || "Failed to load machines.");
     } finally {
       setMachineLoading(false);
     }
-  }, []);
+  }, [dispatch]);
 
   useEffect(() => {
     fetchMachines();
