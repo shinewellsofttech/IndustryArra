@@ -305,7 +305,7 @@ const Home = () => {
   const isMachineRunning = (mach) => {
     return runningMachines.some((rm) => 
       (rm.MachineName && mach.Name && rm.MachineName.toLowerCase().trim() === mach.Name.toLowerCase().trim()) ||
-      (rm.MachineCode && mach.MachineNo && rm.MachineCode.toLowerCase().trim() === mach.MachineNo.toLowerCase().trim())
+      (rm.MachineCode && mach.MachineNo && rm.MachineCode.toLowerCase().trim() === String(mach.MachineNo).toLowerCase().trim())
     );
   };
 
@@ -325,7 +325,7 @@ const Home = () => {
   const modalTotal = allMachines.filter((m) => {
     if (!filterMachineName) return true;
     return (m.Name && m.Name.toLowerCase().trim() === filterMachineName.toLowerCase().trim()) ||
-           (m.MachineNo && m.MachineNo.toLowerCase().trim() === filterMachineName.toLowerCase().trim());
+           (m.MachineNo && String(m.MachineNo).toLowerCase().trim() === filterMachineName.toLowerCase().trim());
   });
 
   const modalIdle = allMachines.filter((m) => {
@@ -333,7 +333,7 @@ const Home = () => {
     if (isRunning) return false;
     if (!filterMachineName) return true;
     return (m.Name && m.Name.toLowerCase().trim() === filterMachineName.toLowerCase().trim()) ||
-           (m.MachineNo && m.MachineNo.toLowerCase().trim() === filterMachineName.toLowerCase().trim());
+           (m.MachineNo && String(m.MachineNo).toLowerCase().trim() === filterMachineName.toLowerCase().trim());
   });
 
   // Doughnut Chart: Running vs Idle
