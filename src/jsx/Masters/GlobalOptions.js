@@ -8,6 +8,8 @@ const GlobalOptions = () => {
   const [machines, setMachines] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [machineLoading, setMachineLoading] = useState(true);
+  const [machineError, setMachineError] = useState(null);
   
   // Form states
   const [thresholdValue, setThresholdValue] = useState("");
@@ -42,23 +44,30 @@ const GlobalOptions = () => {
     }
   }, [userId, userToken]);
 
-  // Fetch all machines
-  useEffect(() => {
-    const fetchMachines = async () => {
-      try {
-        const response = await axios.get(
-          `${API_WEB_URLS.BASE}${API_WEB_URLS.MASTER}/${userId}/${userToken}/MachineMaster/Id/0`
-        );
-        if (response.data && response.data.dataList) {
-          setMachines(response.data.dataList);
-        }
-      } catch (err) {
-        console.error("Error fetching machines in GlobalOptions:", err);
+  const fetchMachines = useCallback(async () => {
+    setMachineLoading(true);
+    setMachineError(null);
+    try {
+      const response = await axios.get(
+        `${API_WEB_URLS.BASE}${API_WEB_URLS.MASTER}/0/token/MachineMaster/Id/0`
+      );
+      if (response.data && response.data.dataList) {
+        setMachines(response.data.dataList);
+      } else {
+        setMachineError("No dataList returned from machine master API.");
       }
-    };
+    } catch (err) {
+      console.error("Error fetching machines in GlobalOptions:", err);
+      setMachineError(err.response?.data?.message || err.message || "Failed to load machines.");
+    } finally {
+      setMachineLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
     fetchMachines();
     fetchOptions();
-  }, [userId, userToken, fetchOptions]);
+  }, [fetchMachines, fetchOptions]);
 
   // Initialize form values from database options
   useEffect(() => {
@@ -205,7 +214,20 @@ const GlobalOptions = () => {
                       gap: "12px"
                     }}
                   >
-                    {machines && machines.length > 0 ? (
+                    {machineLoading ? (
+                      <div className="text-center py-4 col-span-full">
+                        <Spinner animation="border" size="sm" className="me-2" />
+                        <span>Loading machines list...</span>
+                      </div>
+                    ) : machineError ? (
+                      <div className="text-center py-4 col-span-full text-danger">
+                        <i className="fas fa-exclamation-circle me-2"></i>
+                        <span>{machineError}</span>
+                        <Button variant="link" size="sm" className="ms-2 p-0 text-danger text-decoration-underline" onClick={fetchMachines}>
+                          Retry
+                        </Button>
+                      </div>
+                    ) : machines && machines.length > 0 ? (
                       machines.map((m) => {
                         const currentIds = excludedIds ? excludedIds.split(",").map((x) => x.trim()) : [];
                         const isChecked = currentIds.includes(String(m.Id || m.ID));
@@ -228,9 +250,8 @@ const GlobalOptions = () => {
                         );
                       })
                     ) : (
-                      <div className="text-center py-4 col-span-full">
-                        <Spinner animation="border" size="sm" className="me-2" />
-                        <span>Loading machines list...</span>
+                      <div className="text-center py-4 col-span-full text-muted">
+                        No machines found.
                       </div>
                     )}
                   </div>
