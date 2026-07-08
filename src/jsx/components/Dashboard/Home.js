@@ -802,6 +802,9 @@ const Home = () => {
           <Button variant="secondary" onClick={() => setShowFlowModal(false)}>
             Close
           </Button>
+        </Modal.Footer>
+      </Modal>
+
       {/* Chart Click Details Modal */}
       <Modal show={showChartDetailsModal} onHide={() => setShowChartDetailsModal(false)} size="lg" centered>
         <Modal.Header closeButton className="bg-primary text-white">
