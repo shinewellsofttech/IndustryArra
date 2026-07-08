@@ -1266,6 +1266,25 @@ const QRScanner = () => {
 
   const handleStartMachine = async () => {
     if (!machineData || actionLoading) return;
+
+    // Programmatic Validation: Check if machine is busy with another job card
+    const isEngagedElsewhere = machineData.EngagedJobCardNo && String(machineData.EngagedJobCardNo).trim() !== "";
+    if (isEngagedElsewhere) {
+      alert(`This machine is currently active on Job Card No: ${machineData.EngagedJobCardNo}. Please end that operation first.`);
+      return;
+    }
+
+    // Programmatic Validation: Check if preceding machine has started
+    const currentIndex = (machineList || []).findIndex(m => String(m.ID) === String(machineData.ID));
+    const prevMachine = currentIndex > 0 ? machineList[currentIndex - 1] : null;
+    const isPrevStarted = currentIndex > 0 
+      ? (prevMachine && prevMachine.StartTime && String(prevMachine.StartTime).trim() !== "") 
+      : true;
+    if (!isPrevStarted) {
+      alert(`Please start the previous machine (${prevMachine?.MachineName || "preceding machine"}) first.`);
+      return;
+    }
+
     setActionLoading(true);
     try {
       const user = JSON.parse(localStorage.getItem("authUser"));
@@ -1307,7 +1326,17 @@ const QRScanner = () => {
       alert("Machine started successfully!");
     } catch (err) {
       console.error("Error starting machine:", err);
-      alert(typeof err === "string" ? err : "Failed to start machine. Please try again.");
+      let errMsg = "Failed to start machine. Please try again.";
+      if (err?.response?.data?.Message) {
+        errMsg = err.response.data.Message;
+      } else if (err?.response?.data?.message) {
+        errMsg = err.response.data.message;
+      } else if (err?.message) {
+        errMsg = err.message;
+      } else if (typeof err === "string") {
+        errMsg = err;
+      }
+      alert(errMsg);
     } finally {
       setActionLoading(false);
     }
@@ -1356,7 +1385,17 @@ const QRScanner = () => {
       alert("Machine stopped successfully!");
     } catch (err) {
       console.error("Error stopping machine:", err);
-      alert("Failed to stop machine. Please try again.");
+      let errMsg = "Failed to stop machine. Please try again.";
+      if (err?.response?.data?.Message) {
+        errMsg = err.response.data.Message;
+      } else if (err?.response?.data?.message) {
+        errMsg = err.response.data.message;
+      } else if (err?.message) {
+        errMsg = err.message;
+      } else if (typeof err === "string") {
+        errMsg = err;
+      }
+      alert(errMsg);
     } finally {
       setActionLoading(false);
     }
