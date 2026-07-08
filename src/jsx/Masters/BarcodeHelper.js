@@ -13,7 +13,10 @@ export const generateQRCodeSVG = (text) => {
     // createSvgTag parameters: (cellSize, margin)
     // cellSize = 1.5 gives a highly detailed yet compact size
     // margin = 0 removes default extra whitespace
-    return qr.createSvgTag(1.5, 0);
+    let svgTag = qr.createSvgTag(1.5, 0);
+    // Set QR code size to 25mm x 25mm (1 inch x 1 inch) for printing
+    svgTag = svgTag.replace(/width="[^"]*"/i, 'width="25mm"').replace(/height="[^"]*"/i, 'height="25mm"');
+    return svgTag;
   } catch (error) {
     console.error("Error generating QR code SVG:", error);
     return "";
