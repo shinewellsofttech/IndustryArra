@@ -1,4 +1,5 @@
 import React from 'react';
+import { FaThLarge, FaFileAlt, FaChartBar } from 'react-icons/fa';
 
 // Master list of all documentation / setup menu items
 const allDocumentationItems = [
@@ -87,6 +88,10 @@ const allReportingItems = [
         to: 'MachineDelayDashboard',
     },
     {
+        title: 'CONTAINER TRACK REPORT',
+        to: 'Report_ContainerWise',
+    },
+    {
         title: 'SHIPMENT REPORT',
         to: 'ContainerEntryReport',
     },
@@ -142,7 +147,10 @@ const filterByPermissions = (menuList, permissions) => {
         return menuList;
     }
     return menuList.filter(item => {
-        if (item.to === 'dashboard' || item.to === 'MachineDelayDashboard' || item.to === 'GlobalOptions') return true;
+        if (item.to === 'dashboard' || 
+            item.to === 'MachineDelayDashboard' || 
+            item.to === 'GlobalOptions' || 
+            item.to === 'Report_ContainerWise') return true;
         const perm = permissions.find(p => (p.ModulePath || p.Path)?.toLowerCase() === item.to?.toLowerCase());
         return perm ? perm.IsView : false;
     });
@@ -157,7 +165,7 @@ export const getMenuList = () => {
         {
             title: 'DASHBOARD',
             to: 'dashboard',
-            iconStyle: <i className="fas fa-th-large"></i>,
+            iconStyle: <FaThLarge />,
         }
     ];
 
@@ -169,14 +177,14 @@ export const getMenuList = () => {
         ...(filteredDocumentation.length > 0 ? [{
             title: 'DOCUMENTATION',
             classsChange: 'mm-collapse',
-            iconStyle: <i className="fas fa-file-alt"></i>,
+            iconStyle: <FaFileAlt />,
             customClass: 'section-header-menu',
             content: filteredDocumentation
         }] : []),
         ...(filteredReporting.length > 0 ? [{
             title: 'REPORTING',
             classsChange: 'mm-collapse',
-            iconStyle: <i className="fas fa-chart-bar"></i>,
+            iconStyle: <FaChartBar />,
             customClass: 'section-header-menu',
             content: filteredReporting
         }] : [])

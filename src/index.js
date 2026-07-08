@@ -8,7 +8,11 @@ import { store } from './store/store';
 import ThemeContext from "./context/ThemeContext";
 
 // Import Icons Globally to prevent empty boxes/missing icons
-import "./icons/font-awesome/css/all.min.css";
+import "./icons/font-awesome/css/fontawesome.min.css";
+import "./icons/font-awesome/css/solid.min.css";
+import "./icons/font-awesome/css/regular.min.css";
+import "./icons/font-awesome/css/brands.min.css";
+import "./icons/font-awesome/css/v4-shims.min.css";
 import "./icons/flaticon/flaticon.css";
 import "./icons/flaticon_1/flaticon_1.css";
 import "./icons/line-awesome/css/line-awesome.min.css";

@@ -3,6 +3,7 @@ import { Row, Col, Button, Table, Card, Badge, Form, Spinner, Modal, Tabs, Tab }
 import axios from "axios";
 import { Doughnut, Bar } from "react-chartjs-2";
 import { API_WEB_URLS } from "../../constants/constAPI";
+import { HubConnectionBuilder } from "@microsoft/signalr";
 import {
   Chart as ChartJS,
   CategoryScale,
@@ -13,6 +14,21 @@ import {
   Tooltip,
   Legend,
 } from "chart.js";
+
+import { 
+  FaExclamationTriangle, 
+  FaClock, 
+  FaRedo, 
+  FaDesktop, 
+  FaCogs, 
+  FaPauseCircle, 
+  FaChartBar, 
+  FaTimesCircle, 
+  FaCircle, 
+  FaEye, 
+  FaExclamationCircle, 
+  FaRoute 
+} from "react-icons/fa";
 
 // Register Chart.js elements
 ChartJS.register(
@@ -117,6 +133,41 @@ const MachineDelayDashboard = () => {
     fetchDashboardData();
   }, [fetchDashboardData]);
 
+  // Establish SignalR connection for real-time dashboard updates
+  useEffect(() => {
+    let connection = null;
+
+    const startSignalR = async () => {
+      try {
+        const hubUrl = API_WEB_URLS.BASE.replace("/api/V1/", "/qrScannerHub").replace("/api/v1/", "/qrScannerHub");
+        console.log("🔌 Dashboard connecting to SignalR Hub at:", hubUrl);
+
+        connection = new HubConnectionBuilder()
+          .withUrl(hubUrl)
+          .withAutomaticReconnect()
+          .build();
+
+        connection.on("ReceiveUpdate", (updatedJobCardId) => {
+          console.log("⚡ SignalR Update Received on Dashboard. Refreshing dashboard data...");
+          fetchDashboardData();
+        });
+
+        await connection.start();
+        console.log("✅ Dashboard SignalR Connected Successfully!");
+      } catch (err) {
+        console.warn("❌ Dashboard SignalR Connection Failed:", err);
+      }
+    };
+
+    startSignalR();
+
+    return () => {
+      if (connection) {
+        connection.stop().catch(err => console.warn("Error stopping dashboard SignalR connection:", err));
+      }
+    };
+  }, [fetchDashboardData]);
+
   // Handle threshold update
   const handleUpdateThreshold = async (e) => {
     e.preventDefault();
@@ -190,7 +241,7 @@ const MachineDelayDashboard = () => {
     return (
       <Card className="mt-4 border-danger">
         <Card.Body className="text-center">
-          <i className="fas fa-exclamation-triangle text-danger fs-3 mb-3"></i>
+          <FaExclamationTriangle className="text-danger fs-3 mb-3" />
           <h4 className="text-danger">Dashboard Error</h4>
           <p>{error}</p>
           <Button variant="outline-danger" onClick={fetchDashboardData}>
@@ -301,43 +352,7 @@ const MachineDelayDashboard = () => {
 
   return (
     <div className="container-fluid py-4">
-      {/* Page Header */}
-      <div className="d-flex flex-wrap justify-content-end align-items-center mb-4">
-        <div className="d-flex align-items-center mt-3 mt-md-0">
-          <Badge bg="info" className="p-2 me-3 fs-14" style={{ cursor: "pointer" }} onClick={() => setShowThresholdInput(!showThresholdInput)}>
-            <i className="fas fa-clock me-1"></i> Threshold: {thresholdVal} Hours
-          </Badge>
-          <Button variant="outline-primary" className="btn-sm" onClick={fetchDashboardData}>
-            <i className="fas fa-redo me-1"></i> Refresh
-          </Button>
-        </div>
-      </div>
 
-      {/* Threshold Configuration form */}
-      {showThresholdInput && (
-        <Card className="mb-4 bg-light border-info">
-          <Card.Body>
-            <Form onSubmit={handleUpdateThreshold} className="d-flex align-items-center flex-wrap">
-              <Form.Group className="me-3 mb-2 mb-md-0">
-                <Form.Label className="mb-0 fw-bold me-2">Transition Delay Threshold (Hours):</Form.Label>
-                <Form.Control
-                  type="number"
-                  step="0.5"
-                  value={thresholdVal}
-                  onChange={(e) => setThresholdVal(e.target.value)}
-                  style={{ width: "120px", display: "inline-block" }}
-                />
-              </Form.Group>
-              <Button type="submit" variant="info" disabled={isUpdatingThreshold} className="mb-2 mb-md-0 me-2">
-                {isUpdatingThreshold ? "Updating..." : "Save Threshold"}
-              </Button>
-              <Button variant="outline-secondary" className="mb-2 mb-md-0" onClick={() => setShowThresholdInput(false)}>
-                Cancel
-              </Button>
-            </Form>
-          </Card.Body>
-        </Card>
-      )}
 
       {/* KPI Cards */}
       <Row className="mb-4">
@@ -353,7 +368,7 @@ const MachineDelayDashboard = () => {
                 <h3 className="mb-0 font-weight-bold">{counts.total}</h3>
               </div>
               <div className="icon-shape bg-primary-light p-3 rounded-circle">
-                <i className="fas fa-desktop text-primary fs-4"></i>
+                <FaDesktop className="text-primary fs-4" />
               </div>
             </Card.Body>
           </Card>
@@ -371,7 +386,7 @@ const MachineDelayDashboard = () => {
                 <h3 className="mb-0 font-weight-bold">{counts.running}</h3>
               </div>
               <div className="icon-shape bg-success-light p-3 rounded-circle">
-                <i className="fas fa-cogs text-success fs-4"></i>
+                <FaCogs className="text-success fs-4" />
               </div>
             </Card.Body>
           </Card>
@@ -389,7 +404,7 @@ const MachineDelayDashboard = () => {
                 <h3 className="mb-0 font-weight-bold">{counts.idle}</h3>
               </div>
               <div className="icon-shape bg-danger-light p-3 rounded-circle">
-                <i className="fas fa-pause-circle text-danger fs-4"></i>
+                <FaPauseCircle className="text-danger fs-4" />
               </div>
             </Card.Body>
           </Card>
@@ -407,7 +422,7 @@ const MachineDelayDashboard = () => {
                 <h3 className="mb-0 font-weight-bold">{counts.delayedTransitionsCount}</h3>
               </div>
               <div className="icon-shape bg-warning-light p-3 rounded-circle">
-                <i className="fas fa-exclamation-triangle text-warning fs-4"></i>
+                <FaExclamationTriangle className="text-warning fs-4" />
               </div>
             </Card.Body>
           </Card>
@@ -446,7 +461,7 @@ const MachineDelayDashboard = () => {
                 </div>
               ) : (
                 <div className="text-center text-muted">
-                  <i className="fas fa-chart-bar fs-2 mb-2 d-block"></i>
+                  <FaChartBar className="fs-2 mb-2 d-block" />
                   No delayed transitions reported to generate chart.
                 </div>
               )}
@@ -472,7 +487,7 @@ const MachineDelayDashboard = () => {
             )}
           </div>
           <Button variant="light" className="btn-sm text-primary fw-bold" onClick={handleClearFilters}>
-            <i className="fas fa-times-circle me-1"></i> Clear Filters
+            <FaTimesCircle className="me-1" /> Clear Filters
           </Button>
         </div>
       )}
@@ -485,7 +500,7 @@ const MachineDelayDashboard = () => {
             <Card className="shadow-sm border-0 h-100">
               <Card.Header className="bg-white py-3 border-bottom d-flex justify-content-between align-items-center">
                 <h5 className="mb-0 text-dark fw-bold">
-                  <i className="fas fa-circle text-success me-2 animate-pulse"></i>
+                  <FaCircle className="text-success me-2 animate-pulse" />
                   Currently Running Machines ({filteredRunning.length})
                 </h5>
               </Card.Header>
@@ -524,14 +539,14 @@ const MachineDelayDashboard = () => {
                               </Badge>
                               {m.IsDelayedRun ? (
                                 <span className="text-danger ms-2 fw-bold text-xs d-block mt-1">
-                                  <i className="fas fa-exclamation-triangle me-1"></i>ALERT (DELAY)
+                                  <FaExclamationTriangle className="me-1" />ALERT (DELAY)
                                 </span>
                               ) : null}
                             </td>
                             <td>{m.OperatorName || <span className="text-muted">N/A</span>}</td>
                             <td className="text-center">
                               <Button variant="info" className="btn-xs" onClick={() => handleViewJobCardFlow(m.JobCardMasterId, m.JobCardNo)}>
-                                <i className="fas fa-eye me-1"></i> View Flow
+                                <FaEye className="me-1" /> View Flow
                               </Button>
                             </td>
                           </tr>
@@ -557,7 +572,7 @@ const MachineDelayDashboard = () => {
             <Card className="shadow-sm border-0 h-100">
               <Card.Header className="bg-white py-3 border-bottom d-flex justify-content-between align-items-center">
                 <h5 className="mb-0 text-dark fw-bold text-warning">
-                  <i className="fas fa-exclamation-circle me-2"></i>
+                  <FaExclamationCircle className="me-2" />
                   Delayed Transitions ({filteredDelayed.length})
                 </h5>
               </Card.Header>
@@ -607,7 +622,7 @@ const MachineDelayDashboard = () => {
                             </td>
                             <td className="text-center">
                               <Button variant="info" className="btn-xs" onClick={() => handleViewJobCardFlow(t.JobCardMasterId, t.JobCardNo)}>
-                                <i className="fas fa-eye me-1"></i> View Flow
+                                <FaEye className="me-1" /> View Flow
                               </Button>
                             </td>
                           </tr>
@@ -634,7 +649,7 @@ const MachineDelayDashboard = () => {
       <Modal show={showFlowModal} onHide={() => setShowFlowModal(false)} size="lg" centered>
         <Modal.Header closeButton className="bg-primary text-white">
           <Modal.Title className="text-white fw-bold">
-            <i className="fas fa-route me-2 text-white"></i>
+            <FaRoute className="me-2 text-white" />
             Job Card Process Flow: {selectedJobCardNo}
           </Modal.Title>
         </Modal.Header>
@@ -684,7 +699,7 @@ const MachineDelayDashboard = () => {
                             transitDelayHtml = (
                               <tr key={`delay-${idx}`} className="table-danger">
                                 <td colSpan="5" className="text-center py-1 text-danger font-w500 text-xs">
-                                  <i className="fas fa-exclamation-triangle me-1"></i>
+                                  <FaExclamationTriangle className="me-1" />
                                   TRANSIT IDLE DELAY: {formatDelayText(diffHours)}
                                 </td>
                               </tr>

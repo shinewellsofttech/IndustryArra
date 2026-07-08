@@ -712,15 +712,21 @@ button.react-calendar__tile.react-calendar__tile--active.react-calendar__tile--r
 
 /* Icon sizing in sidebar */
 [data-sidebar-style="full"][data-layout="vertical"] .deznav .metismenu > li > a i,
-[data-sidebar-style="full"][data-layout="vertical"] .menu-toggle .deznav .metismenu > li > a i {
+[data-sidebar-style="full"][data-layout="vertical"] .deznav .metismenu > li > a svg,
+[data-sidebar-style="full"][data-layout="vertical"] .menu-toggle .deznav .metismenu > li > a i,
+[data-sidebar-style="full"][data-layout="vertical"] .menu-toggle .deznav .metismenu > li > a svg {
   font-size: 1.2rem;
+  width: 1.2rem;
+  height: 1.2rem;
   min-width: 1.6rem;
   text-align: center;
   display: inline-block;
+  vertical-align: middle;
 }
 
 /* Ensure icons are visible even when nav-text is hidden */
-[data-sidebar-style="full"][data-layout="vertical"] .menu-toggle .deznav .metismenu > li > a i {
+[data-sidebar-style="full"][data-layout="vertical"] .menu-toggle .deznav .metismenu > li > a i,
+[data-sidebar-style="full"][data-layout="vertical"] .menu-toggle .deznav .metismenu > li > a svg {
   margin-right: 0;
 }
 
