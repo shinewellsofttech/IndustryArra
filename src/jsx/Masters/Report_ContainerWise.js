@@ -3,6 +3,8 @@ import PageTitle from "../layouts/PageTitle";
 import { Row, Col, Button, FormControl, Spinner, Badge, Card, Modal, Pagination, Table, ButtonGroup } from "react-bootstrap";
 import { useDispatch } from 'react-redux';
 import { Fn_GetReport } from '../../store/Functions';
+import { API_WEB_URLS } from '../../constants/constAPI';
+import { HubConnectionBuilder } from '@microsoft/signalr';
 import ReactFlow, { MiniMap, Controls, Background, MarkerType, Handle, Position } from 'reactflow';
 import 'reactflow/dist/style.css';
 
@@ -122,6 +124,41 @@ export const Report_ContainerWise = () => {
   useEffect(() => {
     fetchAllData();
   }, [dispatch]);
+
+  // Establish SignalR connection for real-time updates
+  useEffect(() => {
+    let connection = null;
+
+    const startSignalR = async () => {
+      try {
+        const hubUrl = API_WEB_URLS.BASE.replace("/api/V1/", "/qrScannerHub").replace("/api/v1/", "/qrScannerHub");
+        console.log("🔌 Container Trace Report connecting to SignalR Hub at:", hubUrl);
+
+        connection = new HubConnectionBuilder()
+          .withUrl(hubUrl)
+          .withAutomaticReconnect()
+          .build();
+
+        connection.on("ReceiveUpdate", (updatedJobCardId) => {
+          console.log("⚡ SignalR Update Received. Refreshing container trace data...");
+          fetchAllData();
+        });
+
+        await connection.start();
+        console.log("✅ Container Trace Report SignalR Connected Successfully!");
+      } catch (err) {
+        console.warn("❌ Container Trace Report SignalR Connection Failed:", err);
+      }
+    };
+
+    startSignalR();
+
+    return () => {
+      if (connection) {
+        connection.stop().catch(err => console.warn("Error stopping SignalR connection:", err));
+      }
+    };
+  }, []);
 
   const fetchAllData = async () => {
     setLoading(true);

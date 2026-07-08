@@ -787,16 +787,41 @@ function ContainerEntrySystem() {
     vFormData.append('StartDate', startToSend);
     vFormData.append('EndDate', endToSend);
 
-    await Fn_AddEditData(
-      dispatch,
-      setState,
-      { arguList: { id: state.id, formData: vFormData } },
-      'TransferL/0/token',
-      true,
-      'Id',
-      navigate,
-      '#'
-    );
+    try {
+      await Fn_AddEditData(
+        dispatch,
+        () => {}, // dummy function to prevent Fn_AddEditData from corrupting component state
+        { arguList: { id: state.id, formData: vFormData } },
+        'TransferL/0/token',
+        true,
+        'Id',
+        navigate,
+        '#'
+      );
+
+      // Successfully saved, update the date fields in the local MachineSequenceData state
+      setState(prevState => {
+        const updatedSequence = (prevState.MachineSequenceData || []).map(item => {
+          if (item.Id === seqRow.Id) {
+            return {
+              ...item,
+              StartDate: startToSend,
+              EndDate: endToSend
+            };
+          }
+          return item;
+        });
+        return {
+          ...prevState,
+          MachineSequenceData: updatedSequence
+        };
+      });
+    } catch (error) {
+      console.error("Error updating machine sequence date:", error);
+      // Revert the local edit
+      const previousValue = field === 'StartDate' ? currentStartRaw : currentEndRaw;
+      handleMachineSequenceInputChange(seqRow.Id, field, toDatetimeLocal(previousValue));
+    }
   }, [dispatch, navigate, state.id, machineSequenceEdits]);
 
   // Filter components based on search term
