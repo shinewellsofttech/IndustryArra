@@ -94,7 +94,7 @@ const PageList_CardMaster = () => {
 
   const handleSelectAll = () => {
     setSelectedIds(prev =>
-      prev.length === gridData.length ? [] : gridData.map(item => item?.Id)
+      prev.length === (gridData?.length || 0) ? [] : (gridData || []).map(item => item?.Id)
     );
   };
 
@@ -114,7 +114,7 @@ const PageList_CardMaster = () => {
     }
 
     // Use selectedCML (F_ContainerMasterL) to uniquely identify the selected row
-    const obj = State.FillArray.find(item => item.F_ContainerMasterL == selectedCML);
+    const obj = State?.FillArray?.find(item => item.F_ContainerMasterL == selectedCML);
     if (!obj) {
       toast.error("Please select a valid item before continuing.");
       return;
@@ -127,7 +127,7 @@ const PageList_CardMaster = () => {
 
     // Only append IdList if IsSample is false
     if (!IsSample) {
-      const selectedIdsString = selectedIds.join(',');
+      const selectedIdsString = (selectedIds || []).join(',');
       console.log(selectedIdsString);
       vformData.append("IdList", selectedIdsString);
     }
@@ -221,7 +221,7 @@ const PageList_CardMaster = () => {
 
   const handleAmountSubmit = async () => {
     try {
-      const ExpenseIds = expenseArr.map(item => item.Id).join(',');
+      const ExpenseIds = (expenseArr || []).map(item => item.Id).join(',');
       const SaleInvoiceIds = selectedIds;
 
       let vformData = new FormData();
@@ -254,8 +254,8 @@ const PageList_CardMaster = () => {
   // Pagination calculations
   const indexOfLastItem = currentPage * itemsPerPage;
   const indexOfFirstItem = indexOfLastItem - itemsPerPage;
-  const currentItems = gridData.slice(indexOfFirstItem, indexOfLastItem);
-  const totalPages = Math.ceil(gridData.length / itemsPerPage);
+  const currentItems = (gridData || []).slice(indexOfFirstItem, indexOfLastItem);
+  const totalPages = Math.ceil((gridData?.length || 0) / itemsPerPage);
 
   const changePage = pageNumber => {
     setCurrentPage(Math.max(1, Math.min(pageNumber, totalPages)));
@@ -266,7 +266,7 @@ const PageList_CardMaster = () => {
     const cml = selectedOption ? selectedOption.value : 0;
     setSelectedCML(cml);
     // Extract the actual Item Id from the array
-    const foundItem = State.FillArray.find(item => item.F_ContainerMasterL == cml);
+    const foundItem = State?.FillArray?.find(item => item.F_ContainerMasterL == cml);
     const itemId = foundItem ? foundItem.Id : 0;
     setItemMaster(itemId);
     setSelectedIds([]); // Clear selected rows when dropdown changes
@@ -298,18 +298,18 @@ const PageList_CardMaster = () => {
   // Memoize item options for react-select
   // Use F_ContainerMasterL as value so items with the same Id (but different quantities/lines) are treated as distinct
   const itemOptions = useMemo(() => {
-    return State.FillArray.length > 0
+    return State?.FillArray?.length > 0
       ? State.FillArray.map((option) => ({
         value: option.F_ContainerMasterL,
         label: `${option.Name} - ${option.ItemCode}`,
       }))
       : [];
-  }, [State.FillArray]);
+  }, [State?.FillArray]);
 
   // Memoize selected item value for react-select
   // Match by F_ContainerMasterL (selectedCML) to correctly highlight the unique row
   const selectedItem = useMemo(() => {
-    if (!selectedCML || State.FillArray.length === 0) return null;
+    if (!selectedCML || !State?.FillArray?.length) return null;
     const foundOption = State.FillArray.find((option) => option.F_ContainerMasterL == selectedCML);
     return foundOption
       ? {
@@ -317,7 +317,7 @@ const PageList_CardMaster = () => {
         label: `${foundOption.Name} - ${foundOption.ItemCode}`,
       }
       : null;
-  }, [selectedCML, State.FillArray]);
+  }, [selectedCML, State?.FillArray]);
 
   return (
     <Container fluid className="page-content">
@@ -355,7 +355,7 @@ const PageList_CardMaster = () => {
               value={F_ContainerMaster}
             >
               <option value="">Select Shipment</option>
-              {State.FillArray1.length > 0 &&
+              {State?.FillArray1?.length > 0 &&
                 State.FillArray1.map((option) => (
                   <option key={option.Id} value={option.Id}>
                     {option.Name}
@@ -492,10 +492,10 @@ const PageList_CardMaster = () => {
                         type="checkbox"
                         onChange={handleSelectAll}
                         checked={
-                          selectedIds.length === gridData.length &&
-                          gridData.length > 0
+                          selectedIds.length === (gridData?.length || 0) &&
+                          (gridData?.length || 0) > 0
                         }
-                        disabled={gridData.length === 0}
+                        disabled={(gridData?.length || 0) === 0}
                       />
                     </th>
                     <th>Id</th>
@@ -636,7 +636,7 @@ const PageList_CardMaster = () => {
                   </tr>
                 </thead>
                 <tbody>
-                  {expenseArr.length > 0 ? (
+                  {expenseArr?.length > 0 ? (
                     expenseArr.map(item => (
                       <tr key={item?.Id || Math.random()}>
                         <td>{item?.SalesPersonName || "N/A"}</td>
