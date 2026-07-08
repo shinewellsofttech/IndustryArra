@@ -101,6 +101,12 @@ const Home = () => {
   const [loadingFlow, setLoadingFlow] = useState(false);
   const [showFlowModal, setShowFlowModal] = useState(false);
 
+  // Chart details modal state
+  const [showChartDetailsModal, setShowChartDetailsModal] = useState(false);
+  const [chartDetailsTitle, setChartDetailsTitle] = useState("");
+  const [chartDetailsType, setChartDetailsType] = useState(""); // "RUNNING" | "DELAYED"
+  const [filterMachineName, setFilterMachineName] = useState("");
+
   // Retrieve user session data
   const userData = JSON.parse(localStorage.getItem("authUser")) || {};
   const userId = userData.id || userData.UserId || 0;
@@ -260,18 +266,35 @@ const Home = () => {
   // Filter lists based on selected states
   const filteredRunning = runningMachines.filter((m) => {
     const matchesCategory = selectedCategory === "ALL" || selectedCategory === "RUNNING";
-    const matchesMachineName = !selectedMachineFilter || m.MachineName.toLowerCase().includes(selectedMachineFilter.toLowerCase()) || m.MachineCode.toLowerCase().includes(selectedMachineFilter.toLowerCase());
+    const matchesMachineName = !selectedMachineFilter || 
+      (m.MachineName && m.MachineName.toLowerCase().includes(selectedMachineFilter.toLowerCase())) || 
+      (m.MachineCode && m.MachineCode.toLowerCase().includes(selectedMachineFilter.toLowerCase()));
     return matchesCategory && matchesMachineName;
   });
 
   const filteredDelayed = delayedTransitions.filter((t) => {
     const matchesCategory = selectedCategory === "ALL" || selectedCategory === "DELAYED";
     const matchesMachineName = !selectedMachineFilter || 
-      t.CurrentMachineName.toLowerCase().includes(selectedMachineFilter.toLowerCase()) || 
-      t.CurrentMachineCode.toLowerCase().includes(selectedMachineFilter.toLowerCase()) ||
-      t.NextMachineName.toLowerCase().includes(selectedMachineFilter.toLowerCase()) || 
-      t.NextMachineCode.toLowerCase().includes(selectedMachineFilter.toLowerCase());
+      (t.CurrentMachineName && t.CurrentMachineName.toLowerCase().includes(selectedMachineFilter.toLowerCase())) || 
+      (t.CurrentMachineCode && t.CurrentMachineCode.toLowerCase().includes(selectedMachineFilter.toLowerCase())) ||
+      (t.NextMachineName && t.NextMachineName.toLowerCase().includes(selectedMachineFilter.toLowerCase())) || 
+      (t.NextMachineCode && t.NextMachineCode.toLowerCase().includes(selectedMachineFilter.toLowerCase()));
     return matchesCategory && matchesMachineName;
+  });
+
+  // Modal filtered lists based on chart clicks
+  const modalRunning = runningMachines.filter((m) => {
+    return !filterMachineName || 
+      (m.MachineName && m.MachineName.toLowerCase().includes(filterMachineName.toLowerCase())) || 
+      (m.MachineCode && m.MachineCode.toLowerCase().includes(filterMachineName.toLowerCase()));
+  });
+
+  const modalDelayed = delayedTransitions.filter((t) => {
+    return !filterMachineName || 
+      (t.CurrentMachineName && t.CurrentMachineName.toLowerCase().includes(filterMachineName.toLowerCase())) || 
+      (t.CurrentMachineCode && t.CurrentMachineCode.toLowerCase().includes(filterMachineName.toLowerCase())) ||
+      (t.NextMachineName && t.NextMachineName.toLowerCase().includes(filterMachineName.toLowerCase())) || 
+      (t.NextMachineCode && t.NextMachineCode.toLowerCase().includes(filterMachineName.toLowerCase()));
   });
 
   // Doughnut Chart: Running vs Idle
@@ -299,7 +322,14 @@ const Home = () => {
     onClick: (evt, elements) => {
       if (elements.length > 0) {
         const idx = elements[0].index;
-        setSelectedCategory(idx === 0 ? "RUNNING" : "IDLE");
+        if (idx === 0) {
+          setChartDetailsType("RUNNING");
+          setChartDetailsTitle("Currently Running Machines Details");
+          setFilterMachineName("");
+          setShowChartDetailsModal(true);
+        } else {
+          setSelectedCategory("IDLE");
+        }
       }
     },
   };
@@ -342,7 +372,11 @@ const Home = () => {
     onClick: (evt, elements) => {
       if (elements.length > 0) {
         const idx = elements[0].index;
-        setSelectedMachineFilter(chartStats[idx].MachineName);
+        const machineName = chartStats[idx].MachineName;
+        setChartDetailsType("DELAYED");
+        setChartDetailsTitle(`Delayed Transitions - ${machineName}`);
+        setFilterMachineName(machineName);
+        setShowChartDetailsModal(true);
       }
     },
   };
@@ -766,6 +800,115 @@ const Home = () => {
         </Modal.Body>
         <Modal.Footer>
           <Button variant="secondary" onClick={() => setShowFlowModal(false)}>
+            Close
+          </Button>
+      {/* Chart Click Details Modal */}
+      <Modal show={showChartDetailsModal} onHide={() => setShowChartDetailsModal(false)} size="lg" centered>
+        <Modal.Header closeButton className="bg-primary text-white">
+          <Modal.Title className="text-white fw-bold">
+            <FaChartBar className="me-2 text-white" />
+            {chartDetailsTitle}
+          </Modal.Title>
+        </Modal.Header>
+        <Modal.Body className="p-0" style={{ minHeight: "200px" }}>
+          {chartDetailsType === "RUNNING" ? (
+            <div className="table-responsive">
+              <Table className="align-items-center table-flush mb-0" hover>
+                <thead className="thead-light">
+                  <tr>
+                    <th>Machine</th>
+                    <th>Shipment No</th>
+                    <th>Job Card No</th>
+                    <th>Started At</th>
+                    <th>Running For</th>
+                    <th className="text-center">Action</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {modalRunning.length > 0 ? (
+                    modalRunning.map((m) => (
+                      <tr key={m.JobCardLineId} className={m.IsDelayedRun ? "table-danger text-danger font-weight-bold" : ""}>
+                        <td>
+                          <span className="fw-bold">{m.MachineName}</span>
+                          <div className="text-xs text-muted">{m.MachineCode}</div>
+                        </td>
+                        <td>{m.ShipmentNo || "N/A"}</td>
+                        <td>
+                          <Badge bg="light" text="primary" className="fs-12 p-2" style={{ cursor: "pointer" }} onClick={() => { setShowChartDetailsModal(false); handleViewJobCardFlow(m.JobCardMasterId, m.JobCardNo); }}>
+                            {m.JobCardNo}
+                          </Badge>
+                        </td>
+                        <td>{formatDateTime(m.StartTime)}</td>
+                        <td>{formatDelayText(m.RunningMinutes / 60.0)}</td>
+                        <td className="text-center">
+                          <Button variant="info" className="btn-xs" onClick={() => { setShowChartDetailsModal(false); handleViewJobCardFlow(m.JobCardMasterId, m.JobCardNo); }}>
+                            <FaEye className="me-1" /> View Flow
+                          </Button>
+                        </td>
+                      </tr>
+                    ))
+                  ) : (
+                    <tr>
+                      <td colSpan="6" className="text-center text-muted py-4">No running machines found.</td>
+                    </tr>
+                  )}
+                </tbody>
+              </Table>
+            </div>
+          ) : (
+            <div className="table-responsive">
+              <Table className="align-items-center table-flush mb-0" hover>
+                <thead className="thead-light">
+                  <tr>
+                    <th>Shipment No</th>
+                    <th>Job Card</th>
+                    <th>From Machine</th>
+                    <th>Finished</th>
+                    <th>To Machine</th>
+                    <th>Idle Time</th>
+                    <th className="text-center">Action</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {modalDelayed.length > 0 ? (
+                    modalDelayed.map((t, idx) => (
+                      <tr key={idx}>
+                        <td>{t.ShipmentNo || "N/A"}</td>
+                        <td>
+                          <Badge bg="light" text="primary" className="fs-12 p-2" style={{ cursor: "pointer" }} onClick={() => { setShowChartDetailsModal(false); handleViewJobCardFlow(t.JobCardMasterId, t.JobCardNo); }}>
+                            {t.JobCardNo}
+                          </Badge>
+                        </td>
+                        <td>
+                          <span className="fw-bold">{t.CurrentMachineName}</span>
+                          <div className="text-xs text-muted">{t.CurrentMachineCode}</div>
+                        </td>
+                        <td>{formatDateTime(t.CurrentEndTime)}</td>
+                        <td>{t.NextMachineName || "None (Last step)"}</td>
+                        <td>
+                          <Badge bg="danger" className="p-2 fs-11">
+                            {formatDelayText(t.DelayHours)}
+                          </Badge>
+                        </td>
+                        <td className="text-center">
+                          <Button variant="info" className="btn-xs" onClick={() => { setShowChartDetailsModal(false); handleViewJobCardFlow(t.JobCardMasterId, t.JobCardNo); }}>
+                            <FaEye className="me-1" /> View Flow
+                          </Button>
+                        </td>
+                      </tr>
+                    ))
+                  ) : (
+                    <tr>
+                      <td colSpan="7" className="text-center text-muted py-4">No delayed transitions found.</td>
+                    </tr>
+                  )}
+                </tbody>
+              </Table>
+            </div>
+          )}
+        </Modal.Body>
+        <Modal.Footer>
+          <Button variant="secondary" onClick={() => setShowChartDetailsModal(false)}>
             Close
           </Button>
         </Modal.Footer>
