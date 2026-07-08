@@ -35,6 +35,11 @@ const GlobalOptions = () => {
   const [editValue, setEditValue] = useState("");
   const [actionLoading, setActionLoading] = useState(false);
   const [successMessage, setSuccessMessage] = useState(null);
+  // Retrieve user session data
+  const userData = JSON.parse(localStorage.getItem("authUser")) || {};
+  const userId = userData.id || userData.UserId || 0;
+  const userToken = userData.token || userData.UserToken || "token";
+
   const [machines, setMachines] = useState([]);
 
   // Fetch all machines
@@ -68,11 +73,6 @@ const GlobalOptions = () => {
     }
     setEditValue(updatedSelected.join(", "));
   };
-
-  // Retrieve user session data
-  const userData = JSON.parse(localStorage.getItem("authUser")) || {};
-  const userId = userData.id || userData.UserId || 0;
-  const userToken = userData.token || userData.UserToken || "token";
 
   const fetchOptions = useCallback(async () => {
     setLoading(true);
