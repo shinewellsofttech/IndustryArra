@@ -49,8 +49,8 @@ const GlobalOptions = () => {
         const response = await axios.get(
           `${API_WEB_URLS.BASE}${API_WEB_URLS.MASTER}/${userId}/${userToken}/MachineMaster/Id/0`
         );
-        if (response.data && response.data.success && response.data.data?.response) {
-          setMachines(response.data.data.response);
+        if (response.data && response.data.dataList) {
+          setMachines(response.data.dataList);
         }
       } catch (err) {
         console.error("Error fetching machines in GlobalOptions:", err);
