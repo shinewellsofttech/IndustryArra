@@ -1,8 +1,10 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { Row, Col, Button, Table, Card, Badge, Form, Spinner, Modal, Tabs, Tab } from "react-bootstrap";
+import { useDispatch } from "react-redux";
 import axios from "axios";
 import { Doughnut, Bar } from "react-chartjs-2";
 import { API_WEB_URLS } from "../../../constants/constAPI";
+import { Fn_FillListData } from "../../../store/Functions";
 import { HubConnectionBuilder } from "@microsoft/signalr";
 import {
   Chart as ChartJS,
@@ -101,10 +103,13 @@ const Home = () => {
   const [loadingFlow, setLoadingFlow] = useState(false);
   const [showFlowModal, setShowFlowModal] = useState(false);
 
+  const dispatch = useDispatch();
+  const [allMachines, setAllMachines] = useState([]);
+
   // Chart details modal state
   const [showChartDetailsModal, setShowChartDetailsModal] = useState(false);
   const [chartDetailsTitle, setChartDetailsTitle] = useState("");
-  const [chartDetailsType, setChartDetailsType] = useState(""); // "RUNNING" | "DELAYED"
+  const [chartDetailsType, setChartDetailsType] = useState(""); // "RUNNING" | "DELAYED" | "TOTAL" | "IDLE"
   const [filterMachineName, setFilterMachineName] = useState("");
 
   // Retrieve user session data
@@ -134,9 +139,23 @@ const Home = () => {
     }
   }, [userId, userToken]);
 
+  const fetchAllMachines = useCallback(async () => {
+    try {
+      await Fn_FillListData(
+        dispatch,
+        setAllMachines,
+        "gridData",
+        `${API_WEB_URLS.MASTER}/0/token/MachineMaster/Id/0`
+      );
+    } catch (err) {
+      console.error("Error fetching machine list for dashboard:", err);
+    }
+  }, [dispatch]);
+
   useEffect(() => {
     fetchDashboardData();
-  }, [fetchDashboardData]);
+    fetchAllMachines();
+  }, [fetchDashboardData, fetchAllMachines]);
 
   // Establish SignalR connection for real-time dashboard updates
   useEffect(() => {
@@ -282,19 +301,39 @@ const Home = () => {
     return matchesCategory && matchesMachineName;
   });
 
-  // Modal filtered lists based on chart clicks
+  // Helper to determine if a machine from MachineMaster is running
+  const isMachineRunning = (mach) => {
+    return runningMachines.some((rm) => 
+      (rm.MachineName && mach.Name && rm.MachineName.toLowerCase().trim() === mach.Name.toLowerCase().trim()) ||
+      (rm.MachineCode && mach.MachineNo && rm.MachineCode.toLowerCase().trim() === mach.MachineNo.toLowerCase().trim())
+    );
+  };
+
+  // Modal filtered lists based on chart clicks / KPI clicks (using strict exact matching to avoid matching similar machines)
   const modalRunning = runningMachines.filter((m) => {
-    return !filterMachineName || 
-      (m.MachineName && m.MachineName.toLowerCase().includes(filterMachineName.toLowerCase())) || 
-      (m.MachineCode && m.MachineCode.toLowerCase().includes(filterMachineName.toLowerCase()));
+    if (!filterMachineName) return true;
+    return (m.MachineName && m.MachineName.toLowerCase().trim() === filterMachineName.toLowerCase().trim()) ||
+           (m.MachineCode && m.MachineCode.toLowerCase().trim() === filterMachineName.toLowerCase().trim());
   });
 
   const modalDelayed = delayedTransitions.filter((t) => {
-    return !filterMachineName || 
-      (t.CurrentMachineName && t.CurrentMachineName.toLowerCase().includes(filterMachineName.toLowerCase())) || 
-      (t.CurrentMachineCode && t.CurrentMachineCode.toLowerCase().includes(filterMachineName.toLowerCase())) ||
-      (t.NextMachineName && t.NextMachineName.toLowerCase().includes(filterMachineName.toLowerCase())) || 
-      (t.NextMachineCode && t.NextMachineCode.toLowerCase().includes(filterMachineName.toLowerCase()));
+    if (!filterMachineName) return true;
+    return (t.CurrentMachineName && t.CurrentMachineName.toLowerCase().trim() === filterMachineName.toLowerCase().trim()) ||
+           (t.NextMachineName && t.NextMachineName.toLowerCase().trim() === filterMachineName.toLowerCase().trim());
+  });
+
+  const modalTotal = allMachines.filter((m) => {
+    if (!filterMachineName) return true;
+    return (m.Name && m.Name.toLowerCase().trim() === filterMachineName.toLowerCase().trim()) ||
+           (m.MachineNo && m.MachineNo.toLowerCase().trim() === filterMachineName.toLowerCase().trim());
+  });
+
+  const modalIdle = allMachines.filter((m) => {
+    const isRunning = isMachineRunning(m);
+    if (isRunning) return false;
+    if (!filterMachineName) return true;
+    return (m.Name && m.Name.toLowerCase().trim() === filterMachineName.toLowerCase().trim()) ||
+           (m.MachineNo && m.MachineNo.toLowerCase().trim() === filterMachineName.toLowerCase().trim());
   });
 
   // Doughnut Chart: Running vs Idle
@@ -328,7 +367,10 @@ const Home = () => {
           setFilterMachineName("");
           setShowChartDetailsModal(true);
         } else {
-          setSelectedCategory("IDLE");
+          setChartDetailsType("IDLE");
+          setChartDetailsTitle("Idle Machines Details");
+          setFilterMachineName("");
+          setShowChartDetailsModal(true);
         }
       }
     },
@@ -392,9 +434,14 @@ const Home = () => {
       <Row className="mb-4">
         <Col xl={3} sm={6} className="mb-4 mb-xl-0">
           <Card 
-            className={`border-left-primary h-100 ${selectedCategory === "ALL" ? "border-primary" : ""}`}
+            className={`border-left-primary h-100 ${chartDetailsType === "TOTAL" && showChartDetailsModal ? "border-primary" : ""}`}
             style={{ cursor: "pointer", transition: "0.2s" }}
-            onClick={() => setSelectedCategory("ALL")}
+            onClick={() => {
+              setChartDetailsType("TOTAL");
+              setChartDetailsTitle("Total Machines Details");
+              setFilterMachineName("");
+              setShowChartDetailsModal(true);
+            }}
           >
             <Card.Body className="d-flex align-items-center justify-content-between">
               <div>
@@ -410,9 +457,14 @@ const Home = () => {
 
         <Col xl={3} sm={6} className="mb-4 mb-xl-0">
           <Card 
-            className={`border-left-success h-100 ${selectedCategory === "RUNNING" ? "border-success" : ""}`}
+            className={`border-left-success h-100 ${chartDetailsType === "RUNNING" && showChartDetailsModal ? "border-success" : ""}`}
             style={{ cursor: "pointer", transition: "0.2s" }}
-            onClick={() => setSelectedCategory("RUNNING")}
+            onClick={() => {
+              setChartDetailsType("RUNNING");
+              setChartDetailsTitle("Currently Running Machines Details");
+              setFilterMachineName("");
+              setShowChartDetailsModal(true);
+            }}
           >
             <Card.Body className="d-flex align-items-center justify-content-between">
               <div>
@@ -428,9 +480,14 @@ const Home = () => {
 
         <Col xl={3} sm={6} className="mb-4 mb-xl-0">
           <Card 
-            className={`border-left-danger h-100 ${selectedCategory === "IDLE" ? "border-danger" : ""}`}
+            className={`border-left-danger h-100 ${chartDetailsType === "IDLE" && showChartDetailsModal ? "border-danger" : ""}`}
             style={{ cursor: "pointer", transition: "0.2s" }}
-            onClick={() => setSelectedCategory("IDLE")}
+            onClick={() => {
+              setChartDetailsType("IDLE");
+              setChartDetailsTitle("Idle Machines Details");
+              setFilterMachineName("");
+              setShowChartDetailsModal(true);
+            }}
           >
             <Card.Body className="d-flex align-items-center justify-content-between">
               <div>
@@ -446,9 +503,14 @@ const Home = () => {
 
         <Col xl={3} sm={6}>
           <Card 
-            className={`border-left-warning h-100 ${selectedCategory === "DELAYED" ? "border-warning" : ""}`}
+            className={`border-left-warning h-100 ${chartDetailsType === "DELAYED" && showChartDetailsModal ? "border-warning" : ""}`}
             style={{ cursor: "pointer", transition: "0.2s" }}
-            onClick={() => setSelectedCategory("DELAYED")}
+            onClick={() => {
+              setChartDetailsType("DELAYED");
+              setChartDetailsTitle("Delayed Transitions Details");
+              setFilterMachineName("");
+              setShowChartDetailsModal(true);
+            }}
           >
             <Card.Body className="d-flex align-items-center justify-content-between">
               <div>
@@ -504,178 +566,7 @@ const Home = () => {
         </Col>
       </Row>
 
-      {/* Filters Summary & Reset */}
-      {(selectedCategory !== "ALL" || selectedMachineFilter) && (
-        <div className="alert alert-primary d-flex justify-content-between align-items-center p-3 mb-4 shadow-sm">
-          <div>
-            <strong>Active Filters:</strong>{" "}
-            {selectedCategory !== "ALL" && (
-              <Badge bg="light" text="primary" className="me-2 p-2">
-                Status: {selectedCategory}
-              </Badge>
-            )}
-            {selectedMachineFilter && (
-              <Badge bg="light" text="primary" className="p-2">
-                Machine: {selectedMachineFilter}
-              </Badge>
-            )}
-          </div>
-          <Button variant="light" className="btn-sm text-primary fw-bold" onClick={handleClearFilters}>
-            <FaTimesCircle className="me-1" /> Clear Filters
-          </Button>
-        </div>
-      )}
 
-      {/* Dashboard Tables */}
-      <Row className="mb-4">
-        {/* Table 1: Running Machines */}
-        {(selectedCategory === "ALL" || selectedCategory === "RUNNING") && (
-          <Col lg={filteredDelayed.length === 0 ? 12 : 6} className="mb-4">
-            <Card className="shadow-sm border-0 h-100">
-              <Card.Header className="bg-white py-3 border-bottom d-flex justify-content-between align-items-center">
-                <h5 className="mb-0 text-dark fw-bold">
-                  <FaCircle className="text-success me-2 animate-pulse" />
-                  Currently Running Machines ({filteredRunning.length})
-                </h5>
-              </Card.Header>
-              <Card.Body className="p-0">
-                <div className="table-responsive">
-                  <Table className="align-items-center table-flush mb-0" hover>
-                    <thead className="thead-light">
-                      <tr>
-                        <th>Machine</th>
-                        <th>Shipment No</th>
-                        <th>Job Card No</th>
-                        <th>Started At</th>
-                        <th>Running For</th>
-                        <th>Operator</th>
-                        <th className="text-center">Action</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {filteredRunning.length > 0 ? (
-                        filteredRunning.map((m) => (
-                          <tr key={m.JobCardLineId} className={m.IsDelayedRun ? "table-danger text-danger font-weight-bold" : ""}>
-                            <td>
-                              <span className="fw-bold">{m.MachineName}</span>
-                              <div className="text-xs text-muted">{m.MachineCode}</div>
-                            </td>
-                            <td>{m.ShipmentNo || <span className="text-muted">N/A</span>}</td>
-                            <td>
-                              <Badge bg="light" text="primary" className="fs-12 p-2" style={{ cursor: "pointer" }} onClick={() => handleViewJobCardFlow(m.JobCardMasterId, m.JobCardNo)}>
-                                {m.JobCardNo}
-                              </Badge>
-                            </td>
-                            <td>{formatDateTime(m.StartTime)}</td>
-                            <td>
-                              <Badge bg={m.IsDelayedRun ? "danger" : "success"} className="p-2 fs-11">
-                                {formatDelayText(m.RunningMinutes / 60.0)}
-                              </Badge>
-                              {m.IsDelayedRun ? (
-                                <span className="text-danger ms-2 fw-bold text-xs d-block mt-1">
-                                  <FaExclamationTriangle className="me-1" />ALERT (DELAY)
-                                </span>
-                              ) : null}
-                            </td>
-                            <td>{m.OperatorName || <span className="text-muted">N/A</span>}</td>
-                            <td className="text-center">
-                              <Button variant="info" className="btn-xs" onClick={() => handleViewJobCardFlow(m.JobCardMasterId, m.JobCardNo)}>
-                                <FaEye className="me-1" /> View Flow
-                              </Button>
-                            </td>
-                          </tr>
-                        ))
-                      ) : (
-                        <tr>
-                          <td colSpan="7" className="text-center text-muted py-4">
-                            No running machines match your filters.
-                          </td>
-                        </tr>
-                      )}
-                    </tbody>
-                  </Table>
-                </div>
-              </Card.Body>
-            </Card>
-          </Col>
-        )}
-
-        {/* Table 2: Delayed Transitions */}
-        {(selectedCategory === "ALL" || selectedCategory === "DELAYED") && (
-          <Col lg={filteredRunning.length === 0 ? 12 : 6} className="mb-4">
-            <Card className="shadow-sm border-0 h-100">
-              <Card.Header className="bg-white py-3 border-bottom d-flex justify-content-between align-items-center">
-                <h5 className="mb-0 text-dark fw-bold text-warning">
-                  <FaExclamationCircle className="me-2" />
-                  Delayed Transitions ({filteredDelayed.length})
-                </h5>
-              </Card.Header>
-              <Card.Body className="p-0">
-                <div className="table-responsive">
-                  <Table className="align-items-center table-flush mb-0" hover>
-                    <thead className="thead-light">
-                      <tr>
-                        <th>Shipment No</th>
-                        <th>Job Card</th>
-                        <th>From Machine</th>
-                        <th>Finished</th>
-                        <th>To Machine</th>
-                        <th>Idle Time</th>
-                        <th className="text-center">Action</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {filteredDelayed.length > 0 ? (
-                        filteredDelayed.map((t, idx) => (
-                          <tr key={idx}>
-                            <td>{t.ShipmentNo || <span className="text-muted">N/A</span>}</td>
-                            <td>
-                              <Badge bg="light" text="primary" className="fs-12 p-2" style={{ cursor: "pointer" }} onClick={() => handleViewJobCardFlow(t.JobCardMasterId, t.JobCardNo)}>
-                                {t.JobCardNo}
-                              </Badge>
-                            </td>
-                            <td>
-                              <span className="fw-bold">{t.CurrentMachineName}</span>
-                              <div className="text-xs text-muted">{t.CurrentMachineCode}</div>
-                            </td>
-                            <td>{formatDateTime(t.CurrentEndTime)}</td>
-                            <td>
-                              {t.NextMachineName ? (
-                                <>
-                                  <span className="fw-bold">{t.NextMachineName}</span>
-                                  <div className="text-xs text-muted">{t.NextMachineCode}</div>
-                                </>
-                              ) : (
-                                <span className="text-muted">None (Last step)</span>
-                              )}
-                            </td>
-                            <td>
-                              <Badge bg="danger" className="p-2 fs-11">
-                                {formatDelayText(t.DelayHours)}
-                              </Badge>
-                            </td>
-                            <td className="text-center">
-                              <Button variant="info" className="btn-xs" onClick={() => handleViewJobCardFlow(t.JobCardMasterId, t.JobCardNo)}>
-                                <FaEye className="me-1" /> View Flow
-                              </Button>
-                            </td>
-                          </tr>
-                        ))
-                      ) : (
-                        <tr>
-                          <td colSpan="7" className="text-center text-muted py-4">
-                            No delayed transitions match your filters.
-                          </td>
-                        </tr>
-                      )}
-                    </tbody>
-                  </Table>
-                </div>
-              </Card.Body>
-            </Card>
-          </Col>
-        )}
-      </Row>
 
 
 
@@ -814,7 +705,7 @@ const Home = () => {
           </Modal.Title>
         </Modal.Header>
         <Modal.Body className="p-0" style={{ minHeight: "200px" }}>
-          {chartDetailsType === "RUNNING" ? (
+          {chartDetailsType === "RUNNING" && (
             <div className="table-responsive">
               <Table className="align-items-center table-flush mb-0" hover>
                 <thead className="thead-light">
@@ -858,7 +749,9 @@ const Home = () => {
                 </tbody>
               </Table>
             </div>
-          ) : (
+          )}
+
+          {chartDetailsType === "DELAYED" && (
             <div className="table-responsive">
               <Table className="align-items-center table-flush mb-0" hover>
                 <thead className="thead-light">
@@ -903,6 +796,73 @@ const Home = () => {
                   ) : (
                     <tr>
                       <td colSpan="7" className="text-center text-muted py-4">No delayed transitions found.</td>
+                    </tr>
+                  )}
+                </tbody>
+              </Table>
+            </div>
+          )}
+
+          {chartDetailsType === "TOTAL" && (
+            <div className="table-responsive">
+              <Table className="align-items-center table-flush mb-0" hover>
+                <thead className="thead-light">
+                  <tr>
+                    <th>Machine Name</th>
+                    <th>Machine No</th>
+                    <th>Status</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {modalTotal.length > 0 ? (
+                    modalTotal.map((m) => {
+                      const isRunning = isMachineRunning(m);
+                      return (
+                        <tr key={m.Id}>
+                          <td><span className="fw-bold">{m.Name}</span></td>
+                          <td>{m.MachineNo}</td>
+                          <td>
+                            <Badge bg={isRunning ? "success" : "danger"} className="p-2 fs-11">
+                              {isRunning ? "RUNNING" : "IDLE"}
+                            </Badge>
+                          </td>
+                        </tr>
+                      );
+                    })
+                  ) : (
+                    <tr>
+                      <td colSpan="3" className="text-center text-muted py-4">No machines found.</td>
+                    </tr>
+                  )}
+                </tbody>
+              </Table>
+            </div>
+          )}
+
+          {chartDetailsType === "IDLE" && (
+            <div className="table-responsive">
+              <Table className="align-items-center table-flush mb-0" hover>
+                <thead className="thead-light">
+                  <tr>
+                    <th>Machine Name</th>
+                    <th>Machine No</th>
+                    <th>Status</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {modalIdle.length > 0 ? (
+                    modalIdle.map((m) => (
+                      <tr key={m.Id}>
+                        <td><span className="fw-bold">{m.Name}</span></td>
+                        <td>{m.MachineNo}</td>
+                        <td>
+                          <Badge bg="danger" className="p-2 fs-11">IDLE</Badge>
+                        </td>
+                      </tr>
+                    ))
+                  ) : (
+                    <tr>
+                      <td colSpan="3" className="text-center text-muted py-4">No idle machines found.</td>
                     </tr>
                   )}
                 </tbody>
