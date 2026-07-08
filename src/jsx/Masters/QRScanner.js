@@ -6,6 +6,7 @@ import { useDispatch } from "react-redux";
 import { useNavigate } from "react-router-dom";
 import { HubConnectionBuilder, HttpTransportType } from "@microsoft/signalr";
 import { API_WEB_URLS } from "../../constants/constAPI";
+import axios from "axios";
 
 // Play a physical scanner sound using the Web Audio API
 const playBeepSound = () => {
@@ -63,11 +64,20 @@ const formatDateTime = (dateTimeStr) => {
 };
 
 // Helper to get formatted option label with real-time status and fallback process
-const getMachineOptionLabel = (m) => {
+const getMachineOptionLabel = (m, skipMachineNames = "") => {
   if (!m) return "";
   const hasStarted = m.StartTime && String(m.StartTime).trim() !== "";
   const hasEnded = m.EndTime && String(m.EndTime).trim() !== "";
-  const isEngagedElsewhere = m.EngagedJobCardNo && String(m.EngagedJobCardNo).trim() !== "";
+
+  const shouldSkipValidation = (machineName, skipListString) => {
+    if (!machineName || !skipListString) return false;
+    const list = skipListString.split(',').map(x => x.trim().toLowerCase());
+    return list.includes(machineName.trim().toLowerCase());
+  };
+
+  const isEngagedElsewhere = m.EngagedJobCardNo && 
+                             String(m.EngagedJobCardNo).trim() !== "" &&
+                             !shouldSkipValidation(m.MachineName, skipMachineNames);
 
   let statusLabel = "";
   if (hasStarted && !hasEnded) {
@@ -88,12 +98,21 @@ const getMachineOptionLabel = (m) => {
 };
 
 // ─── Machine Control Panel Component ─────────────────────────────────────────
-const MachineControlPanel = ({ machine, onStart, onStop, actionLoading, isPrevStarted = true, prevMachineName = "" }) => {
+const MachineControlPanel = ({ machine, onStart, onStop, actionLoading, isPrevStarted = true, prevMachineName = "", skipMachineNames = "" }) => {
   if (!machine) return null;
 
   const hasStarted = !!machine.StartTime;
   const hasEnded = !!machine.EndTime;
-  const isEngagedElsewhere = machine.EngagedJobCardNo && String(machine.EngagedJobCardNo).trim() !== "";
+
+  const shouldSkipValidation = (machineName, skipListString) => {
+    if (!machineName || !skipListString) return false;
+    const list = skipListString.split(',').map(x => x.trim().toLowerCase());
+    return list.includes(machineName.trim().toLowerCase());
+  };
+
+  const isEngagedElsewhere = machine.EngagedJobCardNo && 
+                             String(machine.EngagedJobCardNo).trim() !== "" &&
+                             !shouldSkipValidation(machine.MachineName, skipMachineNames);
 
   let statusText = "NOT STARTED";
   let badgeColor = "#64748b";
@@ -242,7 +261,8 @@ const ScannedWoodJobCard = ({
   onStartMachine, 
   onStopMachine, 
   actionLoading, 
-  onRescan 
+  onRescan,
+  skipMachineNames = ""
 }) => {
   const currentIndex = machineList && machineData 
     ? machineList.findIndex(m => String(m.ID) === String(machineData.ID)) 
@@ -481,7 +501,7 @@ const ScannedWoodJobCard = ({
                     color: "#1e293b",
                     marginBottom: "16px"
                   }}>
-                    {getMachineOptionLabel(machineData)}
+                    {getMachineOptionLabel(machineData, skipMachineNames)}
                   </div>
                   <MachineControlPanel
                     machine={machineData}
@@ -490,6 +510,7 @@ const ScannedWoodJobCard = ({
                     actionLoading={actionLoading}
                     isPrevStarted={isPrevStarted}
                     prevMachineName={prevMachineName}
+                    skipMachineNames={skipMachineNames}
                   />
                 </div>
               ) : (
@@ -526,7 +547,7 @@ const ScannedWoodJobCard = ({
                     <option value="">-- Choose Machine --</option>
                     {machineList && machineList.map((m) => (
                       <option key={m.ID} value={m.ID}>
-                        {getMachineOptionLabel(m)}
+                        {getMachineOptionLabel(m, skipMachineNames)}
                       </option>
                     ))}
                   </select>
@@ -540,6 +561,7 @@ const ScannedWoodJobCard = ({
                     actionLoading={actionLoading}
                     isPrevStarted={isPrevStarted}
                     prevMachineName={prevMachineName}
+                    skipMachineNames={skipMachineNames}
                   />
                 )}
               </>
@@ -562,7 +584,8 @@ const ScannedMetalJobCard = ({
   onStartMachine, 
   onStopMachine, 
   actionLoading, 
-  onRescan 
+  onRescan,
+  skipMachineNames = ""
 }) => {
   const currentIndex = machineList && machineData 
     ? machineList.findIndex(m => String(m.ID) === String(machineData.ID)) 
@@ -738,7 +761,7 @@ const ScannedMetalJobCard = ({
                     color: "#1e293b",
                     marginBottom: "16px"
                   }}>
-                    {getMachineOptionLabel(machineData)}
+                    {getMachineOptionLabel(machineData, skipMachineNames)}
                   </div>
                   <MachineControlPanel
                     machine={machineData}
@@ -747,6 +770,7 @@ const ScannedMetalJobCard = ({
                     actionLoading={actionLoading}
                     isPrevStarted={isPrevStarted}
                     prevMachineName={prevMachineName}
+                    skipMachineNames={skipMachineNames}
                   />
                 </div>
               ) : (
@@ -783,7 +807,7 @@ const ScannedMetalJobCard = ({
                     <option value="">-- Choose Machine --</option>
                     {machineList && machineList.map((m) => (
                       <option key={m.ID} value={m.ID}>
-                        {getMachineOptionLabel(m)}
+                        {getMachineOptionLabel(m, skipMachineNames)}
                       </option>
                     ))}
                   </select>
@@ -797,6 +821,7 @@ const ScannedMetalJobCard = ({
                     actionLoading={actionLoading}
                     isPrevStarted={isPrevStarted}
                     prevMachineName={prevMachineName}
+                    skipMachineNames={skipMachineNames}
                   />
                 )}
               </>
@@ -819,7 +844,8 @@ const ScannedMDFJobCard = ({
   onStartMachine, 
   onStopMachine, 
   actionLoading, 
-  onRescan 
+  onRescan,
+  skipMachineNames = ""
 }) => {
   const currentIndex = machineList && machineData 
     ? machineList.findIndex(m => String(m.ID) === String(machineData.ID)) 
@@ -1036,7 +1062,7 @@ const ScannedMDFJobCard = ({
                     color: "#1e293b",
                     marginBottom: "16px"
                   }}>
-                    {getMachineOptionLabel(machineData)}
+                    {getMachineOptionLabel(machineData, skipMachineNames)}
                   </div>
                   <MachineControlPanel
                     machine={machineData}
@@ -1045,6 +1071,7 @@ const ScannedMDFJobCard = ({
                     actionLoading={actionLoading}
                     isPrevStarted={isPrevStarted}
                     prevMachineName={prevMachineName}
+                    skipMachineNames={skipMachineNames}
                   />
                 </div>
               ) : (
@@ -1081,7 +1108,7 @@ const ScannedMDFJobCard = ({
                     <option value="">-- Choose Machine --</option>
                     {machineList && machineList.map((m) => (
                       <option key={m.ID} value={m.ID}>
-                        {getMachineOptionLabel(m)}
+                        {getMachineOptionLabel(m, skipMachineNames)}
                       </option>
                     ))}
                   </select>
@@ -1095,6 +1122,7 @@ const ScannedMDFJobCard = ({
                     actionLoading={actionLoading}
                     isPrevStarted={isPrevStarted}
                     prevMachineName={prevMachineName}
+                    skipMachineNames={skipMachineNames}
                   />
                 )}
               </>
@@ -1117,7 +1145,8 @@ const ScannedJobCardView = ({
   onStartMachine, 
   onStopMachine, 
   actionLoading, 
-  onRescan 
+  onRescan,
+  skipMachineNames = ""
 }) => {
   const cat = String(parsedIds?.F_CategoryMaster || jobCard?.F_CategoryMaster || "");
   
@@ -1175,6 +1204,7 @@ const ScannedJobCardView = ({
         onStopMachine={onStopMachine}
         actionLoading={actionLoading}
         onRescan={onRescan}
+        skipMachineNames={skipMachineNames}
       />
     );
   } else if (cat === "5") {
@@ -1190,6 +1220,7 @@ const ScannedJobCardView = ({
         onStopMachine={onStopMachine}
         actionLoading={actionLoading}
         onRescan={onRescan}
+        skipMachineNames={skipMachineNames}
       />
     );
   } else {
@@ -1205,6 +1236,7 @@ const ScannedJobCardView = ({
         onStopMachine={onStopMachine}
         actionLoading={actionLoading}
         onRescan={onRescan}
+        skipMachineNames={skipMachineNames}
       />
     );
   }
@@ -1232,6 +1264,7 @@ const QRScanner = () => {
   const [parsedIds, setParsedIds] = useState(null);
   const [scanMode, setScanMode] = useState("camera"); // "camera" | "file"
   const [actionLoading, setActionLoading] = useState(false);
+  const [skipMachineNames, setSkipMachineNames] = useState("");
   const fileInputRef = useRef(null);
 
   const qrCodeRef = useRef(null);
@@ -1268,7 +1301,16 @@ const QRScanner = () => {
     if (!machineData || actionLoading) return;
 
     // Programmatic Validation: Check if machine is busy with another job card
-    const isEngagedElsewhere = machineData.EngagedJobCardNo && String(machineData.EngagedJobCardNo).trim() !== "";
+    const shouldSkipValidation = (machineName, skipListString) => {
+      if (!machineName || !skipListString) return false;
+      const list = skipListString.split(',').map(x => x.trim().toLowerCase());
+      return list.includes(machineName.trim().toLowerCase());
+    };
+
+    const isEngagedElsewhere = machineData.EngagedJobCardNo && 
+                               String(machineData.EngagedJobCardNo).trim() !== "" &&
+                               !shouldSkipValidation(machineData.MachineName, skipMachineNames);
+
     if (isEngagedElsewhere) {
       alert(`This machine is currently active on Job Card No: ${machineData.EngagedJobCardNo}. Please end that operation first.`);
       return;
@@ -1557,6 +1599,30 @@ const QRScanner = () => {
   useEffect(() => {
     selectedMachineIdRef.current = selectedMachineId;
   }, [selectedMachineId]);
+
+  // Load global options to find skip machine names list
+  useEffect(() => {
+    const fetchGlobalOptions = async () => {
+      try {
+        const user = JSON.parse(localStorage.getItem("authUser") || "{}");
+        const userId = user.id || user.UserId || 0;
+        const userToken = user.token || user.UserToken || "token";
+        
+        const response = await axios.get(
+          `${API_WEB_URLS.BASE}MachineDelayDashboard/GlobalOptions/${userId}/${userToken}`
+        );
+        if (response.data && response.data.success && Array.isArray(response.data.data)) {
+          const skipOpt = response.data.data.find(opt => opt.OptionKey === "SkipMultiJobCardValidationMachineNames");
+          if (skipOpt) {
+            setSkipMachineNames(skipOpt.OptionValue || "");
+          }
+        }
+      } catch (err) {
+        console.error("Error fetching global options in QRScanner:", err);
+      }
+    };
+    fetchGlobalOptions();
+  }, []);
 
   // Establish SignalR connection for real-time updates
   useEffect(() => {
