@@ -5,6 +5,7 @@ import { useDispatch } from 'react-redux';
 import { Fn_GetReport } from '../../store/Functions';
 import { API_WEB_URLS } from '../../constants/constAPI';
 import { HubConnectionBuilder } from '@microsoft/signalr';
+import { FaFilter, FaSync, FaSitemap, FaInfoCircle, FaMousePointer, FaSearch } from 'react-icons/fa';
 import ReactFlow, { MiniMap, Controls, Background, MarkerType, Handle, Position } from 'reactflow';
 import 'reactflow/dist/style.css';
 
@@ -464,7 +465,7 @@ export const Report_ContainerWise = () => {
               <Card.Body>
                 <div className="d-flex flex-wrap align-items-center justify-content-between gap-3">
                   <div className="d-flex align-items-center gap-2 flex-grow-1" style={{ maxWidth: '400px' }}>
-                    <i className="fa fa-filter text-primary fs-5"></i>
+                    <FaFilter className="text-primary fs-5" />
                     <FormControl
                       type="text"
                       placeholder="Filter by Contract No, Item, or Container..."
@@ -515,7 +516,7 @@ export const Report_ContainerWise = () => {
                       <option value={50}>50</option>
                     </select>
                     <Button variant="outline-primary" onClick={fetchAllData} disabled={loading} size="sm">
-                      <i className="fa fa-refresh"></i> Refresh
+                      <FaSync className="me-1" /> Refresh
                     </Button>
                   </div>
                 </div>
@@ -583,7 +584,7 @@ export const Report_ContainerWise = () => {
                                   size="sm"
                                   onClick={() => handleOpenFlowchart(group)}
                                 >
-                                  <i className="fa fa-sitemap me-1"></i> View Flowchart
+                                  <FaSitemap className="me-1" /> View Flowchart
                                 </Button>
                               </td>
                             </tr>
@@ -610,7 +611,7 @@ export const Report_ContainerWise = () => {
                   </div>
                 ) : (
                   <div className="text-center p-5 text-muted">
-                    <i className="fa fa-search fa-3x mb-3 text-light-gray"></i>
+                   <FaSearch className="fa-3x mb-3 text-light-gray" />
                     <h5>No active contracts found matching filters.</h5>
                   </div>
                 )}
@@ -630,7 +631,7 @@ export const Report_ContainerWise = () => {
         >
           <Modal.Header closeButton className="bg-primary text-white">
             <Modal.Title className="text-white d-flex align-items-center gap-2">
-              <i className="fa fa-sitemap"></i>
+              <FaSitemap />
               <span>Container Lineage Map: {selectedContractName}</span>
               <Badge bg="light" text="dark" className="fs-6 ms-2">
                 Roots Count: {selectedRoots.length}
@@ -662,7 +663,7 @@ export const Report_ContainerWise = () => {
             {/* Right: Node Details Side Panel */}
             <div className="rf-side-details-panel shadow-sm bg-white border-start p-4">
               <h5 className="border-bottom pb-2 mb-3 d-flex align-items-center gap-2 text-primary">
-                <i className="fa fa-info-circle"></i> Node Details
+                <FaInfoCircle /> Node Details
               </h5>
               
               {selectedNode ? (
@@ -734,13 +735,13 @@ export const Report_ContainerWise = () => {
                   </table>
                   
                   <div className="alert alert-info mt-3 py-2 px-3 small border-0 shadow-none">
-                    <i className="fa fa-info-circle me-1"></i>
+                    <FaInfoCircle className="me-1" />
                     Tip: Click any other card in the diagram to inspect its parameters.
                   </div>
                 </div>
               ) : (
                 <div className="text-center py-5 text-muted">
-                  <i className="fa fa-mouse-pointer fa-2x mb-3 text-light-gray"></i>
+                  <FaMousePointer className="fs-2 mb-3 text-light-gray" />
                   <p>Click on any node in the flowchart to view its detailed specifications.</p>
                 </div>
               )}
