@@ -35,6 +35,39 @@ const GlobalOptions = () => {
   const [editValue, setEditValue] = useState("");
   const [actionLoading, setActionLoading] = useState(false);
   const [successMessage, setSuccessMessage] = useState(null);
+  const [machines, setMachines] = useState([]);
+
+  // Fetch all machines
+  useEffect(() => {
+    const fetchMachines = async () => {
+      try {
+        const response = await axios.get(
+          `${API_WEB_URLS.BASE}${API_WEB_URLS.MASTER}/${userId}/${userToken}/MachineMaster/Id/0`
+        );
+        if (response.data && response.data.success && response.data.data?.response) {
+          setMachines(response.data.data.response);
+        }
+      } catch (err) {
+        console.error("Error fetching machines in GlobalOptions:", err);
+      }
+    };
+    fetchMachines();
+  }, [userId, userToken]);
+
+  const handleCheckboxChange = (machineName, isChecked) => {
+    const currentSelected = editValue ? editValue.split(",").map(x => x.trim()).filter(Boolean) : [];
+    let updatedSelected = [];
+    if (isChecked) {
+      if (!currentSelected.some(name => name.toLowerCase() === machineName.toLowerCase())) {
+        updatedSelected = [...currentSelected, machineName];
+      } else {
+        updatedSelected = currentSelected;
+      }
+    } else {
+      updatedSelected = currentSelected.filter(name => name.toLowerCase() !== machineName.toLowerCase());
+    }
+    setEditValue(updatedSelected.join(", "));
+  };
 
   // Retrieve user session data
   const userData = JSON.parse(localStorage.getItem("authUser")) || {};
@@ -172,16 +205,46 @@ const GlobalOptions = () => {
                       <td className="fw-bold text-primary">{opt.OptionKey}</td>
                       <td>
                         {editingKey === opt.OptionKey ? (
-                          <Form.Control
-                            type="text"
-                            value={editValue}
-                            onChange={(e) => setEditValue(e.target.value)}
-                            size="sm"
-                          />
+                          opt.OptionKey === "SkipMultiJobCardValidationMachineNames" ? (
+                            <div className="border rounded p-2 bg-light" style={{ maxHeight: "150px", overflowY: "auto", minWidth: "250px" }}>
+                              {machines && machines.length > 0 ? (
+                                machines.map((m) => {
+                                  const currentSelected = editValue ? editValue.split(",").map(x => x.trim().toLowerCase()) : [];
+                                  const isChecked = currentSelected.includes(m.Name?.trim().toLowerCase());
+                                  return (
+                                    <Form.Check 
+                                      key={m.Id || m.ID}
+                                      type="checkbox"
+                                      id={`chk-mach-${m.Id || m.ID}`}
+                                      label={m.Name}
+                                      checked={isChecked}
+                                      onChange={(e) => handleCheckboxChange(m.Name, e.target.checked)}
+                                      className="mb-1 text-dark fs-12"
+                                    />
+                                  );
+                                })
+                              ) : (
+                                <span className="text-muted small">Loading machines...</span>
+                              )}
+                            </div>
+                          ) : (
+                            <Form.Control
+                              type="text"
+                              value={editValue}
+                              onChange={(e) => setEditValue(e.target.value)}
+                              size="sm"
+                            />
+                          )
                         ) : (
-                          <Badge bg="dark" className="fs-12 px-3 py-2">
-                            {opt.OptionValue}
-                          </Badge>
+                          <div className="d-flex flex-wrap gap-1" style={{ maxWidth: '300px' }}>
+                            {opt.OptionValue ? opt.OptionValue.split(",").map((val, idx) => (
+                              <Badge key={idx} bg="dark" className="fs-12 px-2.5 py-1.5 text-wrap">
+                                {val.trim()}
+                              </Badge>
+                            )) : (
+                              <span className="text-muted fs-12">None</span>
+                            )}
+                          </div>
                         )}
                       </td>
                       <td className="text-muted">{opt.Description || "No description provided."}</td>
