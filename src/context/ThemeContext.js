@@ -272,21 +272,12 @@ const ThemeContextProvider = (props) => {
 		let resizeWindow = () => {
 			setWindowWidth(window.innerWidth);
 			setWindowHeight(window.innerHeight);
-            // Use the current sidebar style from state if available, otherwise apply defaults
-            const currentSidebarStyle = sideBarStyle.value || 'full'; // Get current style or default
-            const newSidebarStyle = window.innerWidth >= 768 && window.innerWidth < 1024
-                ? "mini"
-                : window.innerWidth <= 768
+            const newSidebarStyle = window.innerWidth <= 768
                 ? "overlay"
-                : currentSidebarStyle; // Keep the user's choice on larger screens if not mini/overlay breakpoint
+                : "full"; // Always full on desktop; menu-toggle class handles collapse
 
-            // Only update if the style needs to change
             if (body.getAttribute("data-sidebar-style") !== newSidebarStyle) {
                 body.setAttribute("data-sidebar-style", newSidebarStyle);
-                 // Optionally update state if you need the sidebar style state to reflect resize changes
-                 // This might cause issues if the user manually selected a style like 'compact' on a large screen
-                 // Consider if you want resize to override user selection or just apply defaults for breakpoints
-                 // setSideBarStyle({ value: newSidebarStyle, label: newSidebarStyle.charAt(0).toUpperCase() + newSidebarStyle.slice(1) });
             }
 		};
     resizeWindow(); // Call initially

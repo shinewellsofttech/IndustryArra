@@ -157,7 +157,7 @@ export const getMenuList = () => {
         {
             title: 'DASHBOARD',
             to: 'dashboard',
-            iconStyle: <i className="flaticon-025-dashboard"></i>,
+            iconStyle: <i className="fas fa-th-large"></i>,
         }
     ];
 
@@ -169,7 +169,7 @@ export const getMenuList = () => {
         ...(filteredDocumentation.length > 0 ? [{
             title: 'DOCUMENTATION',
             classsChange: 'mm-collapse',
-            iconStyle: <i className="flaticon-381-file"></i>,
+            iconStyle: <i className="fas fa-file-alt"></i>,
             customClass: 'section-header-menu',
             content: filteredDocumentation
         }] : []),

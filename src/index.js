@@ -5,7 +5,11 @@ import reportWebVitals from './reportWebVitals';
 import { BrowserRouter } from 'react-router-dom';
 import { Provider } from 'react-redux';
 import { store } from './store/store';
-import ThemeContext from "./context/ThemeContext"; 
+import ThemeContext from "./context/ThemeContext";
+
+// Flaticon fonts (used in some parts of the app)
+import "./icons/flaticon/flaticon.css";
+import "./icons/flaticon_1/flaticon_1.css";
 
 // Inject global style
 const fontStyle = document.createElement('style');

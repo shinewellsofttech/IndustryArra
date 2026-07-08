@@ -693,3 +693,43 @@ button.react-calendar__tile.react-calendar__tile--active.react-calendar__tile--r
 	height: auto;
 	display: contents;
 }
+
+/* ===== PROFESSIONAL SIDEBAR TRANSITIONS ===== */
+/* Smooth transitions for sidebar collapse/expand via menu-toggle */
+[data-sidebar-style="full"][data-layout="vertical"] .deznav {
+  transition: width 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
+}
+
+[data-sidebar-style="full"][data-layout="vertical"] .nav-header {
+  transition: width 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
+}
+
+/* When sidebar is collapsed (menu-toggle), the deznav nav items hover to show name */
+[data-sidebar-style="full"][data-layout="vertical"] .menu-toggle .deznav .metismenu > li:hover > a {
+  overflow: visible;
+  transition: width 0.2s ease !important;
+}
+
+/* Icon sizing in sidebar */
+[data-sidebar-style="full"][data-layout="vertical"] .deznav .metismenu > li > a i,
+[data-sidebar-style="full"][data-layout="vertical"] .menu-toggle .deznav .metismenu > li > a i {
+  font-size: 1.2rem;
+  min-width: 1.6rem;
+  text-align: center;
+  display: inline-block;
+}
+
+/* Ensure icons are visible even when nav-text is hidden */
+[data-sidebar-style="full"][data-layout="vertical"] .menu-toggle .deznav .metismenu > li > a i {
+  margin-right: 0;
+}
+
+/* Logo in nav-header: show only icon when collapsed */
+[data-sidebar-style="full"][data-layout="vertical"] .menu-toggle .nav-header .brand-logo {
+  overflow: hidden;
+}
+
+/* Smooth content body transition */
+.content-body {
+  transition: margin-left 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
+}
