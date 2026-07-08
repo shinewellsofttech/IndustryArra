@@ -64,20 +64,20 @@ const formatDateTime = (dateTimeStr) => {
 };
 
 // Helper to get formatted option label with real-time status and fallback process
-const getMachineOptionLabel = (m, skipMachineNames = "") => {
+const getMachineOptionLabel = (m, skipMachineIds = "") => {
   if (!m) return "";
   const hasStarted = m.StartTime && String(m.StartTime).trim() !== "";
   const hasEnded = m.EndTime && String(m.EndTime).trim() !== "";
 
-  const shouldSkipValidation = (machineName, skipListString) => {
-    if (!machineName || !skipListString) return false;
-    const list = skipListString.split(',').map(x => x.trim().toLowerCase());
-    return list.includes(machineName.trim().toLowerCase());
+  const shouldSkipValidation = (machineId, skipListString) => {
+    if (!machineId || !skipListString) return false;
+    const list = skipListString.split(',').map(x => x.trim());
+    return list.includes(String(machineId));
   };
 
   const isEngagedElsewhere = m.EngagedJobCardNo && 
                              String(m.EngagedJobCardNo).trim() !== "" &&
-                             !shouldSkipValidation(m.MachineName, skipMachineNames);
+                             !shouldSkipValidation(m.F_MachineMaster || m.ID, skipMachineIds);
 
   let statusLabel = "";
   if (hasStarted && !hasEnded) {
@@ -98,21 +98,21 @@ const getMachineOptionLabel = (m, skipMachineNames = "") => {
 };
 
 // ─── Machine Control Panel Component ─────────────────────────────────────────
-const MachineControlPanel = ({ machine, onStart, onStop, actionLoading, isPrevStarted = true, prevMachineName = "", skipMachineNames = "" }) => {
+const MachineControlPanel = ({ machine, onStart, onStop, actionLoading, isPrevStarted = true, prevMachineName = "", skipMachineIds = "" }) => {
   if (!machine) return null;
 
   const hasStarted = !!machine.StartTime;
   const hasEnded = !!machine.EndTime;
 
-  const shouldSkipValidation = (machineName, skipListString) => {
-    if (!machineName || !skipListString) return false;
-    const list = skipListString.split(',').map(x => x.trim().toLowerCase());
-    return list.includes(machineName.trim().toLowerCase());
+  const shouldSkipValidation = (machineId, skipListString) => {
+    if (!machineId || !skipListString) return false;
+    const list = skipListString.split(',').map(x => x.trim());
+    return list.includes(String(machineId));
   };
 
   const isEngagedElsewhere = machine.EngagedJobCardNo && 
                              String(machine.EngagedJobCardNo).trim() !== "" &&
-                             !shouldSkipValidation(machine.MachineName, skipMachineNames);
+                             !shouldSkipValidation(machine.F_MachineMaster || machine.ID, skipMachineIds);
 
   let statusText = "NOT STARTED";
   let badgeColor = "#64748b";
@@ -1264,7 +1264,7 @@ const QRScanner = () => {
   const [parsedIds, setParsedIds] = useState(null);
   const [scanMode, setScanMode] = useState("camera"); // "camera" | "file"
   const [actionLoading, setActionLoading] = useState(false);
-  const [skipMachineNames, setSkipMachineNames] = useState("");
+  const [skipMachineIds, setSkipMachineIds] = useState("");
   const fileInputRef = useRef(null);
 
   const qrCodeRef = useRef(null);
@@ -1301,15 +1301,15 @@ const QRScanner = () => {
     if (!machineData || actionLoading) return;
 
     // Programmatic Validation: Check if machine is busy with another job card
-    const shouldSkipValidation = (machineName, skipListString) => {
-      if (!machineName || !skipListString) return false;
-      const list = skipListString.split(',').map(x => x.trim().toLowerCase());
-      return list.includes(machineName.trim().toLowerCase());
+    const shouldSkipValidation = (machineId, skipListString) => {
+      if (!machineId || !skipListString) return false;
+      const list = skipListString.split(',').map(x => x.trim());
+      return list.includes(String(machineId));
     };
 
     const isEngagedElsewhere = machineData.EngagedJobCardNo && 
                                String(machineData.EngagedJobCardNo).trim() !== "" &&
-                               !shouldSkipValidation(machineData.MachineName, skipMachineNames);
+                               !shouldSkipValidation(machineData.F_MachineMaster || machineData.ID, skipMachineIds);
 
     if (isEngagedElsewhere) {
       alert(`This machine is currently active on Job Card No: ${machineData.EngagedJobCardNo}. Please end that operation first.`);
@@ -1600,7 +1600,7 @@ const QRScanner = () => {
     selectedMachineIdRef.current = selectedMachineId;
   }, [selectedMachineId]);
 
-  // Load global options to find skip machine names list
+  // Load global options to find skip machine IDs list
   useEffect(() => {
     const fetchGlobalOptions = async () => {
       try {
@@ -1612,9 +1612,9 @@ const QRScanner = () => {
           `${API_WEB_URLS.BASE}MachineDelayDashboard/GlobalOptions/${userId}/${userToken}`
         );
         if (response.data && response.data.success && Array.isArray(response.data.data)) {
-          const skipOpt = response.data.data.find(opt => opt.OptionKey === "SkipMultiJobCardValidationMachineNames");
+          const skipOpt = response.data.data.find(opt => opt.OptionKey === "MachineDelayThresholdHours");
           if (skipOpt) {
-            setSkipMachineNames(skipOpt.OptionValue || "");
+            setSkipMachineIds(skipOpt.ExcludedMachineIds || "");
           }
         }
       } catch (err) {
@@ -1844,6 +1844,7 @@ const QRScanner = () => {
         onStopMachine={handleStopMachine}
         actionLoading={actionLoading}
         onRescan={handleRescan}
+        skipMachineNames={skipMachineIds}
       />
     );
   }

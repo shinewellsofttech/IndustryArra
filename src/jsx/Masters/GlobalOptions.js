@@ -1,79 +1,27 @@
 import React, { useState, useEffect, useCallback } from "react";
-import { Row, Col, Button, Table, Card, Badge, Form, Spinner, Alert } from "react-bootstrap";
+import { Row, Col, Button, Card, Form, Spinner, Alert } from "react-bootstrap";
 import axios from "axios";
 import { API_WEB_URLS } from "../../constants/constAPI";
 
-const formatDateTime = (dateTimeStr) => {
-  if (!dateTimeStr) return "";
-  try {
-    const formattedStr = String(dateTimeStr).includes("T") ? dateTimeStr : String(dateTimeStr).replace(" ", "T");
-    const d = new Date(formattedStr);
-    if (isNaN(d.getTime())) return dateTimeStr;
-
-    const day = String(d.getDate()).padStart(2, "0");
-    const month = String(d.getMonth() + 1).padStart(2, "0");
-    const year = d.getFullYear();
-
-    let hours = d.getHours();
-    const minutes = String(d.getMinutes()).padStart(2, "0");
-    const ampm = hours >= 12 ? "PM" : "AM";
-    hours = hours % 12;
-    hours = hours ? hours : 12;
-    const formattedHours = String(hours).padStart(2, "0");
-
-    return `${day}/${month}/${year} ${formattedHours}:${minutes} ${ampm}`;
-  } catch (e) {
-    return dateTimeStr;
-  }
-};
-
 const GlobalOptions = () => {
   const [options, setOptions] = useState([]);
+  const [machines, setMachines] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [editingKey, setEditingKey] = useState(null);
-  const [editValue, setEditValue] = useState("");
+  
+  // Form states
+  const [thresholdValue, setThresholdValue] = useState("");
+  const [excludedIds, setExcludedIds] = useState("");
+  
   const [actionLoading, setActionLoading] = useState(false);
   const [successMessage, setSuccessMessage] = useState(null);
+
   // Retrieve user session data
   const userData = JSON.parse(localStorage.getItem("authUser")) || {};
   const userId = userData.id || userData.UserId || 0;
   const userToken = userData.token || userData.UserToken || "token";
 
-  const [machines, setMachines] = useState([]);
-
-  // Fetch all machines
-  useEffect(() => {
-    const fetchMachines = async () => {
-      try {
-        const response = await axios.get(
-          `${API_WEB_URLS.BASE}${API_WEB_URLS.MASTER}/${userId}/${userToken}/MachineMaster/Id/0`
-        );
-        if (response.data && response.data.success && response.data.data?.response) {
-          setMachines(response.data.data.response);
-        }
-      } catch (err) {
-        console.error("Error fetching machines in GlobalOptions:", err);
-      }
-    };
-    fetchMachines();
-  }, [userId, userToken]);
-
-  const handleCheckboxChange = (machineName, isChecked) => {
-    const currentSelected = editValue ? editValue.split(",").map(x => x.trim()).filter(Boolean) : [];
-    let updatedSelected = [];
-    if (isChecked) {
-      if (!currentSelected.some(name => name.toLowerCase() === machineName.toLowerCase())) {
-        updatedSelected = [...currentSelected, machineName];
-      } else {
-        updatedSelected = currentSelected;
-      }
-    } else {
-      updatedSelected = currentSelected.filter(name => name.toLowerCase() !== machineName.toLowerCase());
-    }
-    setEditValue(updatedSelected.join(", "));
-  };
-
+  // Fetch global options
   const fetchOptions = useCallback(async () => {
     setLoading(true);
     setError(null);
@@ -94,47 +42,77 @@ const GlobalOptions = () => {
     }
   }, [userId, userToken]);
 
+  // Fetch all machines
   useEffect(() => {
+    const fetchMachines = async () => {
+      try {
+        const response = await axios.get(
+          `${API_WEB_URLS.BASE}${API_WEB_URLS.MASTER}/${userId}/${userToken}/MachineMaster/Id/0`
+        );
+        if (response.data && response.data.success && response.data.data?.response) {
+          setMachines(response.data.data.response);
+        }
+      } catch (err) {
+        console.error("Error fetching machines in GlobalOptions:", err);
+      }
+    };
+    fetchMachines();
     fetchOptions();
-  }, [fetchOptions]);
+  }, [userId, userToken, fetchOptions]);
 
-  const handleStartEdit = (opt) => {
-    setEditingKey(opt.OptionKey);
-    setEditValue(opt.OptionValue);
-    setSuccessMessage(null);
+  // Initialize form values from database options
+  useEffect(() => {
+    if (options.length > 0) {
+      const opt = options.find((o) => o.OptionKey === "MachineDelayThresholdHours") || options[0];
+      if (opt) {
+        setThresholdValue(opt.OptionValue || "");
+        setExcludedIds(opt.ExcludedMachineIds || "");
+      }
+    }
+  }, [options]);
+
+  const handleMachineToggle = (machineId, isChecked) => {
+    const currentIds = excludedIds ? excludedIds.split(",").map((x) => x.trim()).filter(Boolean) : [];
+    let updatedIds = [];
+    if (isChecked) {
+      if (!currentIds.includes(String(machineId))) {
+        updatedIds = [...currentIds, String(machineId)];
+      } else {
+        updatedIds = currentIds;
+      }
+    } else {
+      updatedIds = currentIds.filter((id) => id !== String(machineId));
+    }
+    setExcludedIds(updatedIds.join(","));
   };
 
-  const handleCancelEdit = () => {
-    setEditingKey(null);
-    setEditValue("");
-  };
-
-  const handleSaveOption = async (optKey) => {
-    if (editValue.trim() === "") {
-      alert("Option value cannot be empty.");
+  const handleSave = async (e) => {
+    e.preventDefault();
+    if (String(thresholdValue).trim() === "") {
+      alert("Threshold value cannot be empty.");
       return;
     }
     setActionLoading(true);
     setSuccessMessage(null);
     try {
       const formData = new FormData();
-      formData.append("OptionKey", optKey);
-      formData.append("OptionValue", editValue);
+      formData.append("OptionKey", "MachineDelayThresholdHours");
+      formData.append("OptionValue", thresholdValue);
+      formData.append("ExcludedMachineIds", excludedIds);
 
       const response = await axios.post(
         `${API_WEB_URLS.BASE}MachineDelayDashboard/GlobalOptions/Save/${userId}/${userToken}`,
         formData
       );
       if (response.data && response.data.success) {
-        setSuccessMessage(`Option '${optKey}' updated successfully!`);
-        setEditingKey(null);
+        setSuccessMessage("Global options updated successfully!");
         fetchOptions();
       } else {
-        alert(response.data.message || "Failed to update option.");
+        alert(response.data.message || "Failed to update global options.");
       }
     } catch (err) {
       console.error("Save option error:", err);
-      alert(err.response?.data?.message || err.message || "Error saving option.");
+      alert(err.response?.data?.message || err.message || "Error saving options.");
     } finally {
       setActionLoading(false);
     }
@@ -164,11 +142,11 @@ const GlobalOptions = () => {
   }
 
   return (
-    <div className="container-fluid py-4">
+    <div className="container-fluid py-4" style={{ fontFamily: "Poppins, sans-serif" }}>
       <div className="d-flex justify-content-between align-items-center mb-4">
         <div>
           <h2 className="font-w600 mb-1 text-primary">Global Configuration Options</h2>
-          <p className="text-muted mb-0">Manage system-wide configuration thresholds, parameters, and metadata</p>
+          <p className="text-muted mb-0">Manage system-wide configuration variables and machine exclusions</p>
         </div>
         <Button variant="outline-primary" className="btn-sm" onClick={fetchOptions}>
           <i className="fas fa-redo me-1"></i> Refresh
@@ -184,116 +162,102 @@ const GlobalOptions = () => {
 
       <Card className="shadow-sm border-0">
         <Card.Header className="bg-white border-bottom py-3">
-          <h5 className="mb-0 text-dark fw-bold">System Configuration Variables</h5>
+          <h5 className="mb-0 text-dark fw-bold">System Variables Configuration Form</h5>
         </Card.Header>
-        <Card.Body className="p-0">
-          <div className="table-responsive">
-            <Table className="align-items-center mb-0" hover>
-              <thead className="table-light">
-                <tr>
-                  <th>Configuration Key</th>
-                  <th style={{ width: "300px" }}>Value</th>
-                  <th>Description</th>
-                  <th>Last Updated</th>
-                  <th className="text-center" style={{ width: "150px" }}>Action</th>
-                </tr>
-              </thead>
-              <tbody>
-                {options.length > 0 ? (
-                  options.map((opt) => (
-                    <tr key={opt.Id}>
-                      <td className="fw-bold text-primary">{opt.OptionKey}</td>
-                      <td>
-                        {editingKey === opt.OptionKey ? (
-                          opt.OptionKey === "SkipMultiJobCardValidationMachineNames" ? (
-                            <div className="border rounded p-2 bg-light" style={{ maxHeight: "150px", overflowY: "auto", minWidth: "250px" }}>
-                              {machines && machines.length > 0 ? (
-                                machines.map((m) => {
-                                  const currentSelected = editValue ? editValue.split(",").map(x => x.trim().toLowerCase()) : [];
-                                  const isChecked = currentSelected.includes(m.Name?.trim().toLowerCase());
-                                  return (
-                                    <Form.Check 
-                                      key={m.Id || m.ID}
-                                      type="checkbox"
-                                      id={`chk-mach-${m.Id || m.ID}`}
-                                      label={m.Name}
-                                      checked={isChecked}
-                                      onChange={(e) => handleCheckboxChange(m.Name, e.target.checked)}
-                                      className="mb-1 text-dark fs-12"
-                                    />
-                                  );
-                                })
-                              ) : (
-                                <span className="text-muted small">Loading machines...</span>
-                              )}
-                            </div>
-                          ) : (
-                            <Form.Control
-                              type="text"
-                              value={editValue}
-                              onChange={(e) => setEditValue(e.target.value)}
-                              size="sm"
-                            />
-                          )
-                        ) : (
-                          <div className="d-flex flex-wrap gap-1" style={{ maxWidth: '300px' }}>
-                            {opt.OptionValue ? opt.OptionValue.split(",").map((val, idx) => (
-                              <Badge key={idx} bg="dark" className="fs-12 px-2.5 py-1.5 text-wrap">
-                                {val.trim()}
-                              </Badge>
-                            )) : (
-                              <span className="text-muted fs-12">None</span>
-                            )}
-                          </div>
-                        )}
-                      </td>
-                      <td className="text-muted">{opt.Description || "No description provided."}</td>
-                      <td>{formatDateTime(opt.LastUpdated)}</td>
-                      <td className="text-center">
-                        {editingKey === opt.OptionKey ? (
-                          <div className="d-flex justify-content-center">
-                            <Button
-                              variant="success"
-                              size="sm"
-                              className="me-2 btn-xs"
-                              disabled={actionLoading}
-                              onClick={() => handleSaveOption(opt.OptionKey)}
-                            >
-                              <i className="fas fa-check"></i>
-                            </Button>
-                            <Button
-                              variant="danger"
-                              size="sm"
-                              className="btn-xs"
-                              disabled={actionLoading}
-                              onClick={handleCancelEdit}
-                            >
-                              <i className="fas fa-times"></i>
-                            </Button>
-                          </div>
-                        ) : (
-                          <Button
-                            variant="primary"
-                            size="sm"
-                            className="btn-xs"
-                            onClick={() => handleStartEdit(opt)}
+        <Card.Body className="p-4">
+          <Form onSubmit={handleSave}>
+            <Row className="mb-4">
+              <Col md="6">
+                <Form.Group className="mb-3">
+                  <Form.Label className="fw-bold text-dark fs-14">
+                    Machine Delay Highlight Threshold (Hours)
+                  </Form.Label>
+                  <Form.Control
+                    type="number"
+                    value={thresholdValue}
+                    onChange={(e) => setThresholdValue(e.target.value)}
+                    placeholder="e.g. 4"
+                    className="form-control-lg text-primary fw-bold"
+                  />
+                  <Form.Text className="text-muted">
+                    Specify the threshold in hours. Transitions between machines taking longer than this value will be flagged as delays in the dashboard.
+                  </Form.Text>
+                </Form.Group>
+              </Col>
+            </Row>
+
+            <Row className="mb-4">
+              <Col md="12">
+                <Form.Group>
+                  <Form.Label className="fw-bold text-dark fs-14 d-block mb-1">
+                    Exclude Machines from Multiple Job Cards Check
+                  </Form.Label>
+                  <Form.Text className="text-muted d-block mb-3">
+                    Select which machines are allowed to run multiple job cards simultaneously. Programmatic validation will be bypassed for the selected machines.
+                  </Form.Text>
+                  <div 
+                    className="border rounded p-3 bg-light shadow-inner" 
+                    style={{ 
+                      maxHeight: "300px", 
+                      overflowY: "auto",
+                      display: "grid",
+                      gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))",
+                      gap: "12px"
+                    }}
+                  >
+                    {machines && machines.length > 0 ? (
+                      machines.map((m) => {
+                        const currentIds = excludedIds ? excludedIds.split(",").map((x) => x.trim()) : [];
+                        const isChecked = currentIds.includes(String(m.Id || m.ID));
+                        return (
+                          <div 
+                            key={m.Id || m.ID} 
+                            className="p-2 border rounded bg-white shadow-xs d-flex align-items-center hover-shadow-sm transition-all"
+                            style={{ borderLeft: isChecked ? "4px solid #3b82f6" : "1px solid #e2e8f0" }}
                           >
-                            <i className="fas fa-edit me-1"></i> Edit
-                          </Button>
-                        )}
-                      </td>
-                    </tr>
-                  ))
+                            <Form.Check 
+                              type="checkbox"
+                              id={`mach-chk-${m.Id || m.ID}`}
+                              label={`${m.Name} (${m.MachineNo || 'N/A'})`}
+                              checked={isChecked}
+                              onChange={(e) => handleMachineToggle(m.Id || m.ID, e.target.checked)}
+                              className="mb-0 fw-500 cursor-pointer"
+                              style={{ width: "100%" }}
+                            />
+                          </div>
+                        );
+                      })
+                    ) : (
+                      <div className="text-center py-4 col-span-full">
+                        <Spinner animation="border" size="sm" className="me-2" />
+                        <span>Loading machines list...</span>
+                      </div>
+                    )}
+                  </div>
+                </Form.Group>
+              </Col>
+            </Row>
+
+            <div className="border-top pt-4 d-flex justify-content-end">
+              <Button 
+                type="submit" 
+                variant="primary" 
+                className="px-4 py-2 fw-semibold"
+                disabled={actionLoading}
+              >
+                {actionLoading ? (
+                  <>
+                    <Spinner animation="border" size="sm" className="me-2" />
+                    Saving Options...
+                  </>
                 ) : (
-                  <tr>
-                    <td colSpan="5" className="text-center text-muted py-4">
-                      No configuration variables found in the database.
-                    </td>
-                  </tr>
+                  <>
+                    <i className="fas fa-save me-2"></i> Update Global Options
+                  </>
                 )}
-              </tbody>
-            </Table>
-          </div>
+              </Button>
+            </div>
+          </Form>
         </Card.Body>
       </Card>
     </div>
