@@ -112,6 +112,9 @@ const Home = () => {
   const [chartDetailsType, setChartDetailsType] = useState(""); // "RUNNING" | "DELAYED" | "TOTAL" | "IDLE"
   const [filterMachineName, setFilterMachineName] = useState("");
 
+  // Live Machine logs search state
+  const [logSearchQuery, setLogSearchQuery] = useState("");
+
   // Retrieve user session data
   const userData = JSON.parse(localStorage.getItem("authUser")) || {};
   const userId = userData.id || userData.UserId || 0;
@@ -334,6 +337,17 @@ const Home = () => {
     if (!filterMachineName) return true;
     return (m.Name && m.Name.toLowerCase().trim() === filterMachineName.toLowerCase().trim()) ||
            (m.MachineNo && String(m.MachineNo).toLowerCase().trim() === filterMachineName.toLowerCase().trim());
+  });
+
+  const filteredLogs = (data?.machineLogs || []).filter((log) => {
+    if (!logSearchQuery) return true;
+    const q = logSearchQuery.toLowerCase().trim();
+    return (log.MachineName && log.MachineName.toLowerCase().includes(q)) ||
+           (log.MachineCode && log.MachineCode.toLowerCase().includes(q)) ||
+           (log.RunningJobCardNo && log.RunningJobCardNo.toLowerCase().includes(q)) ||
+           (log.LastJobCardNo && log.LastJobCardNo.toLowerCase().includes(q)) ||
+           (log.RunningOperatorName && log.RunningOperatorName.toLowerCase().includes(q)) ||
+           (log.LastOperatorName && log.LastOperatorName.toLowerCase().includes(q));
   });
 
   // Doughnut Chart: Running vs Idle
@@ -566,9 +580,134 @@ const Home = () => {
         </Col>
       </Row>
 
+      {/* Live Machine Status & Process Logs Table */}
+      <Row className="mb-4">
+        <Col lg={12}>
+          <Card className="shadow-sm border-0">
+            <Card.Header className="bg-white py-3 border-bottom d-flex justify-content-between align-items-center flex-wrap">
+              <h5 className="mb-2 mb-md-0 text-dark fw-bold">Live Machine Status & Process Logs</h5>
+              <div className="d-flex align-items-center" style={{ minWidth: "280px" }}>
+                <Form.Control
+                  type="text"
+                  placeholder="Search by Machine, Job Card, Operator..."
+                  size="sm"
+                  value={logSearchQuery}
+                  onChange={(e) => setLogSearchQuery(e.target.value)}
+                  className="bg-light border-0 shadow-none"
+                />
+              </div>
+            </Card.Header>
+            <Card.Body className="p-0">
+              <div className="table-responsive">
+                <Table className="align-items-center table-flush mb-0" hover>
+                  <thead className="thead-light">
+                    <tr>
+                      <th>Machine</th>
+                      <th>Status</th>
+                      <th>Job Card No</th>
+                      <th>Shipment No</th>
+                      <th>Timestamp Info</th>
+                      <th>Operator</th>
+                      <th>Duration</th>
+                      <th className="text-center">Action</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filteredLogs.length > 0 ? (
+                      filteredLogs.map((log) => {
+                        const isRunning = !!log.RunningJobCardLineId;
+                        const isDelayed = !isRunning && (log.IdleHours >= thresholdVal);
+                        
+                        let statusBg = "secondary";
+                        let statusText = "IDLE";
+                        let durationHours = log.IdleHours || 0;
+                        let timestampText = log.LastEndTime ? `Finished: ${formatDateTime(log.LastEndTime)}` : "No activity recorded";
+                        let operator = log.LastOperatorName || "N/A";
+                        let activeJobCardNo = log.LastJobCardNo || "";
+                        let activeJobCardMasterId = log.LastJobCardMasterId || 0;
+                        let activeShipmentNo = log.LastShipmentNo || "N/A";
 
+                        if (isRunning) {
+                          statusBg = "success";
+                          statusText = "RUNNING";
+                          durationHours = log.RunningHours || 0;
+                          timestampText = `Started: ${formatDateTime(log.RunningStartTime)}`;
+                          operator = log.RunningOperatorName || "N/A";
+                          activeJobCardNo = log.RunningJobCardNo || "";
+                          activeJobCardMasterId = log.RunningJobCardMasterId || 0;
+                          activeShipmentNo = log.RunningShipmentNo || "N/A";
+                        } else if (isDelayed) {
+                          statusBg = "danger";
+                          statusText = "DELAYED IDLE";
+                        }
 
-
+                        return (
+                          <tr key={log.MachineId} className={isRunning && log.RunningHours * 60 >= thresholdVal * 60 ? "table-warning-light" : ""}>
+                            <td>
+                              <span className="fw-bold">{log.MachineName}</span>
+                              <div className="text-xs text-muted">{log.MachineCode}</div>
+                            </td>
+                            <td>
+                              <Badge bg={statusBg} className="p-2 fs-11 text-uppercase">
+                                {statusText}
+                              </Badge>
+                            </td>
+                            <td>
+                              {activeJobCardNo ? (
+                                <Badge 
+                                  bg="light" 
+                                  text="primary" 
+                                  className="fs-12 p-2 border" 
+                                  style={{ cursor: "pointer" }} 
+                                  onClick={() => handleViewJobCardFlow(activeJobCardMasterId, activeJobCardNo)}
+                                >
+                                  {activeJobCardNo}
+                                </Badge>
+                              ) : (
+                                <span className="text-muted">N/A</span>
+                              )}
+                            </td>
+                            <td>{activeShipmentNo}</td>
+                            <td className="text-xs">{timestampText}</td>
+                            <td>{operator}</td>
+                            <td>
+                              <Badge bg={isRunning ? "success" : (isDelayed ? "danger" : "secondary")} className="p-2 fs-11">
+                                {formatDelayText(durationHours)}
+                              </Badge>
+                              {!isRunning && isDelayed && (
+                                <span className="text-danger ms-2 fw-bold text-xs d-block mt-1">
+                                  <FaExclamationTriangle className="me-1" />DELAY ALERT
+                                </span>
+                              )}
+                            </td>
+                            <td className="text-center">
+                              {activeJobCardMasterId ? (
+                                <Button 
+                                  variant="info" 
+                                  className="btn-xs" 
+                                  onClick={() => handleViewJobCardFlow(activeJobCardMasterId, activeJobCardNo)}
+                                >
+                                  <FaEye className="me-1" /> View Flow
+                                </Button>
+                              ) : (
+                                <span className="text-muted">-</span>
+                              )}
+                            </td>
+                          </tr>
+                        );
+                      })
+                    ) : (
+                      <tr>
+                        <td colSpan="8" className="text-center text-muted py-4">No matching machine process logs found.</td>
+                      </tr>
+                    )}
+                  </tbody>
+                </Table>
+              </div>
+            </Card.Body>
+          </Card>
+        </Col>
+      </Row>
 
       {/* Drill-down Flow Modal */}
       <Modal show={showFlowModal} onHide={() => setShowFlowModal(false)} size="lg" centered>
