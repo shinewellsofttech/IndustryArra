@@ -2118,6 +2118,34 @@ const QRScanner = () => {
   // ── Minimized Sessions Bar ─────────────────────────────────────────────────
   const MinimizedSessionsBar = () => {
     if (scannedSessions.length === 0) return null;
+
+    // ── Start All validation ──────────────────────────────────────────────────
+    const allHaveMachine  = scannedSessions.every(s => !!s.machineData);
+    const firstMachineId  = scannedSessions[0]?.machineData
+      ? String(scannedSessions[0].machineData.F_MachineMaster || scannedSessions[0].machineData.ID || "")
+      : null;
+    const allSameMachine  = allHaveMachine && scannedSessions.every(s => {
+      const mid = String(s.machineData.F_MachineMaster || s.machineData.ID || "");
+      return mid === firstMachineId;
+    });
+    const noneStarted     = scannedSessions.every(s =>
+      !s.machineData?.StartTime || String(s.machineData.StartTime).trim() === ""
+    );
+    const canStartAll     = scannedSessions.length > 1 && allHaveMachine && allSameMachine && noneStarted;
+
+    // Reason why button is disabled (shown as tooltip)
+    let disabledReason = "";
+    if (scannedSessions.length <= 1) {
+      disabledReason = "Need at least 2 sessions";
+    } else if (!allHaveMachine) {
+      disabledReason = "Select machine in all sessions first";
+    } else if (!allSameMachine) {
+      disabledReason = "All sessions must have same machine selected";
+    } else if (!noneStarted) {
+      disabledReason = "One or more sessions already started";
+    }
+    // ─────────────────────────────────────────────────────────────────────────
+
     return (
       <div style={{
         position: "fixed",
@@ -2137,10 +2165,11 @@ const QRScanner = () => {
         <span style={{ color: "#94a3b8", fontSize: "12px", fontWeight: 700, whiteSpace: "nowrap", marginRight: 4 }}>
           📋 SESSIONS:
         </span>
+
         {scannedSessions.map((session, idx) => {
           const hasMachine = !!session.machineData;
-          const isStarted = !!(session.machineData?.StartTime && String(session.machineData.StartTime).trim() !== "");
-          const isActive = session.id === activeSessionId;
+          const isStarted  = !!(session.machineData?.StartTime && String(session.machineData.StartTime).trim() !== "");
+          const isActive   = session.id === activeSessionId;
 
           return (
             <div key={session.id} style={{
@@ -2188,6 +2217,45 @@ const QRScanner = () => {
             </div>
           );
         })}
+
+        {/* Start All button — always visible, enabled only when conditions are met */}
+        <div style={{ marginLeft: "auto", display: "flex", flexDirection: "column", alignItems: "flex-end", gap: "3px" }}>
+          {!canStartAll && disabledReason && (
+            <span style={{ color: "#fb923c", fontSize: "10px", fontWeight: 600, whiteSpace: "nowrap" }}>
+              ⚠️ {disabledReason}
+            </span>
+          )}
+          <button
+            onClick={canStartAll ? handleBulkStartAll : undefined}
+            disabled={!canStartAll || bulkStartLoading}
+            title={canStartAll ? "Start all sessions" : disabledReason}
+            style={{
+              background: canStartAll
+                ? (bulkStartLoading ? "#374151" : "linear-gradient(135deg, #059669, #34d399)")
+                : "#1e293b",
+              color: canStartAll ? "#fff" : "#475569",
+              border: `1px solid ${canStartAll ? "transparent" : "#334155"}`,
+              borderRadius: "20px",
+              padding: "6px 16px",
+              fontSize: "12px",
+              fontWeight: 700,
+              cursor: canStartAll && !bulkStartLoading ? "pointer" : "not-allowed",
+              display: "flex",
+              alignItems: "center",
+              gap: "6px",
+              whiteSpace: "nowrap",
+              boxShadow: canStartAll ? "0 2px 8px rgba(52,211,153,0.3)" : "none",
+              transition: "all 0.3s",
+              opacity: canStartAll ? 1 : 0.5
+            }}
+          >
+            {bulkStartLoading ? (
+              <><span className="spinner-border spinner-border-sm" role="status"></span> Starting...</>
+            ) : (
+              <><i className="fas fa-play-circle"></i> Start All ({scannedSessions.length})</>
+            )}
+          </button>
+        </div>
       </div>
     );
   };
