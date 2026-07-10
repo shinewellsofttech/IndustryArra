@@ -2117,8 +2117,6 @@ const QRScanner = () => {
 
   // ── Minimized Sessions Bar ─────────────────────────────────────────────────
   const MinimizedSessionsBar = () => {
-    const minimized = scannedSessions.filter(s => s.isMinimized);
-    const allHaveJob = scannedSessions.filter(s => s.machineData).length;
     if (scannedSessions.length === 0) return null;
     return (
       <div style={{
@@ -2139,77 +2137,61 @@ const QRScanner = () => {
         <span style={{ color: "#94a3b8", fontSize: "12px", fontWeight: 700, whiteSpace: "nowrap", marginRight: 4 }}>
           📋 SESSIONS:
         </span>
-        {scannedSessions.map((session, idx) => (
-          <div key={session.id} style={{
-            display: "flex",
-            alignItems: "center",
-            background: session.id === activeSessionId ? "#34d399" : "#1e3a2f",
-            border: `1px solid ${session.id === activeSessionId ? "#34d399" : "#2d5a3d"}`,
-            borderRadius: "20px",
-            padding: "4px 10px 4px 12px",
-            gap: "6px",
-            cursor: "pointer",
-            transition: "all 0.2s"
-          }}>
-            <span
-              onClick={() => handleExpandSession(session.id)}
-              style={{
-                color: session.id === activeSessionId ? "#0f172a" : "#34d399",
-                fontSize: "12px",
-                fontWeight: 700,
-                whiteSpace: "nowrap"
-              }}
-            >
-              #{idx + 1} {session.label}
-              {session.machineData?.StartTime ? " ✅" : " ⏳"}
-            </span>
-            <button
-              onClick={(e) => { e.stopPropagation(); handleRemoveSession(session.id); }}
-              style={{
-                background: "none",
-                border: "none",
-                color: session.id === activeSessionId ? "#0f172a" : "#94a3b8",
-                cursor: "pointer",
-                padding: "0",
-                fontSize: "14px",
-                lineHeight: 1,
-                fontWeight: 700
-              }}
-              title="Remove session"
-            >×</button>
-          </div>
-        ))}
-        {allHaveJob > 0 && (
-          <button
-            onClick={handleBulkStartAll}
-            disabled={bulkStartLoading}
-            style={{
-              marginLeft: "auto",
-              background: bulkStartLoading ? "#374151" : "linear-gradient(135deg, #059669, #34d399)",
-              color: "#fff",
-              border: "none",
-              borderRadius: "20px",
-              padding: "6px 16px",
-              fontSize: "12px",
-              fontWeight: 700,
-              cursor: bulkStartLoading ? "not-allowed" : "pointer",
+        {scannedSessions.map((session, idx) => {
+          const hasMachine = !!session.machineData;
+          const isStarted = !!(session.machineData?.StartTime && String(session.machineData.StartTime).trim() !== "");
+          const isActive = session.id === activeSessionId;
+
+          return (
+            <div key={session.id} style={{
               display: "flex",
               alignItems: "center",
+              background: isActive ? "#34d399" : (hasMachine ? "#1e3a2f" : "#3b1f0a"),
+              border: `1px solid ${isActive ? "#34d399" : (hasMachine ? "#2d5a3d" : "#c2410c")}`,
+              borderRadius: "20px",
+              padding: "4px 10px 4px 12px",
               gap: "6px",
-              whiteSpace: "nowrap",
-              boxShadow: "0 2px 8px rgba(52,211,153,0.3)"
-            }}
-          >
-            {bulkStartLoading ? (
-              <><span className="spinner-border spinner-border-sm" role="status"></span> Starting...</>
-            ) : (
-              <><i className="fas fa-play-circle"></i> Start All ({allHaveJob})</>
-            )}
-          </button>
-        )}
+              cursor: "pointer",
+              transition: "all 0.2s"
+            }}>
+              <span
+                onClick={() => handleExpandSession(session.id)}
+                style={{
+                  color: isActive ? "#0f172a" : (hasMachine ? "#34d399" : "#fb923c"),
+                  fontSize: "12px",
+                  fontWeight: 700,
+                  whiteSpace: "nowrap"
+                }}
+              >
+                #{idx + 1} {session.label}
+                {!hasMachine
+                  ? " ⚠️ Select machine"
+                  : isStarted
+                    ? " ✅"
+                    : ` — ${session.machineData?.MachineName || "Machine"} ⏳`
+                }
+              </span>
+              <button
+                onClick={(e) => { e.stopPropagation(); handleRemoveSession(session.id); }}
+                style={{
+                  background: "none",
+                  border: "none",
+                  color: isActive ? "#0f172a" : "#94a3b8",
+                  cursor: "pointer",
+                  padding: "0",
+                  fontSize: "14px",
+                  lineHeight: 1,
+                  fontWeight: 700
+                }}
+                title="Remove session"
+              >×</button>
+            </div>
+          );
+        })}
       </div>
     );
   };
+
 
   // ── If we have a job card loaded, show the job card view ──────
 
