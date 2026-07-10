@@ -11,11 +11,11 @@ export const generateQRCodeSVG = (text) => {
     qr.make();
     
     // createSvgTag parameters: (cellSize, margin)
-    // cellSize = 1.5 gives a highly detailed yet compact size
+    // cellSize = 1 gives a compact but scannable QR code
     // margin = 0 removes default extra whitespace
-    let svgTag = qr.createSvgTag(1.5, 0);
-    // Set QR code size to 25mm x 25mm (1 inch x 1 inch) for printing
-    svgTag = svgTag.replace(/width="[^"]*"/i, 'width="25mm"').replace(/height="[^"]*"/i, 'height="25mm"');
+    let svgTag = qr.createSvgTag(1, 0);
+    // Set QR code size to 18mm x 18mm - good scan size, fits in header without overlap
+    svgTag = svgTag.replace(/width="[^"]*"/i, 'width="18mm"').replace(/height="[^"]*"/i, 'height="18mm"');
     return svgTag;
   } catch (error) {
     console.error("Error generating QR code SVG:", error);

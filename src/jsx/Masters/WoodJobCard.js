@@ -177,12 +177,13 @@ const WoodJobCard = ({
 
             /* Header section - fixed height */
             .header {
-              height: 11mm;
+              height: 20mm;
               text-align: center;
               font-size: 14px;
               font-weight: bold;
               margin-bottom: 2mm;
               color: #065f46;
+              overflow: visible;
             }
 
             /* Top info section - fixed height */
@@ -417,7 +418,7 @@ const WoodJobCard = ({
             <!-- Page 1 -->
             <div class="job-card" data-machine-rows="${machineDetails.length}">
               <div class="space-calculator"></div>
-              <div class="header" style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #065f46; padding-bottom: 1px; height: 11mm; margin-bottom: 2mm;">
+              <div class="header" style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #065f46; padding-bottom: 1px; height: 20mm; margin-bottom: 2mm; overflow: visible;">
                 <span style="font-family: 'Copperplate Gothic Light'; font-size: 16px; font-weight: bold;">AARA DESIGN</span>
                 <div style="display: flex; align-items: center; padding-right: 2mm;">
                   ${generateQRCodeSVG(getBarcodeValue(jobCard, F_ContainerMasterL, F_ItemMaster, F_CategoryMaster))}
@@ -551,7 +552,7 @@ const WoodJobCard = ({
 
             <!-- Page 2 -->
             <div class="job-card page-break-before">
-              <div class="header" style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #065f46; padding-bottom: 1px; height: 11mm; margin-bottom: 2mm;">
+              <div class="header" style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #065f46; padding-bottom: 1px; height: 20mm; margin-bottom: 2mm; overflow: visible;">
                 <span style="font-family: 'Copperplate Gothic Light'; font-size: 16px; font-weight: bold;">AARA DESIGN</span>
                 <div style="display: flex; align-items: center; padding-right: 2mm;">
                   ${generateQRCodeSVG(getBarcodeValue(jobCard, F_ContainerMasterL, F_ItemMaster, F_CategoryMaster))}

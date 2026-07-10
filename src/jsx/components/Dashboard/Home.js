@@ -29,7 +29,8 @@ import {
   FaCircle, 
   FaEye, 
   FaExclamationCircle, 
-  FaRoute 
+  FaRoute,
+  FaStop
 } from "react-icons/fa";
 
 // Register Chart.js elements
@@ -114,6 +115,9 @@ const Home = () => {
 
   // Live Machine logs search state
   const [logSearchQuery, setLogSearchQuery] = useState("");
+
+  // Stop machine loading state (keyed by JobCardLineId)
+  const [stopMachineLoading, setStopMachineLoading] = useState({});
 
   // Retrieve user session data
   const userData = JSON.parse(localStorage.getItem("authUser")) || {};
@@ -250,10 +254,64 @@ const Home = () => {
     }
   };
 
+  const fetchJobCardFlowData = async (jobCardId) => {
+    try {
+      const response = await axios.get(
+        `${API_WEB_URLS.BASE}MachineDelayDashboard/JobCardFlow/${userId}/${userToken}/${jobCardId}`
+      );
+      if (response.data && response.data.success && response.data.data) {
+        setJobCardFlow(response.data.data);
+      }
+    } catch (err) {
+      console.error("Flow refresh error:", err);
+    }
+  };
+
   // Clear filters helper
   const handleClearFilters = () => {
     setSelectedCategory("ALL");
     setSelectedMachineFilter("");
+  };
+
+  // ── Stop machine directly from dashboard ──────────────────────────────────
+  const handleStopMachineFromDashboard = async ({ jobCardMasterId, jobCardLineId, machineName, jobCardNo, machineMasterId }) => {
+    const confirmMsg = `Are you sure you want to STOP machine "${machineName || 'this machine'}" running on Job Card ${jobCardNo || jobCardLineId}?`;
+    if (!window.confirm(confirmMsg)) return;
+
+    setStopMachineLoading((prev) => ({ ...prev, [jobCardLineId]: true }));
+    try {
+      const user = JSON.parse(localStorage.getItem("authUser") || "{}");
+      const now = new Date();
+      const pad = (n) => String(n).padStart(2, "0");
+      const nowStr = `${now.getFullYear()}-${pad(now.getMonth()+1)}-${pad(now.getDate())}T${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`;
+
+      const vFormData = new FormData();
+      vFormData.append("F_JobCardMaster", jobCardMasterId || "");
+      vFormData.append("F_MachineMaster", machineMasterId || "");
+      vFormData.append("NewDate", nowStr);
+      vFormData.append("Type", "2");
+
+      const token = user.token || user.UserToken || "token";
+      const response = await axios.post(
+        `${API_WEB_URLS.BASE}UpdateTransferDateByJobCard/0/${token}`,
+        vFormData
+      );
+
+      if (response.data && (response.data.success || response.data.Id)) {
+        alert(`Machine "${machineName}" stopped successfully!`);
+        fetchDashboardData();
+        if (jobCardMasterId) {
+          fetchJobCardFlowData(jobCardMasterId);
+        }
+      } else {
+        alert(response.data?.message || response.data?.Message || "Failed to stop machine.");
+      }
+    } catch (err) {
+      console.error("Error stopping machine from dashboard:", err);
+      alert(err.response?.data?.message || err.message || "Error stopping machine.");
+    } finally {
+      setStopMachineLoading((prev) => ({ ...prev, [jobCardLineId]: false }));
+    }
   };
 
   if (loading) {
@@ -728,11 +786,12 @@ const Home = () => {
                 <Table bordered hover>
                   <thead className="table-light">
                     <tr>
-                      <th style={{ width: "80px" }} className="text-center">Seq #</th>
+                      <th style={{ width: "60px" }} className="text-center">Seq #</th>
                       <th>Machine Name & Code</th>
                       <th>Status</th>
                       <th>Timestamps</th>
                       <th>Operator</th>
+                      <th className="text-center" style={{ width: "100px" }}>Action</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -762,7 +821,7 @@ const Home = () => {
                           if (diffHours >= parseFloat(thresholdVal)) {
                             transitDelayHtml = (
                               <tr key={`delay-${idx}`} className="table-danger">
-                                <td colSpan="5" className="text-center py-1 text-danger font-w500 text-xs">
+                                <td colSpan="6" className="text-center py-1 text-danger font-w500 text-xs">
                                   <FaExclamationTriangle className="me-1" />
                                   TRANSIT IDLE DELAY: {formatDelayText(diffHours)}
                                 </td>
@@ -771,7 +830,7 @@ const Home = () => {
                           } else {
                             transitDelayHtml = (
                               <tr key={`delay-${idx}`} className="table-light text-muted">
-                                <td colSpan="5" className="text-center py-1 text-xs">
+                                <td colSpan="6" className="text-center py-1 text-xs">
                                   Transit Time: {formatDelayText(diffHours)}
                                 </td>
                               </tr>
@@ -816,6 +875,33 @@ const Home = () => {
                               </div>
                             </td>
                             <td>{step.OperatorName || <span className="text-muted">N/A</span>}</td>
+                            <td className="text-center">
+                              {statusText === "IN PROGRESS" ? (
+                                <Button
+                                  variant="danger"
+                                  size="sm"
+                                  disabled={!!stopMachineLoading[step.JobCardLineId]}
+                                  onClick={() => handleStopMachineFromDashboard({
+                                    jobCardMasterId: selectedJobCardId,
+                                    jobCardLineId: step.JobCardLineId,
+                                    machineName: step.MachineName,
+                                    jobCardNo: selectedJobCardNo,
+                                    machineMasterId: step.MachineId,
+                                  })}
+                                  title={`Stop ${step.MachineName}`}
+                                  style={{ whiteSpace: "nowrap" }}
+                                >
+                                  {stopMachineLoading[step.JobCardLineId] ? (
+                                    <span className="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>
+                                  ) : (
+                                    <FaStop className="me-1" />
+                                  )}
+                                  Stop
+                                </Button>
+                              ) : (
+                                <span className="text-muted fs-12">—</span>
+                              )}
+                            </td>
                           </tr>
                         </React.Fragment>
                       );

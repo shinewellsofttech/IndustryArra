@@ -18,6 +18,7 @@ export const API_WEB_URLS = {
 
   CourseFormWithAmount: "Masters/0/token/CourseFormWithAmount/Id/",
   StudentWithAdmissionNo: "Masters/0/token/StudentWithAdmissionNo/Id/",
+  
   RequestMasterDetails_OtherData: "Masters/0/token/RequestMaster_OtherData/Id/",
 
   CourseMapDataByRegistrationId: "Masters/0/token/CourseMapDataByRegistrationId/Id/",

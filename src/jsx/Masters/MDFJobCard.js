@@ -664,7 +664,7 @@ const MDFJobCard = ({
             const machineDetails = getMachineDetails(jobCard.ID);
             return `
             <div class="job-card" data-machine-rows="${machineDetails.length}">
-              <div class="header" style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #000000; padding-bottom: 1px; height: 11mm; margin-bottom: 2mm;">
+              <div class="header" style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #000000; padding-bottom: 1px; height: 20mm; margin-bottom: 2mm; overflow: visible;">
                 <span style="font-size: 16px; font-weight: bold;">MDF JOB CARD</span>
                 <div style="display: flex; align-items: center; padding-right: 2mm;">
                   ${generateQRCodeSVG(getBarcodeValue(jobCard, F_ContainerMasterL, F_ItemMaster, F_CategoryMaster))}
