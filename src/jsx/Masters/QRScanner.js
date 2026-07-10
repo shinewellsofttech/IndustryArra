@@ -1982,19 +1982,39 @@ const QRScanner = () => {
 
     setFetchError(null);
 
+    // Reset file input so the same file can be re-selected next time
+    if (event.target) event.target.value = "";
+
     try {
-      if (!qrCodeRef.current) {
-        qrCodeRef.current = new Html5Qrcode("reader");
+      // Html5Qrcode instance becomes stale after one scanFile() use.
+      // Destroy the old instance and create a fresh one every time for file scanning.
+      // We use a temporary element id so it doesn't conflict with the live camera "reader" div.
+      const tempId = "qr-file-reader-temp";
+      let tempEl = document.getElementById(tempId);
+      if (!tempEl) {
+        tempEl = document.createElement("div");
+        tempEl.id = tempId;
+        tempEl.style.display = "none";
+        document.body.appendChild(tempEl);
       }
+
+      // Always create a fresh instance for file scanning
+      const fileScanner = new Html5Qrcode(tempId);
+
       isScanningRef.current = true;
-      const decodedText = await qrCodeRef.current.scanFile(file, false);
+      const decodedText = await fileScanner.scanFile(file, false);
+
+      // Clean up the temp instance
+      try { await fileScanner.clear(); } catch (_) {}
+
       await handleScanSuccess(decodedText);
     } catch (err) {
       console.error("Error scanning uploaded image:", err);
-      setFetchError("Could not find any valid QR code in the uploaded image. Please ensure the QR code is clear and try again.");
       isScanningRef.current = false;
+      setFetchError("Could not find any valid QR code in the uploaded image. Please ensure the QR code is clear and try again.");
     }
   };
+
 
   // Start the camera
   // preserveSessions=true: don't clear the sessions array (called from minimize)
