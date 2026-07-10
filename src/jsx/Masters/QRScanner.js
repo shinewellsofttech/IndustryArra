@@ -1149,9 +1149,10 @@ const ScannedJobCardView = ({
   onStopMachine, 
   actionLoading, 
   onRescan,
-  skipMachineIds = ""
+  skipMachineIds = "",
+  onMinimize = null,
+  sessionCount = 0
 }) => {
-  console.log("ScannedJobCardView received skipMachineIds prop:", skipMachineIds);
   const cat = String(parsedIds?.F_CategoryMaster || jobCard?.F_CategoryMaster || "");
   
   const responsiveStyles = (
@@ -1248,6 +1249,45 @@ const ScannedJobCardView = ({
   return (
     <>
       {responsiveStyles}
+
+      {/* Minimize + Scan Another Banner */}
+      {onMinimize && (
+        <div style={{
+          background: "linear-gradient(135deg, #0f172a, #1e293b)",
+          borderBottom: "2px solid #34d399",
+          padding: "10px 20px",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          flexWrap: "wrap",
+          gap: "10px"
+        }}>
+          <span style={{ color: "#94a3b8", fontSize: "12px", fontWeight: 600 }}>
+            📋 {sessionCount} session{sessionCount !== 1 ? "s" : ""} queued — minimize to scan another
+          </span>
+          <button
+            onClick={onMinimize}
+            style={{
+              background: "linear-gradient(135deg, #059669, #34d399)",
+              color: "#fff",
+              border: "none",
+              borderRadius: "8px",
+              padding: "8px 18px",
+              fontSize: "13px",
+              fontWeight: 700,
+              cursor: "pointer",
+              display: "flex",
+              alignItems: "center",
+              gap: "8px",
+              boxShadow: "0 2px 8px rgba(52,211,153,0.3)"
+            }}
+          >
+            <i className="fas fa-minus-square"></i>
+            Minimize &amp; Scan Another
+          </button>
+        </div>
+      )}
+
       {viewComponent}
     </>
   );
@@ -1259,10 +1299,21 @@ const QRScanner = () => {
   const [isCameraActive, setIsCameraActive] = useState(false);
   const [isTransitioning, setIsTransitioning] = useState(false);
   const [copiedId, setCopiedId] = useState(null);
-  const [jobCardData, setJobCardData] = useState(null);   // fetched job card
-  const [machineData, setMachineData] = useState(null);   // fetched machine row
+
+  // ── Multi-session state ───────────────────────────────────────────────────────
+  // Each session: { id, jobCardData, machineList, machineData, selectedMachineId, parsedIds, isMinimized, label }
+  const [scannedSessions, setScannedSessions] = useState([]);
+  const [activeSessionId, setActiveSessionId] = useState(null); // which session is expanded
+  const [bulkStartLoading, setBulkStartLoading] = useState(false);
+  const MAX_SESSIONS = 10;
+
+  // Legacy single-session state — kept for fetchJobCardData internals
+  const [jobCardData, setJobCardData] = useState(null);
+  const [machineData, setMachineData] = useState(null);
   const [machineList, setMachineList] = useState([]);
   const [selectedMachineId, setSelectedMachineId] = useState("");
+  // ─────────────────────────────────────────────────────────────────────────────
+
   const [fetchLoading, setFetchLoading] = useState(false);
   const [fetchError, setFetchError] = useState(null);
   const [parsedIds, setParsedIds] = useState(null);
@@ -1296,10 +1347,167 @@ const QRScanner = () => {
     return `${yyyy}-${mm}-${dd}T${hh}:${min}:${ss}`;
   };
 
+  // ── Session helpers ───────────────────────────────────────────────────────────
+
+  /** Active (expanded) session object */
+  const activeSession = scannedSessions.find(s => s.id === activeSessionId) || null;
+
+  /** Per-session machine select */
+  const handleMachineSelectForSession = (sessionId, machineId) => {
+    setScannedSessions(prev => prev.map(s => {
+      if (s.id !== sessionId) return s;
+      const matched = s.machineList.find(m => String(m.ID) === String(machineId));
+      return { ...s, selectedMachineId: machineId, machineData: matched || null };
+    }));
+    // Also keep legacy state in sync for the active session
+    if (sessionId === activeSessionId) {
+      setSelectedMachineId(machineId);
+      setMachineData(scannedSessions.find(s => s.id === sessionId)?.machineList.find(m => String(m.ID) === String(machineId)) || null);
+    }
+  };
+
+  /** Minimize current active session and restart camera for next scan */
+  const handleMinimizeAndScanAnother = (sessionId) => {
+    if (scannedSessions.length >= MAX_SESSIONS) {
+      alert(`Maximum ${MAX_SESSIONS} sessions allowed. Please start or remove existing sessions first.`);
+      return;
+    }
+    // Minimize the current session
+    setScannedSessions(prev => prev.map(s =>
+      s.id === sessionId ? { ...s, isMinimized: true } : s
+    ));
+    setActiveSessionId(null);
+    // Clear legacy single-session state
+    setJobCardData(null);
+    setMachineData(null);
+    setMachineList([]);
+    setSelectedMachineId("");
+    setParsedIds(null);
+    setFetchError(null);
+    setLastScanned(null);
+    // Restart camera
+    startCamera(true);
+  };
+
+  /** Expand a minimized session */
+  const handleExpandSession = (sessionId) => {
+    const session = scannedSessions.find(s => s.id === sessionId);
+    if (!session) return;
+    // Stop camera if active
+    if (isCameraActiveRef.current) {
+      stopCamera();
+    }
+    setScannedSessions(prev => prev.map(s =>
+      s.id === sessionId ? { ...s, isMinimized: false } : s
+    ));
+    setActiveSessionId(sessionId);
+    // Sync legacy state
+    setJobCardData(session.jobCardData);
+    setMachineData(session.machineData);
+    setMachineList(session.machineList);
+    setSelectedMachineId(session.selectedMachineId);
+    setParsedIds(session.parsedIds);
+  };
+
+  /** Remove a session */
+  const handleRemoveSession = (sessionId) => {
+    setScannedSessions(prev => prev.filter(s => s.id !== sessionId));
+    if (activeSessionId === sessionId) {
+      setActiveSessionId(null);
+      setJobCardData(null);
+      setMachineData(null);
+      setMachineList([]);
+      setSelectedMachineId("");
+      setParsedIds(null);
+    }
+  };
+
+  /** Start all sessions that have a pending machine (skip busy ones) */
+  const handleBulkStartAll = async () => {
+    const shouldSkipValidation = (mach, skipListString) => {
+      if (!mach || !skipListString) return false;
+      const machId = mach.F_MachineMaster || mach.ID;
+      const list = skipListString.split(',').map(x => x.trim());
+      return list.includes(String(machId));
+    };
+
+    const currentSkipIds = skipMachineIdsRef.current;
+    const pendingSessions = scannedSessions.filter(s => {
+      if (!s.machineData) return false;
+      if (s.machineData.StartTime && String(s.machineData.StartTime).trim() !== "") return false;
+      return true;
+    });
+
+    if (pendingSessions.length === 0) {
+      alert("No pending machines to start.");
+      return;
+    }
+
+    setBulkStartLoading(true);
+    const skippedLabels = [];
+    const failedLabels = [];
+    let startedCount = 0;
+
+    for (const session of pendingSessions) {
+      const mach = session.machineData;
+      const isEngagedElsewhere = mach.EngagedJobCardNo &&
+        String(mach.EngagedJobCardNo).trim() !== "" &&
+        !shouldSkipValidation(mach, currentSkipIds);
+
+      if (isEngagedElsewhere) {
+        skippedLabels.push(`${session.label} (Machine busy on ${mach.EngagedJobCardNo})`);
+        continue;
+      }
+
+      try {
+        const user = JSON.parse(localStorage.getItem("authUser"));
+        const nowStr = getFormattedDateTime();
+        const vFormData = new FormData();
+        vFormData.append("F_JobCardMaster", mach.F_JobCardMaster || session.jobCardData?.ID || session.parsedIds?.F_JobCardMaster || "");
+        vFormData.append("F_MachineMaster", mach.F_MachineMaster || session.parsedIds?.F_MachineMaster || session.selectedMachineId || "");
+        vFormData.append("NewDate", nowStr);
+        vFormData.append("Type", "1");
+
+        await Fn_AddEditData(
+          dispatch,
+          (s) => {},
+          { arguList: { id: 0, formData: vFormData } },
+          "UpdateTransferDateByJobCard/0/token",
+          true,
+          "Id",
+          () => {},
+          "#"
+        );
+
+        const updatedMach = { ...mach, StartTime: nowStr, StartDate: nowStr };
+        setScannedSessions(prev => prev.map(s =>
+          s.id === session.id
+            ? { ...s, machineData: updatedMach, machineList: s.machineList.map(m => String(m.ID) === String(mach.ID) ? updatedMach : m) }
+            : s
+        ));
+        startedCount++;
+      } catch (err) {
+        failedLabels.push(session.label);
+      }
+    }
+
+    setBulkStartLoading(false);
+
+    let msg = `✅ Started ${startedCount} machine(s).`;
+    if (skippedLabels.length > 0) msg += `\n\n⚠️ Skipped (machine busy):\n${skippedLabels.join('\n')}`;
+    if (failedLabels.length > 0) msg += `\n\n❌ Failed:\n${failedLabels.join('\n')}`;
+    alert(msg);
+  };
+
+  // Legacy single-session machine select (used when no multi-session active)
   const handleMachineSelect = (machineId) => {
-    setSelectedMachineId(machineId);
-    const matched = machineList.find(m => String(m.ID) === String(machineId));
-    setMachineData(matched || null);
+    if (activeSessionId) {
+      handleMachineSelectForSession(activeSessionId, machineId);
+    } else {
+      setSelectedMachineId(machineId);
+      const matched = machineList.find(m => String(m.ID) === String(machineId));
+      setMachineData(matched || null);
+    }
   };
 
   const handleStartMachine = async () => {
@@ -1576,11 +1784,31 @@ const QRScanner = () => {
         setSelectedMachineId("");
       }
 
+      // ── Create / register new session ──────────────────────────────────────
+      if (matchingCard && !isSilent) {
+        const newSessionId = Date.now();
+        const jcNo = matchingCard.JobCardNo || matchingCard.JobCard || matchingCard.ID || "?";
+        const newSession = {
+          id: newSessionId,
+          jobCardData: matchingCard,
+          machineList: jobCardMachines,
+          machineData: matchingMachine || null,
+          selectedMachineId: matchingMachine ? String(matchingMachine.ID) : "",
+          parsedIds: ids,
+          isMinimized: false,
+          label: `JC-${jcNo}`
+        };
+        setScannedSessions(prev => [...prev, newSession]);
+        setActiveSessionId(newSessionId);
+      }
+      // ───────────────────────────────────────────────────────────────────────
+
       if (!matchingCard) {
         if (!isSilent) {
           setFetchError("Job card not found for the scanned QR code.");
         }
       }
+
     } catch (err) {
       console.error("Error fetching job card data:", err);
       if (!isSilent) {
@@ -1769,7 +1997,8 @@ const QRScanner = () => {
   };
 
   // Start the camera
-  const startCamera = async () => {
+  // preserveSessions=true: don't clear the sessions array (called from minimize)
+  const startCamera = async (preserveSessions = false) => {
     if (!qrCodeRef.current || isTransitioning) return;
     setIsTransitioning(true);
 
@@ -1787,7 +2016,7 @@ const QRScanner = () => {
       console.warn("Error stopping active scanner session before restart:", e);
     }
 
-    // Reset job card view when starting new scan
+    // Reset single-session state (sessions array is preserved)
     setJobCardData(null);
     setMachineData(null);
     setMachineList([]);
@@ -1795,6 +2024,7 @@ const QRScanner = () => {
     setFetchError(null);
     setParsedIds(null);
     setLastScanned(null);
+    setActiveSessionId(null);
 
     // Make the reader element visible first so html5-qrcode can mount to it
     setIsCameraActive(true);
@@ -1849,6 +2079,11 @@ const QRScanner = () => {
   };
 
   const handleRescan = () => {
+    // If this session was in the sessions array, remove it
+    if (activeSessionId) {
+      setScannedSessions(prev => prev.filter(s => s.id !== activeSessionId));
+      setActiveSessionId(null);
+    }
     setJobCardData(null);
     setMachineData(null);
     setMachineList([]);
@@ -1860,30 +2095,138 @@ const QRScanner = () => {
     startCamera();
   };
 
+  // ── Minimized Sessions Bar ─────────────────────────────────────────────────
+  const MinimizedSessionsBar = () => {
+    const minimized = scannedSessions.filter(s => s.isMinimized);
+    const allHaveJob = scannedSessions.filter(s => s.machineData).length;
+    if (scannedSessions.length === 0) return null;
+    return (
+      <div style={{
+        position: "fixed",
+        bottom: 0,
+        left: 0,
+        right: 0,
+        zIndex: 1000,
+        background: "linear-gradient(135deg, #0f172a 0%, #1e293b 100%)",
+        borderTop: "2px solid #34d399",
+        padding: "10px 16px",
+        display: "flex",
+        alignItems: "center",
+        gap: "8px",
+        flexWrap: "wrap",
+        boxShadow: "0 -4px 20px rgba(0,0,0,0.3)"
+      }}>
+        <span style={{ color: "#94a3b8", fontSize: "12px", fontWeight: 700, whiteSpace: "nowrap", marginRight: 4 }}>
+          📋 SESSIONS:
+        </span>
+        {scannedSessions.map((session, idx) => (
+          <div key={session.id} style={{
+            display: "flex",
+            alignItems: "center",
+            background: session.id === activeSessionId ? "#34d399" : "#1e3a2f",
+            border: `1px solid ${session.id === activeSessionId ? "#34d399" : "#2d5a3d"}`,
+            borderRadius: "20px",
+            padding: "4px 10px 4px 12px",
+            gap: "6px",
+            cursor: "pointer",
+            transition: "all 0.2s"
+          }}>
+            <span
+              onClick={() => handleExpandSession(session.id)}
+              style={{
+                color: session.id === activeSessionId ? "#0f172a" : "#34d399",
+                fontSize: "12px",
+                fontWeight: 700,
+                whiteSpace: "nowrap"
+              }}
+            >
+              #{idx + 1} {session.label}
+              {session.machineData?.StartTime ? " ✅" : " ⏳"}
+            </span>
+            <button
+              onClick={(e) => { e.stopPropagation(); handleRemoveSession(session.id); }}
+              style={{
+                background: "none",
+                border: "none",
+                color: session.id === activeSessionId ? "#0f172a" : "#94a3b8",
+                cursor: "pointer",
+                padding: "0",
+                fontSize: "14px",
+                lineHeight: 1,
+                fontWeight: 700
+              }}
+              title="Remove session"
+            >×</button>
+          </div>
+        ))}
+        {allHaveJob > 0 && (
+          <button
+            onClick={handleBulkStartAll}
+            disabled={bulkStartLoading}
+            style={{
+              marginLeft: "auto",
+              background: bulkStartLoading ? "#374151" : "linear-gradient(135deg, #059669, #34d399)",
+              color: "#fff",
+              border: "none",
+              borderRadius: "20px",
+              padding: "6px 16px",
+              fontSize: "12px",
+              fontWeight: 700,
+              cursor: bulkStartLoading ? "not-allowed" : "pointer",
+              display: "flex",
+              alignItems: "center",
+              gap: "6px",
+              whiteSpace: "nowrap",
+              boxShadow: "0 2px 8px rgba(52,211,153,0.3)"
+            }}
+          >
+            {bulkStartLoading ? (
+              <><span className="spinner-border spinner-border-sm" role="status"></span> Starting...</>
+            ) : (
+              <><i className="fas fa-play-circle"></i> Start All ({allHaveJob})</>
+            )}
+          </button>
+        )}
+      </div>
+    );
+  };
+
   // ── If we have a job card loaded, show the job card view ──────
 
   if (jobCardData) {
-    console.log("QRScanner component rendering ScannedJobCardView with skipMachineIds:", skipMachineIds);
     return (
-      <ScannedJobCardView
-        jobCard={jobCardData}
-        parsedIds={parsedIds}
-        machineList={machineList}
-        selectedMachineId={selectedMachineId}
-        onMachineSelect={handleMachineSelect}
-        machineData={machineData}
-        onStartMachine={handleStartMachine}
-        onStopMachine={handleStopMachine}
-        actionLoading={actionLoading}
-        onRescan={handleRescan}
-        skipMachineIds={skipMachineIds}
-      />
+      <>
+        <MinimizedSessionsBar />
+        <div style={{ paddingBottom: scannedSessions.length > 0 ? "70px" : "0" }}>
+          <ScannedJobCardView
+            jobCard={jobCardData}
+            parsedIds={parsedIds}
+            machineList={machineList}
+            selectedMachineId={activeSession ? activeSession.selectedMachineId : selectedMachineId}
+            onMachineSelect={activeSession
+              ? (machineId) => handleMachineSelectForSession(activeSession.id, machineId)
+              : handleMachineSelect
+            }
+            machineData={activeSession ? activeSession.machineData : machineData}
+            onStartMachine={handleStartMachine}
+            onStopMachine={handleStopMachine}
+            actionLoading={actionLoading}
+            onRescan={handleRescan}
+            skipMachineIds={skipMachineIds}
+            onMinimize={activeSessionId ? () => handleMinimizeAndScanAnother(activeSessionId) : null}
+            sessionCount={scannedSessions.length}
+          />
+        </div>
+      </>
     );
   }
 
   // ── Default: Camera Scanner View ─────────────────────────────────────────────
   return (
-    <div className="container-fluid" style={{ fontFamily: "Poppins, sans-serif" }}>
+    <>
+      <MinimizedSessionsBar />
+      <div className="container-fluid" style={{ fontFamily: "Poppins, sans-serif", paddingBottom: scannedSessions.length > 0 ? "70px" : "0" }}>
+
       <style>{`
         @keyframes scan {
           0% { top: 15px; opacity: 0.8; }
@@ -2174,7 +2517,8 @@ const QRScanner = () => {
           </div>
         </div>
       </div>
-    </div>
+      </div>
+    </>
   );
 };
 
