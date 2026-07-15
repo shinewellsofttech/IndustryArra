@@ -275,6 +275,10 @@ const Home = () => {
 
   // ── Stop machine directly from dashboard ──────────────────────────────────
   const handleStopMachineFromDashboard = async ({ jobCardMasterId, jobCardLineId, machineName, jobCardNo, machineMasterId }) => {
+    if (!machineMasterId) {
+      alert(`Error: Machine Master ID is empty. Could not determine ID for machine "${machineName || 'this machine'}".`);
+      return;
+    }
     const confirmMsg = `Are you sure you want to STOP machine "${machineName || 'this machine'}" running on Job Card ${jobCardNo || jobCardLineId}?`;
     if (!window.confirm(confirmMsg)) return;
 
@@ -883,10 +887,17 @@ const Home = () => {
                                   disabled={!!stopMachineLoading[step.JobCardLineId]}
                                   onClick={() => handleStopMachineFromDashboard({
                                     jobCardMasterId: selectedJobCardId,
-                                    jobCardLineId: step.JobCardLineId,
-                                    machineName: step.MachineName,
+                                    jobCardLineId: step.JobCardLineId || step.jobCardLineId,
+                                    machineName: step.MachineName || step.machineName,
                                     jobCardNo: selectedJobCardNo,
-                                    machineMasterId: step.MachineId,
+                                    machineMasterId: step.MachineId || step.machineId || (() => {
+                                      const matchedMachine = allMachines.find(am => 
+                                        (am.Name && step.MachineName && am.Name.toLowerCase().trim() === step.MachineName.toLowerCase().trim()) ||
+                                        (am.Code && step.MachineCode && am.Code.toLowerCase().trim() === step.MachineCode.toLowerCase().trim()) ||
+                                        (am.MachineNo && step.MachineCode && String(am.MachineNo).toLowerCase().trim() === String(step.MachineCode).toLowerCase().trim())
+                                      );
+                                      return matchedMachine ? (matchedMachine.Id || matchedMachine.id || matchedMachine.ID || "") : "";
+                                    })(),
                                   })}
                                   title={`Stop ${step.MachineName}`}
                                   style={{ whiteSpace: "nowrap" }}

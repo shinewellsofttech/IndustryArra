@@ -4,6 +4,8 @@ import axios from "axios";
 import { Doughnut, Bar } from "react-chartjs-2";
 import { API_WEB_URLS } from "../../constants/constAPI";
 import { HubConnectionBuilder } from "@microsoft/signalr";
+import { Fn_AddEditData } from "../../store/Functions";
+import { useDispatch } from "react-redux";
 import {
   Chart as ChartJS,
   CategoryScale,
@@ -27,7 +29,8 @@ import {
   FaCircle, 
   FaEye, 
   FaExclamationCircle, 
-  FaRoute 
+  FaRoute,
+  FaStopCircle
 } from "react-icons/fa";
 
 // Register Chart.js elements
@@ -82,6 +85,7 @@ const formatDelayText = (hoursVal) => {
 };
 
 const MachineDelayDashboard = () => {
+  const dispatch = useDispatch();
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -101,6 +105,9 @@ const MachineDelayDashboard = () => {
   const [jobCardFlow, setJobCardFlow] = useState([]);
   const [loadingFlow, setLoadingFlow] = useState(false);
   const [showFlowModal, setShowFlowModal] = useState(false);
+
+  // Stop machine state
+  const [stoppingMachineId, setStoppingMachineId] = useState(null); // JobCardLineId of machine being stopped
 
   // Retrieve user session data
   const userData = JSON.parse(localStorage.getItem("authUser")) || {};
@@ -220,6 +227,124 @@ const MachineDelayDashboard = () => {
       alert(err.response?.data?.message || err.message || "Error loading flow.");
     } finally {
       setLoadingFlow(false);
+    }
+  };
+
+  // Helper to format date to SQL server format YYYY-MM-DDTHH:mm:ss (same as QRScanner)
+  const getFormattedDateTime = () => {
+    const date = new Date();
+    const pad = (num) => String(num).padStart(2, "0");
+    const yyyy = date.getFullYear();
+    const mm = pad(date.getMonth() + 1);
+    const dd = pad(date.getDate());
+    const hh = pad(date.getHours());
+    const min = pad(date.getMinutes());
+    const ss = pad(date.getSeconds());
+    return `${yyyy}-${mm}-${dd}T${hh}:${min}:${ss}`;
+  };
+
+  // Handle stop machine — mirrors QRScanner's handleStopMachine exactly
+  const handleStopMachine = async (m) => {
+    if (!m || stoppingMachineId) return;
+
+    console.log("--- Dashboard handleStopMachine: Received Machine Object ---", m);
+
+    // Robust case-insensitive key finders
+    const findMachineMasterId = (obj) => {
+      if (!obj) return "";
+      const commonKeys = ["MachineMasterId", "machineMasterId", "F_MachineMaster", "f_MachineMaster", "MachineId", "machineId", "F_MachineMasterId", "f_MachineMasterId"];
+      for (const key of commonKeys) {
+        if (obj[key] !== undefined && obj[key] !== null) return obj[key];
+      }
+      const keys = Object.keys(obj);
+      const machMasterKey = keys.find(k => k.toLowerCase().includes("mach") && k.toLowerCase().includes("mast"));
+      if (machMasterKey && obj[machMasterKey] !== undefined) return obj[machMasterKey];
+      const machIdKey = keys.find(k => k.toLowerCase().includes("mach") && k.toLowerCase().includes("id"));
+      if (machIdKey && obj[machIdKey] !== undefined) return obj[machIdKey];
+      return "";
+    };
+
+    const findJobCardMasterId = (obj) => {
+      if (!obj) return "";
+      const commonKeys = ["JobCardMasterId", "jobCardMasterId", "F_JobCardMaster", "f_JobCardMaster", "JobCardId", "jobCardId", "F_JobCardMasterId", "f_JobCardMasterId"];
+      for (const key of commonKeys) {
+        if (obj[key] !== undefined && obj[key] !== null) return obj[key];
+      }
+      const keys = Object.keys(obj);
+      const jcMasterKey = keys.find(k => k.toLowerCase().includes("job") && k.toLowerCase().includes("card") && k.toLowerCase().includes("mast"));
+      if (jcMasterKey && obj[jcMasterKey] !== undefined) return obj[jcMasterKey];
+      const jcIdKey = keys.find(k => k.toLowerCase().includes("job") && k.toLowerCase().includes("id"));
+      if (jcIdKey && obj[jcIdKey] !== undefined) return obj[jcIdKey];
+      return "";
+    };
+
+    const machineMasterId = findMachineMasterId(m);
+    const jobCardMasterId = findJobCardMasterId(m);
+
+    if (!machineMasterId) {
+      alert(`Debug Info: Could not find Machine Master ID in object. Available keys: ${Object.keys(m).join(", ")}. Content: ${JSON.stringify(m)}`);
+      return;
+    }
+
+    const confirmStop = window.confirm(
+      `Are you sure you want to STOP machine "${m.MachineName || m.machineName}" (Job Card: ${m.JobCardNo || m.jobCardNo})?`
+    );
+    if (!confirmStop) return;
+
+    setStoppingMachineId(m.JobCardLineId || m.jobCardLineId);
+    try {
+      const nowStr = getFormattedDateTime();
+
+      const vFormData = new FormData();
+      vFormData.append("F_JobCardMaster", jobCardMasterId);
+      vFormData.append("F_MachineMaster", machineMasterId);
+      vFormData.append("NewDate", nowStr);
+      vFormData.append("Type", "2");
+
+      console.log("--- Dashboard handleStopMachine: Appended Form Data ---");
+      for (let [key, val] of vFormData.entries()) {
+        console.log(`${key}:`, val);
+      }
+
+      await Fn_AddEditData(
+        dispatch,
+        (s) => {}, // Dummy state setter
+        { arguList: { id: 0, formData: vFormData } },
+        "UpdateTransferDateByJobCard/0/token",
+        true,
+        "Id",
+        () => {}, // Dummy navigate
+        "#"
+      );
+
+      // Update local state: remove the stopped machine from running list
+      setData((prevData) => {
+        if (!prevData) return prevData;
+        const lineIdToCompare = m.JobCardLineId || m.jobCardLineId;
+        return {
+          ...prevData,
+          runningMachines: prevData.runningMachines.filter(
+            (rm) => (rm.JobCardLineId || rm.jobCardLineId) !== lineIdToCompare
+          ),
+          machineCounts: {
+            ...prevData.machineCounts,
+            running: Math.max(0, (prevData.machineCounts?.running || 1) - 1),
+            idle: (prevData.machineCounts?.idle || 0) + 1,
+          },
+        };
+      });
+
+      alert("Machine stopped successfully!");
+    } catch (err) {
+      console.error("Error stopping machine:", err);
+      let errMsg = "Failed to stop machine. Please try again.";
+      if (err?.response?.data?.Message) errMsg = err.response.data.Message;
+      else if (err?.response?.data?.message) errMsg = err.response.data.message;
+      else if (err?.message) errMsg = err.message;
+      else if (typeof err === "string") errMsg = err;
+      alert(errMsg);
+    } finally {
+      setStoppingMachineId(null);
     }
   };
 
@@ -515,42 +640,75 @@ const MachineDelayDashboard = () => {
                         <th>Started At</th>
                         <th>Running For</th>
                         <th>Operator</th>
-                        <th className="text-center">Action</th>
+                        <th className="text-center" style={{ minWidth: "160px" }}>Action</th>
                       </tr>
                     </thead>
                     <tbody>
                       {filteredRunning.length > 0 ? (
-                        filteredRunning.map((m) => (
-                          <tr key={m.JobCardLineId} className={m.IsDelayedRun ? "table-danger text-danger font-weight-bold" : ""}>
-                            <td>
-                              <span className="fw-bold">{m.MachineName}</span>
-                              <div className="text-xs text-muted">{m.MachineCode}</div>
-                            </td>
-                            <td>{m.ShipmentNo || <span className="text-muted">N/A</span>}</td>
-                            <td>
-                              <Badge bg="light" text="primary" className="fs-12 p-2" style={{ cursor: "pointer" }} onClick={() => handleViewJobCardFlow(m.JobCardMasterId, m.JobCardNo)}>
-                                {m.JobCardNo}
-                              </Badge>
-                            </td>
-                            <td>{formatDateTime(m.StartTime)}</td>
-                            <td>
-                              <Badge bg={m.IsDelayedRun ? "danger" : "success"} className="p-2 fs-11">
-                                {formatDelayText(m.RunningMinutes / 60.0)}
-                              </Badge>
-                              {m.IsDelayedRun ? (
-                                <span className="text-danger ms-2 fw-bold text-xs d-block mt-1">
-                                  <FaExclamationTriangle className="me-1" />ALERT (DELAY)
-                                </span>
-                              ) : null}
-                            </td>
-                            <td>{m.OperatorName || <span className="text-muted">N/A</span>}</td>
-                            <td className="text-center">
-                              <Button variant="info" className="btn-xs" onClick={() => handleViewJobCardFlow(m.JobCardMasterId, m.JobCardNo)}>
-                                <FaEye className="me-1" /> View Flow
-                              </Button>
-                            </td>
-                          </tr>
-                        ))
+                        filteredRunning.map((m) => {
+                          const currentLineId = m.JobCardLineId || m.jobCardLineId;
+                          const currentMasterId = m.JobCardMasterId || m.jobCardMasterId;
+                          const currentJobCardNo = m.JobCardNo || m.jobCardNo;
+                          const currentMachineName = m.MachineName || m.machineName;
+                          const currentMachineCode = m.MachineCode || m.machineCode;
+                          const currentShipmentNo = m.ShipmentNo || m.shipmentNo;
+                          const currentStartTime = m.StartTime || m.startTime;
+                          const currentRunningMinutes = m.RunningMinutes || m.runningMinutes;
+                          const currentIsDelayedRun = m.IsDelayedRun || m.isDelayedRun;
+                          const currentOperatorName = m.OperatorName || m.operatorName;
+
+                          return (
+                            <tr key={currentLineId} className={currentIsDelayedRun ? "table-danger text-danger font-weight-bold" : ""}>
+                              <td>
+                                <span className="fw-bold">{currentMachineName}</span>
+                                <div className="text-xs text-muted">{currentMachineCode}</div>
+                              </td>
+                              <td>{currentShipmentNo || <span className="text-muted">N/A</span>}</td>
+                              <td>
+                                <Badge bg="light" text="primary" className="fs-12 p-2" style={{ cursor: "pointer" }} onClick={() => handleViewJobCardFlow(currentMasterId, currentJobCardNo)}>
+                                  {currentJobCardNo}
+                                </Badge>
+                              </td>
+                              <td>{formatDateTime(currentStartTime)}</td>
+                              <td>
+                                <Badge bg={currentIsDelayedRun ? "danger" : "success"} className="p-2 fs-11">
+                                  {formatDelayText(currentRunningMinutes / 60.0)}
+                                </Badge>
+                                {currentIsDelayedRun ? (
+                                  <span className="text-danger ms-2 fw-bold text-xs d-block mt-1">
+                                    <FaExclamationTriangle className="me-1" />ALERT (DELAY)
+                                  </span>
+                                ) : null}
+                              </td>
+                              <td>{currentOperatorName || <span className="text-muted">N/A</span>}</td>
+                              <td className="text-center">
+                                <div className="d-flex gap-1 justify-content-center align-items-center">
+                                  <Button
+                                    variant="info"
+                                    className="btn-xs"
+                                    onClick={() => handleViewJobCardFlow(currentMasterId, currentJobCardNo)}
+                                    disabled={stoppingMachineId === currentLineId}
+                                  >
+                                    <FaEye className="me-1" /> View Flow
+                                  </Button>
+                                  <Button
+                                    variant="danger"
+                                    className="btn-xs"
+                                    onClick={() => handleStopMachine(m)}
+                                    disabled={!!stoppingMachineId}
+                                    title={`Stop machine: ${currentMachineName}`}
+                                  >
+                                    {stoppingMachineId === currentLineId ? (
+                                      <><Spinner animation="border" size="sm" className="me-1" /> Stopping...</>
+                                    ) : (
+                                      <><FaStopCircle className="me-1" /> Stop</>
+                                    )}
+                                  </Button>
+                                </div>
+                              </td>
+                            </tr>
+                          );
+                        })
                       ) : (
                         <tr>
                           <td colSpan="7" className="text-center text-muted py-4">

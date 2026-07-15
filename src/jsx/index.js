@@ -1,4 +1,6 @@
-import React, { useContext } from "react";
+import React, { useContext, useEffect } from "react";
+import { HubConnectionBuilder } from "@microsoft/signalr";
+import { API_WEB_URLS } from "../constants/constAPI";
 /// React router dom
 import {  Routes, Route, Outlet  } from "react-router-dom";
 
@@ -403,6 +405,95 @@ const Markup = () => {
 
 function MainLayout(){
   const { menuToggle, sidebariconHover } = useContext(ThemeContext);
+
+  useEffect(() => {
+    let connection = null;
+    const authUser = JSON.parse(localStorage.getItem('authUser'));
+
+    if (authUser && authUser.id) {
+      const userId = authUser.id;
+
+      const getDeviceName = () => {
+        const userAgent = navigator.userAgent;
+        let deviceName = "Unknown Device";
+        if (/windows/i.test(userAgent)) deviceName = "Windows PC";
+        else if (/macintosh/i.test(userAgent)) deviceName = "Macintosh";
+        else if (/linux/i.test(userAgent)) deviceName = "Linux PC";
+        else if (/android/i.test(userAgent)) deviceName = "Android Device";
+        else if (/iphone|ipad|ipod/i.test(userAgent)) deviceName = "iOS Device";
+
+        let browserName = "Unknown Browser";
+        if (/chrome|crios/i.test(userAgent)) browserName = "Chrome";
+        else if (/firefox|fxios/i.test(userAgent)) browserName = "Firefox";
+        else if (/safari/i.test(userAgent) && !/chrome|crios/i.test(userAgent)) browserName = "Safari";
+        else if (/opr\//i.test(userAgent)) browserName = "Opera";
+        else if (/edg/i.test(userAgent)) browserName = "Edge";
+
+        return `${deviceName} (${browserName})`;
+      };
+
+      const getMacId = () => {
+        let macId = localStorage.getItem('deviceMacId');
+        if (!macId) {
+          const hexDigits = "0123456789ABCDEF";
+          let macParts = [];
+          for (let i = 0; i < 6; i++) {
+            macParts.push(hexDigits[Math.floor(Math.random() * 16)] + hexDigits[Math.floor(Math.random() * 16)]);
+          }
+          macId = macParts.join(":");
+          localStorage.setItem('deviceMacId', macId);
+        }
+        return macId;
+      };
+
+      const startConnection = async () => {
+        try {
+          const deviceName = getDeviceName();
+          const macId = getMacId();
+          const hubUrl = API_WEB_URLS.BASE.replace("/api/V1/", "/userStatusHub").replace("/api/v1/", "/userStatusHub");
+
+          console.log("🔌 User connecting to status tracking Hub:", hubUrl);
+          connection = new HubConnectionBuilder()
+            .withUrl(hubUrl)
+            .withAutomaticReconnect()
+            .build();
+
+          connection.on("ForceLogout", () => {
+            console.warn("⚠️ Force logout command received from administrator!");
+            localStorage.removeItem('authUser');
+            alert("Your session has been terminated by the Administrator.");
+            window.location.href = '/login';
+          });
+
+          connection.onreconnected(() => {
+            console.log("⚡ User session reconnected. Re-registering session...");
+            connection.send("RegisterSession", userId.toString(), deviceName, macId)
+              .catch(err => console.error("Error re-registering user session:", err));
+          });
+
+          await connection.start();
+          console.log("✅ User status tracking SignalR connected.");
+
+          await connection.send("RegisterSession", userId.toString(), deviceName, macId);
+          console.log("📝 Registered user session details:", { userId, deviceName, macId });
+
+        } catch (err) {
+          console.warn("❌ User status tracking SignalR connection failed:", err);
+        }
+      };
+
+      startConnection();
+    }
+
+    return () => {
+      if (connection) {
+        connection.stop()
+          .then(() => console.log("🔌 User status tracking SignalR stopped."))
+          .catch(err => console.warn("Error stopping user status SignalR connection:", err));
+      }
+    };
+  }, []);
+
   return (
     <div id="main-wrapper" className={`show ${sidebariconHover ? "iconhover-toggle": ""} ${ menuToggle ? "menu-toggle" : ""}`}>  
       <Nav />
@@ -414,7 +505,6 @@ function MainLayout(){
       <Footer />
     </div>
   )
-
 };
 
 export default Markup;
