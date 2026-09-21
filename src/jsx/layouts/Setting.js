@@ -47,7 +47,7 @@ const Setting = () => {
           className="bg-overlay"
           onClick={() => setSettingToggle(!settingToggle)}
         ></div>
-        <Link
+        {/* <Link
           to="#"
           className="sidebar-right-trigger wave-effect wave-effect-x"
           onClick={() => setSettingToggle(!settingToggle)}
@@ -55,7 +55,7 @@ const Setting = () => {
           <span>
             <i className="fa fa-cog fa-spin" />
           </span>
-        </Link>
+        </Link> */}
         <Link
           to="#"
           className="sidebar-close-trigger"
@@ -315,7 +315,7 @@ const Setting = () => {
           className="bg-close"
           onClick={() => setDemoToggle(!demoToggle)}
         ></div>
-        <Link
+        {/* <Link
           to="#"
           className="dz-demo-trigger"
           onClick={() => setDemoToggle(!demoToggle)}
@@ -323,7 +323,7 @@ const Setting = () => {
           <span>
             <i className="las la-tint"></i>
           </span>
-        </Link>
+        </Link> */}
         <div className="dz-demo-inner">
           <div className="dz-demo-header">
             <h4>Select A Demo</h4>

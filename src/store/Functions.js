@@ -16,7 +16,10 @@ export const Fn_FillListData = (dispatch, setState, gridName, apiURL, setKey, se
             callback: (response) => {
                 if (response && response.status === 200 && response.data) {
                    
-                    const dataList = response.data.dataList;
+                    let dataList = response.data.dataList;
+                    if (dataList === undefined || dataList === null) {
+                        dataList = response.data.response || response.data.data || response.data;
+                    }
                     
                     if (gridName === "gridDataSearch") {
                         const firstObject = dataList[0];

@@ -140,9 +140,7 @@ const filterByPermissions = (menuList, permissions) => {
     }
     return menuList.filter(item => {
         if (item.to === 'dashboard' || 
-            item.to === 'MachineDelayDashboard' || 
-            item.to === 'GlobalOptions' || 
-            item.to === 'Report_ContainerWise') return true;
+            item.to === 'MachineDelayDashboard') return true;
         const perm = permissions.find(p => (p.ModulePath || p.Path)?.toLowerCase() === item.to?.toLowerCase());
         return perm ? perm.IsView : false;
     });

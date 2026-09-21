@@ -18,6 +18,7 @@ import XLSX from 'xlsx';
 import { toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import JSZip from 'jszip';
+import usePagePermissions from '../../helpers/usePagePermissions';
 
 
 export const PageList_ItemMaster = () => {
@@ -57,6 +58,7 @@ export const PageList_ItemMaster = () => {
 	const [itemUploadError, setItemUploadError] = useState(null);
 	const [isSavingItemDetails, setIsSavingItemDetails] = useState(false);
 	const API_URL_SAVE = "ProductMasterExcel/0/token";
+	const { canAdd, canEdit, canDelete } = usePagePermissions('ItemMaster');
 
 	// Calculate counts based on IsDataUploaded status
 	const { uploadedCount, pendingCount } = useMemo(() => {
@@ -524,6 +526,7 @@ export const PageList_ItemMaster = () => {
 						type="checkbox"
 						checked={allSelected}
 						onChange={(e) => toggleSelectAll(e.target.checked, page)}
+						disabled={!canAdd && !canEdit && !canDelete}
 					/>
 				);
 			},
@@ -535,6 +538,7 @@ export const PageList_ItemMaster = () => {
 						type="checkbox"
 						checked={checked}
 						onChange={(e) => toggleSelectOne(id, e.target.checked)}
+						disabled={!canAdd && !canEdit && !canDelete}
 					/>
 				);
 			},
@@ -629,21 +633,25 @@ export const PageList_ItemMaster = () => {
   
 			  return (
 				<div style={{ display: 'flex', gap: '5px' }}>
-				  <Button
-					variant="primary"
-					size="sm"
-					onClick={() => btnUploadOnClick(row.original.Id)}
-				  >
-					Upload
-				  </Button>
-				  <Button
-					variant="success"
-					size="sm"
-					onClick={() => btnMarkAsUploaded(row.original)}
-					title="Mark as Uploaded"
-				  >
-					<i className="bi bi-check"></i>
-				  </Button>
+				  {canEdit && (
+					<>
+					  <Button
+						variant="primary"
+						size="sm"
+						onClick={() => btnUploadOnClick(row.original.Id)}
+					  >
+						Upload
+					  </Button>
+					  <Button
+						variant="success"
+						size="sm"
+						onClick={() => btnMarkAsUploaded(row.original)}
+						title="Mark as Uploaded"
+					  >
+						<i className="bi bi-check"></i>
+					  </Button>
+					</>
+				  )}
 				</div>
 			  );
 			},
@@ -679,14 +687,16 @@ export const PageList_ItemMaster = () => {
 			Cell: ({ row }) => {
 			  return (
 				<div style={{ display: 'flex', gap: '5px' }}>
-				  <Button
-					variant="primary"
-					size="sm"
-					onClick={() => btnEditOnClick(row.original.Id)}
-					title="Edit"
-				  >
-					Edit
-				  </Button>
+				  {canEdit && (
+					<Button
+					  variant="primary"
+					  size="sm"
+					  onClick={() => btnEditOnClick(row.original.Id)}
+					  title="Edit"
+					>
+					  Edit
+					</Button>
+				  )}
 				  <Button
 					variant="info"
 					size="sm"
@@ -698,28 +708,30 @@ export const PageList_ItemMaster = () => {
 				  </Button>
 				  {row.original.IsDataUploaded === 1 && (
 					<Button
-						variant="success"
-						size="sm"
-						onClick={() => btnShowRowData(row.original)}
-						title="Export to Excel"
+					  variant="success"
+					  size="sm"
+					  onClick={() => btnShowRowData(row.original)}
+					  title="Export to Excel"
 					>
-						<i className="bi bi-download"></i> Export
+					  <i className="bi bi-download"></i> Export
 					</Button>
 				  )}
-				  <Button
-					variant="danger"
-					size="sm"
-					onClick={() => btnDelete(row.original.Id)}
-					title="Delete"
-				  >
-					<i className="bi bi-trash"></i>
-				  </Button>
+				  {canDelete && (
+					<Button
+					  variant="danger"
+					  size="sm"
+					  onClick={() => btnDelete(row.original.Id)}
+					  title="Delete"
+					>
+					  <i className="bi bi-trash"></i>
+					</Button>
+				  )}
 				</div>
 			  );
 			},
 		  }, 
 
-	], [btnUploadOnClick, btnEditOnClick, btnDelete, btnDownloadImages, btnShowRowData, btnMarkAsUploaded, selectedIds, toggleSelectAll, toggleSelectOne]);
+	], [btnUploadOnClick, btnEditOnClick, btnDelete, btnDownloadImages, btnShowRowData, btnMarkAsUploaded, selectedIds, toggleSelectAll, toggleSelectOne, canEdit, canDelete]);
 
 	const data = useMemo( () => gridData, [gridData] )
 	const tableInstance = useTable({
@@ -912,7 +924,7 @@ export const PageList_ItemMaster = () => {
 							accept=".xlsx, .xlsm"
 							onChange={handleExcelUpload}
 							size="sm"
-							disabled={isUploading || isSaving}
+							disabled={isUploading || isSaving || (!canAdd && !canEdit)}
 						/>
 						{isUploading && (
 							<div className="spinner-border spinner-border-sm text-primary mt-1" role="status">
@@ -932,7 +944,7 @@ export const PageList_ItemMaster = () => {
 							variant="primary"
 							size="sm"
 							onClick={handleSaveExcel}
-							disabled={isSaving}
+							disabled={isSaving || (!canAdd && !canEdit)}
 							className="w-100"
 						>
 							{isSaving ? (
@@ -947,17 +959,19 @@ export const PageList_ItemMaster = () => {
 					)}
 				</Col>
 				<Col md="1">
-					<Button
-						type="button"
-						onClick={btnAddOnClick}
-						variant="success"
-						size="sm"
-					>
-						Add New
-					</Button>
+					{canAdd && (
+						<Button
+							type="button"
+							onClick={btnAddOnClick}
+							variant="success"
+							size="sm"
+						>
+							Add New
+						</Button>
+					)}
 				</Col>
 			</Row>
-			{selectedIds.length > 0 && (
+			{canDelete && selectedIds.length > 0 && (
 				<Row className="mb-2">
 					<Col md="12">
 						<Button
@@ -995,7 +1009,7 @@ export const PageList_ItemMaster = () => {
 										variant="success"
 										size="sm"
 										onClick={handleCombinedSubmit}
-										disabled={isSavingItemDetails || (!componentData.length && !machineData.length)}
+										disabled={isSavingItemDetails || (!componentData.length && !machineData.length) || (!canAdd && !canEdit)}
 										className="ms-2"
 									>
 										{isSavingItemDetails ? (

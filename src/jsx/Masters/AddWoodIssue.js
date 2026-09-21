@@ -146,7 +146,7 @@ const AddWoodIssue = () => {
 
     const resData = await Fn_AddEditData(
       dispatch,
-      setState,
+      () => {}, // Passed dummy function instead of setState to prevent state corruption
       { arguList: { id: 0, formData: vformData } },
       API_URL_SAVE,
       true,
@@ -166,7 +166,7 @@ const AddWoodIssue = () => {
   };
 
   // Use F_ContainerMasterL as value so items with the same Id (but different quantities/lines) are treated as distinct
-  const itemOptions = State.FillArray1.map((option) => ({
+  const itemOptions = (State.FillArray1 || []).map((option) => ({
     value: option.F_ContainerMasterL,
     label: `${option.Name} - ${option.ItemCode}`,
   }));
@@ -185,7 +185,7 @@ const AddWoodIssue = () => {
             disabled={loading}
           >
             <option value="">Select Shipment</option>
-            {State.FillArray.length > 0 &&
+            {State.FillArray && State.FillArray.length > 0 &&
               State.FillArray.map((option) => (
                 <option key={option.Id} value={option.Id}>
                   {option.Name}

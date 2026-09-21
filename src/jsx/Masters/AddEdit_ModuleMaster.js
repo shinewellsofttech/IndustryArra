@@ -56,19 +56,29 @@ const AddEdit_ModuleMaster = () => {
       let failCount = 0;
 
       for (const item of menuItems) {
-        const formData = new FormData();
-        formData.append("Name", item.title);
-        formData.append("Path", item.to);
-        formData.append("IsActive", "true");
+        try {
+          const formData = new FormData();
+          formData.append("Name", item.title);
+          formData.append("Path", item.to);
+          formData.append("IsActive", "true");
 
-        const response = await fetch(`${API_WEB_URLS.BASE}ModuleMaster/0/token`, {
-          method: "POST",
-          body: formData,
-        });
-        const result = await response.json();
-        if (result && result.success) {
+          const postData = {
+            arguList: {
+              id: 0,
+              formData: formData
+            }
+          };
+
+          await Fn_AddEditData(
+            dispatch,
+            () => {},
+            postData,
+            "ModuleMaster/0/token",
+            true
+          );
           successCount++;
-        } else {
+        } catch (err) {
+          console.error("Failed to sync item:", item, err);
           failCount++;
         }
       }

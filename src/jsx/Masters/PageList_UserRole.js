@@ -3,11 +3,13 @@ import { useDispatch } from "react-redux";
 import { useNavigate } from "react-router-dom";
 import { Fn_FillListData } from "../../store/Functions";
 import { API_WEB_URLS } from "../../constants/constAPI";
+import usePagePermissions from "../../helpers/usePagePermissions";
 
 const PageList_UserRole = () => {
   const [state, setState] = useState({ FillArray: [], isProgress: true });
   const dispatch = useDispatch();
   const navigate = useNavigate();
+  const { canAdd, canEdit } = usePagePermissions('UserRole');
 
   const API_URL = `${API_WEB_URLS.MASTER}/0/token/UserRole`;
 
@@ -33,7 +35,7 @@ const PageList_UserRole = () => {
         <div className="card">
           <div className="card-header d-flex justify-content-between align-items-center">
             <h4 className="card-title">User Role</h4>
-            <button className="btn btn-primary" onClick={handleAdd}>Add User Role</button>
+            {canAdd && <button className="btn btn-primary" onClick={handleAdd}>Add User Role</button>}
           </div>
           <div className="card-body">
             <div className="table-responsive">
@@ -58,7 +60,7 @@ const PageList_UserRole = () => {
                         <td>{row.Description}</td>
                         <td>{row.IsActive ? "Yes" : "No"}</td>
                         <td>
-                          <button className="btn btn-sm btn-secondary me-2" onClick={() => handleEdit(row.Id)}>Edit</button>
+                          {canEdit && <button className="btn btn-sm btn-secondary me-2" onClick={() => handleEdit(row.Id)}>Edit</button>}
                         </td>
                       </tr>
                     ))

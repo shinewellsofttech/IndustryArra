@@ -6,6 +6,22 @@ import { Pie } from 'react-chartjs-2';
 import { Chart as ChartJS, ArcElement, Tooltip, Legend } from 'chart.js';
 import { Fn_AddEditData, Fn_FillListData, Fn_GetReport } from '../../store/Functions';
 import { API_WEB_URLS } from '../../constants/constAPI';
+import { 
+  FaCircle, 
+  FaSpinner, 
+  FaCheckCircle, 
+  FaClipboardList, 
+  FaInfoCircle, 
+  FaChartBar, 
+  FaBuilding, 
+  FaFileImport, 
+  FaChartPie, 
+  FaSave, 
+  FaCogs, 
+  FaFolderOpen, 
+  FaList, 
+  FaListOl 
+} from 'react-icons/fa';
 
 ChartJS.register(ArcElement, Tooltip, Legend);
 
@@ -31,9 +47,9 @@ const ReportingEntrySystem = () => {
   const API_URL_ByTransferComponent = `${API_WEB_URLS.MASTER}/0/token/NewTransferDataComponents`;
   const API_URL_ByTransferMachine = `${API_WEB_URLS.MASTER}/0/token/TransferComponentMachineData`;
   const cards = [
-    { id: 1, title: 'Not Started', color: '#10b981', icon: 'fa-circle' },
-    { id: 2, title: 'Running', color: '#3b82f6', icon: 'fa-spinner' },
-    { id: 3, title: 'Done', color: '#8b5cf6', icon: 'fa-check-circle' }
+    { id: 1, title: 'Not Started', color: '#10b981', icon: FaCircle },
+    { id: 2, title: 'Running', color: '#3b82f6', icon: FaSpinner },
+    { id: 3, title: 'Done', color: '#8b5cf6', icon: FaCheckCircle }
   ];
 
   const reloadData = async () => {
@@ -373,44 +389,47 @@ const ReportingEntrySystem = () => {
         <Card style={{ height: '100%', position: 'sticky', top: '20px' }}>
           <CardHeader>
             <h5 className="mb-0">
-              <i className="fas fa-list-check me-2"></i>
+              <FaClipboardList className="me-2" />
               New Reporting Entry
             </h5>
           </CardHeader>
           <CardBody style={{ padding: '0' }}>
             <div className="cards-container" style={{ display: 'flex', flexDirection: 'column', gap: '12px', padding: '15px' }}>
-              {cards.map((card) => (
-                <div
-                  key={card.id}
-                  className={`card-item ${selectedCard === card.id ? 'active' : ''}`}
-                  onClick={() => handleCardClick(card)}
-                  style={{
-                    borderLeft: `4px solid ${card.color}`,
-                    cursor: 'pointer',
-                    transition: 'all 0.3s ease',
-                    padding: '15px',
-                    borderRadius: '8px',
-                    backgroundColor: selectedCard === card.id ? '#f3f4f6' : '#fff',
-                    boxShadow: selectedCard === card.id ? `0 4px 8px ${card.color}33` : '0 1px 3px rgba(0,0,0,0.1)',
-                    border: `1px solid ${selectedCard === card.id ? card.color : '#e9ecef'}`,
-                  }}
-                >
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                    <i
-                      className={`fas ${card.icon}`}
-                      style={{ color: card.color, fontSize: '18px' }}
-                    ></i>
-                    <div>
-                      <h6 style={{ margin: '0', color: card.color, fontWeight: '600', fontSize: '14px' }}>
-                        {card.title}
-                      </h6>
-                      <p style={{ margin: '2px 0 0 0', color: '#666', fontSize: '12px' }}>
-                        Click to select
-                      </p>
+              {cards.map((card) => {
+                const CardIcon = card.icon;
+                return (
+                  <div
+                    key={card.id}
+                    className={`card-item ${selectedCard === card.id ? 'active' : ''}`}
+                    onClick={() => handleCardClick(card)}
+                    style={{
+                      borderLeft: `4px solid ${card.color}`,
+                      cursor: 'pointer',
+                      transition: 'all 0.3s ease',
+                      padding: '15px',
+                      borderRadius: '8px',
+                      backgroundColor: selectedCard === card.id ? '#f3f4f6' : '#fff',
+                      boxShadow: selectedCard === card.id ? `0 4px 8px ${card.color}33` : '0 1px 3px rgba(0,0,0,0.1)',
+                      border: `1px solid ${selectedCard === card.id ? card.color : '#e9ecef'}`,
+                    }}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                      <CardIcon
+                        className={card.id === 2 ? "fa-spin" : ""}
+                        style={{ color: card.color, fontSize: '18px' }}
+                      />
+                      <div>
+                        <h6 style={{ margin: '0', color: card.color, fontWeight: '600', fontSize: '14px' }}>
+                          {card.title}
+                        </h6>
+                        <p style={{ margin: '2px 0 0 0', color: '#666', fontSize: '12px' }}>
+                          Click to select
+                        </p>
+                      </div>
                     </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
 
             {selectedCard && (
@@ -425,7 +444,7 @@ const ReportingEntrySystem = () => {
                 }}
               >
                 <p style={{ margin: '0', fontSize: '13px', fontWeight: '600', color: '#1e40af' }}>
-                  <i className="fas fa-info-circle me-2"></i>
+                  <FaInfoCircle className="me-2" />
                   Selected: <strong>{cards.find(c => c.id === selectedCard)?.title}</strong>
                 </p>
               </div>
@@ -443,7 +462,7 @@ const ReportingEntrySystem = () => {
           <CardBody>
             {!selectedCard ? (
               <div style={{ padding: '20px', textAlign: 'center', color: '#6c757d' }}>
-                <i className="fas fa-chart-bar" style={{ fontSize: '48px', marginBottom: '15px', display: 'block' }}></i>
+                <FaChartBar style={{ fontSize: '48px', marginBottom: '15px', display: 'block', margin: '0 auto 15px auto' }} />
                 <p>Select a card from the left panel to view reporting details</p>
               </div>
             ) : (
@@ -552,7 +571,7 @@ const ReportingEntrySystem = () => {
       {/* Department Modal */}
       <Modal isOpen={showModal} toggle={() => setShowModal(false)} size="lg">
         <ModalHeader toggle={() => setShowModal(false)}>
-          <i className="fas fa-building me-2"></i>
+          <FaBuilding className="me-2" />
           Departments - <strong>{selectedContainer?.ContainerNumber}</strong>
         </ModalHeader>
         <ModalBody>
@@ -639,7 +658,7 @@ const ReportingEntrySystem = () => {
       {/* Import Details Modal */}
       <Modal isOpen={showDetailsModal} toggle={() => setShowDetailsModal(false)} size="lg">
         <ModalHeader toggle={() => setShowDetailsModal(false)}>
-          <i className="fas fa-file-import me-2"></i>
+          <FaFileImport className="me-2" />
           Import Details - <strong>{selectedDepartment?.DepartmentName}</strong>
         </ModalHeader>
         <ModalBody style={{ maxHeight: '70vh', overflowY: 'auto' }}>
@@ -647,7 +666,7 @@ const ReportingEntrySystem = () => {
           {state?.DepartmentWiseData && state?.DepartmentWiseData.length > 0 && (
             <div style={{ marginBottom: '30px', backgroundColor: '#f8f9fa', padding: '20px', borderRadius: '8px' }}>
               <h6 style={{ marginBottom: '20px', fontWeight: '600', textAlign: 'center' }}>
-                <i className="fas fa-chart-pie me-2"></i>
+                <FaChartPie className="me-2" />
                 Quantity Distribution
               </h6>
               <div style={{ height: '250px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -854,7 +873,7 @@ const ReportingEntrySystem = () => {
                         e.currentTarget.style.backgroundColor = '#3b82f6';
                       }}
                     >
-                      <i className="fas fa-save me-2"></i>Save
+                      <FaSave className="me-2" />Save
                     </button>
                   </div>
                 </div>
@@ -876,7 +895,7 @@ const ReportingEntrySystem = () => {
       {/* Machine Department Modal - For DepartmentId = 1 */}
       <Modal isOpen={showMachineModal} toggle={() => setShowMachineModal(false)} size="lg">
         <ModalHeader toggle={() => setShowMachineModal(false)}>
-          <i className="fas fa-cogs me-2"></i>
+          <FaCogs className="me-2" />
           Machine Department Items - <strong>{selectedDepartment?.DepartmentName}</strong>
         </ModalHeader>
         <ModalBody style={{ maxHeight: '70vh', overflowY: 'auto' }}>
@@ -960,7 +979,7 @@ const ReportingEntrySystem = () => {
                       e.currentTarget.style.backgroundColor = '#10b981';
                     }}
                   >
-                    <i className="fas fa-folder-open me-2"></i>Open
+                    <FaFolderOpen className="me-2" />Open
                   </button>
                 </div>
               ))
@@ -981,7 +1000,7 @@ const ReportingEntrySystem = () => {
       {/* Component Details Fullscreen Modal */}
       <Modal isOpen={showComponentModal} toggle={() => setShowComponentModal(false)} fullscreen>
         <ModalHeader toggle={() => setShowComponentModal(false)}>
-          <i className="fas fa-list me-2"></i>
+          <FaList className="me-2" />
           Component Details
         </ModalHeader>
         <ModalBody style={{ overflowX: 'auto' }}>
@@ -1096,7 +1115,7 @@ const ReportingEntrySystem = () => {
       {/* Sequence Modal */}
       <Modal isOpen={showSequenceModal} toggle={() => setShowSequenceModal(false)} size="lg">
         <ModalHeader toggle={() => setShowSequenceModal(false)}>
-          <i className="fas fa-list-ol me-2"></i>
+          <FaListOl className="me-2" />
           Sequence Details
         </ModalHeader>
         <ModalBody style={{ overflowX: 'auto' }}>

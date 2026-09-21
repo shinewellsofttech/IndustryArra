@@ -12,6 +12,7 @@ import { useDispatch } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
 import { API_WEB_URLS } from '../../constants/constAPI';
 import { Fn_FillListData } from '../../store/Functions';
+import usePagePermissions from '../../helpers/usePagePermissions';
 
 export const PageList_UserMaster = () => {
 	const [State, setState] = useState({
@@ -28,6 +29,7 @@ export const PageList_UserMaster = () => {
 	const API_URL = API_WEB_URLS.MASTER + "/0/token/Customermaster";
 	const rtPage_Add = "/AddUser";
 	const rtPage_Edit = "/AddUser";
+	const { canAdd, canEdit } = usePagePermissions('UserMaster');
 	useEffect(() => {
 		const fetchData = async () => {
 		  setLoading(true);
@@ -85,18 +87,20 @@ export const PageList_UserMaster = () => {
 		  {
 			Header: "Edit",
 			Cell: ({ row }) => (
-			  <Button
-				variant="warning"
-				size="sm"
-				onClick={() => btnEditOnClick(row.original.Id)}
-			  >
-				Edit
-			  </Button>
+			  canEdit ? (
+				<Button
+				  variant="warning"
+				  size="sm"
+				  onClick={() => btnEditOnClick(row.original.Id)}
+				>
+				  Edit
+				</Button>
+			  ) : null
 			),
 		  }, 
 
 	]
-	const columns = useMemo( () => COLUMNS, [] )
+	const columns = useMemo( () => COLUMNS, [canEdit] )
 	const data = useMemo( () => gridData, [] )
 	const tableInstance = useTable({
 		columns,
@@ -137,14 +141,16 @@ export const PageList_UserMaster = () => {
 					<GlobalFilter filter={globalFilter} setFilter={setGlobalFilter} />
 				</Col>
 				<Col md="1">
-					<Button
-						type="button"
-						onClick={btnAddOnClick}
-						variant="success"
-						size="sm"
-					>
-						Add New
-					</Button>
+					{canAdd && (
+						<Button
+							type="button"
+							onClick={btnAddOnClick}
+							variant="success"
+							size="sm"
+						>
+							Add New
+						</Button>
+					)}
 				</Col>
 			</Row>
 			<div className="card">

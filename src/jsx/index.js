@@ -13,6 +13,7 @@ import "./step.css";
 import Nav from "./layouts/nav";
 import Footer from "./layouts/Footer";
 import ScrollToTop from "./layouts/ScrollToTop";
+import { closeSidebarMobile } from "./layouts/nav/sidebarHover";
 /// Dashboard
 import Home from "./components/Dashboard/Home";
 import DashboardDark from "./components/Dashboard/DashboardDark";
@@ -351,12 +352,12 @@ const Markup = () => {
 
     if (perm) {
       if (route.url.startsWith('Add')) {
-        return perm.IsAdd || perm.IsView;
+        return !!perm.IsAdd;
       }
       if (route.url.startsWith('Edit')) {
-        return perm.IsEdit || perm.IsView;
+        return !!perm.IsEdit;
       }
-      return perm.IsView;
+      return !!perm.IsView;
     }
 
     const allModulesList = [
@@ -365,7 +366,8 @@ const Markup = () => {
       "JobCardForm", "MachineComponentMapReport", "MachineMaster", "ManualReportEntry", 
       "ModuleMaster", "ReportingEntrySystem", "PermissionMatrix", "ContainerEntrySystem", 
       "ContainerMaster", "ContainerMasterReport", "ContainerEntryReport", 
-      "UserMasterCrud", "UserRole", "WoodComponentReport", "AddWoodIssue", "QRScanner"
+      "UserMasterCrud", "UserRole", "WoodComponentReport", "AddWoodIssue", "QRScanner",
+      "GlobalOptions", "Report_ContainerWise"
     ];
 
     if (allModulesList.some(m => m.toLowerCase() === checkPath.toLowerCase())) {
@@ -497,7 +499,7 @@ function MainLayout(){
   return (
     <div id="main-wrapper" className={`show ${sidebariconHover ? "iconhover-toggle": ""} ${ menuToggle ? "menu-toggle" : ""}`}>  
       <Nav />
-      <div className="content-body" style={{ minHeight: window.screen.height - 45 }}>
+      <div className="content-body" style={{ minHeight: window.screen.height - 45 }} onClick={closeSidebarMobile}>
           <div className="container-fluid">
             <Outlet />                
           </div>

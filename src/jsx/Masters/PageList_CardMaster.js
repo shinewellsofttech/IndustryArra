@@ -21,6 +21,7 @@ import { API_WEB_URLS } from "../../constants/constAPI";
 import * as XLSX from "xlsx";
 import { ToastContainer, toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
+import usePagePermissions from "../../helpers/usePagePermissions";
 const PageList_CardMaster = () => {
   const [State, setState] = useState({
     id: 0,
@@ -56,6 +57,7 @@ const PageList_CardMaster = () => {
 
   const dispatch = useDispatch();
   const navigate = useNavigate();
+  const { canAdd, canEdit } = usePagePermissions('CardMaster');
   const API_URL = API_WEB_URLS.MASTER + "/0/token/MainMaster";
   // const API_URL1 = `${API_WEB_URLS.MASTER}/0/token/Items`;
   const API_URL3 = `${API_WEB_URLS.MASTER}/0/token/ItemsForJobCard`;
@@ -412,14 +414,16 @@ const PageList_CardMaster = () => {
           )}
         </Col>
         <Col md="1">
-          <Button
-            type="button"
-            onClick={btnAddOnClick}
-            variant="success"
-            size="sm"
-          >
-            Add New
-          </Button>
+          {canAdd && (
+            <Button
+              type="button"
+              onClick={btnAddOnClick}
+              variant="success"
+              size="sm"
+            >
+              Add New
+            </Button>
+          )}
         </Col>
       </Row>
 
@@ -430,7 +434,7 @@ const PageList_CardMaster = () => {
               type="button"
               onClick={btnCreateJobCard}
               variant="warning"
-              disabled={!IsSample && selectedIds.length === 0}
+              disabled={(!canAdd && !canEdit) || (!IsSample && selectedIds.length === 0)}
               size="sm"
               className="me-2"
             >
@@ -449,6 +453,7 @@ const PageList_CardMaster = () => {
               type="checkbox"
               checked={IsSample}
               onChange={(e) => setIsSample(e.target.checked)}
+              disabled={!canAdd && !canEdit}
               className="me-2"
             />
             <label className="form-label mb-0 small">Is Sample</label>
@@ -495,7 +500,7 @@ const PageList_CardMaster = () => {
                           selectedIds.length === (gridData?.length || 0) &&
                           (gridData?.length || 0) > 0
                         }
-                        disabled={(gridData?.length || 0) === 0}
+                        disabled={(!canAdd && !canEdit) || (gridData?.length || 0) === 0}
                       />
                     </th>
                     <th>Id</th>
@@ -522,6 +527,7 @@ const PageList_CardMaster = () => {
                             type="checkbox"
                             checked={selectedIds.includes(item?.Id)}
                             onChange={() => handleCheckboxChange(item?.Id)}
+                            disabled={!canAdd && !canEdit}
                           />
                         </td>
                         <td>{item?.Id || "N/A"}</td>
@@ -537,13 +543,15 @@ const PageList_CardMaster = () => {
                         <td>{item?.T2?.toFixed(2) || "0.00"}</td>
                         <td>{item?.Qty2?.toFixed(2) || "0.00"}</td>
                         <td>
-                          <Button
-                            variant="warning"
-                            size="sm"
-                            onClick={() => btnEditOnClick(item?.Id)}
-                          >
-                            Edit
-                          </Button>
+                          {canEdit && (
+                            <Button
+                              variant="warning"
+                              size="sm"
+                              onClick={() => btnEditOnClick(item?.Id)}
+                            >
+                              Edit
+                            </Button>
+                          )}
                         </td>
                       </tr>
                     ))

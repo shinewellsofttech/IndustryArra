@@ -1,10 +1,9 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { Row, Col, Button, Table, Card, Badge, Form, Spinner, Modal, Tabs, Tab } from "react-bootstrap";
-import axios from "axios";
 import { Doughnut, Bar } from "react-chartjs-2";
 import { API_WEB_URLS } from "../../constants/constAPI";
 import { HubConnectionBuilder } from "@microsoft/signalr";
-import { Fn_AddEditData } from "../../store/Functions";
+import { Fn_AddEditData, Fn_FillListData } from "../../store/Functions";
 import { useDispatch } from "react-redux";
 import {
   Chart as ChartJS,
@@ -112,29 +111,29 @@ const MachineDelayDashboard = () => {
   // Retrieve user session data
   const userData = JSON.parse(localStorage.getItem("authUser")) || {};
   const userId = userData.id || userData.UserId || 0;
-  const userToken = userData.token || userData.UserToken || "token";
+  // JWT sent via Authorization header by ApiHelper - use literal 'token' in path
 
   // Fetch dashboard data
   const fetchDashboardData = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
-      const response = await axios.get(
-        `${API_WEB_URLS.BASE}MachineDelayDashboard/${userId}/${userToken}`
+      const dataList = await Fn_FillListData(
+        dispatch,
+        setData,
+        "gridData",
+        `MachineDelayDashboard/${userId}/token`
       );
-      if (response.data && response.data.success && response.data.data) {
-        setData(response.data.data);
-        setThresholdVal(response.data.data.thresholdHours || 4);
-      } else {
-        setError(response.data.message || "Failed to load dashboard data.");
+      if (dataList) {
+        setThresholdVal(dataList.thresholdHours || 4);
       }
     } catch (err) {
       console.error("Dashboard fetch error:", err);
-      setError(err.response?.data?.message || err.message || "An error occurred.");
+      setError(err.message || "An error occurred.");
     } finally {
       setLoading(false);
     }
-  }, [userId, userToken]);
+  }, [dispatch, userId]);
 
   useEffect(() => {
     fetchDashboardData();
@@ -187,19 +186,25 @@ const MachineDelayDashboard = () => {
       const formData = new FormData();
       formData.append("ThresholdHours", thresholdVal);
 
-      const response = await axios.post(
-        `${API_WEB_URLS.BASE}MachineDelayDashboard/UpdateThreshold/${userId}/${userToken}`,
-        formData
+      const postData = {
+        arguList: {
+          id: 0,
+          formData: formData
+        }
+      };
+
+      await Fn_AddEditData(
+        dispatch,
+        () => {},
+        postData,
+        `MachineDelayDashboard/UpdateThreshold/${userId}/token`,
+        true
       );
-      if (response.data && response.data.success) {
-        setShowThresholdInput(false);
-        fetchDashboardData();
-      } else {
-        alert(response.data.message || "Failed to update threshold.");
-      }
+      setShowThresholdInput(false);
+      fetchDashboardData();
     } catch (err) {
       console.error("Threshold update error:", err);
-      alert(err.response?.data?.message || err.message || "Error updating threshold.");
+      alert(err || "Error updating threshold.");
     } finally {
       setIsUpdatingThreshold(false);
     }
@@ -214,17 +219,15 @@ const MachineDelayDashboard = () => {
     setShowFlowModal(true);
 
     try {
-      const response = await axios.get(
-        `${API_WEB_URLS.BASE}MachineDelayDashboard/JobCardFlow/${userId}/${userToken}/${jobCardId}`
+      await Fn_FillListData(
+        dispatch,
+        setJobCardFlow,
+        "gridData",
+        `MachineDelayDashboard/JobCardFlow/${userId}/token/${jobCardId}`
       );
-      if (response.data && response.data.success && response.data.data) {
-        setJobCardFlow(response.data.data);
-      } else {
-        alert(response.data.message || "Failed to fetch flow steps.");
-      }
     } catch (err) {
       console.error("Flow fetch error:", err);
-      alert(err.response?.data?.message || err.message || "Error loading flow.");
+      alert(err.message || "Error loading flow.");
     } finally {
       setLoadingFlow(false);
     }

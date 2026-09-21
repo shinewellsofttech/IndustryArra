@@ -10,6 +10,7 @@ import { Container } from 'reactstrap';
 import { useDispatch } from 'react-redux';
 import { Fn_FillListData } from '../../store/Functions';
 import { API_WEB_URLS } from '../../constants/constAPI';
+import usePagePermissions from '../../helpers/usePagePermissions';
 
 export const PageList_MachineMaster = () => {
 	const [gridData, setGridData] = useState([]);
@@ -21,6 +22,7 @@ export const PageList_MachineMaster = () => {
     const API_URL_Category = API_WEB_URLS.MASTER + "/0/token/Category/Id/0";
     const dispatch = useDispatch();
     const [loading, setLoading] = useState(true);
+    const { canAdd, canEdit } = usePagePermissions('MachineMaster');
     useEffect(() => {
 		const fetchData = async () => {
 		  console.log('useEffect running');
@@ -69,20 +71,22 @@ export const PageList_MachineMaster = () => {
 
 
 		  {
-			Header: "Edit",
-			Cell: ({ row }) => (
-			  <Button
-				variant="warning"
-				size="sm"
-				onClick={() => btnEditOnClick(row.original.Id)}
-			  >
-				Edit
-			  </Button>
-			),
-		  }, 
+		Header: "Edit",
+		Cell: ({ row }) => (
+		  canEdit ? (
+			<Button
+			  variant="warning"
+			  size="sm"
+			  onClick={() => btnEditOnClick(row.original.Id)}
+			>
+			  Edit
+			</Button>
+		  ) : null
+		),
+	  }, 
 
 	]
-	const columns = useMemo( () => COLUMNS, [categoryList] )
+	const columns = useMemo( () => COLUMNS, [categoryList, canEdit] )
 	const data = useMemo( () => gridData, [gridData] )
 	const tableInstance = useTable({
 		columns,
@@ -118,15 +122,17 @@ export const PageList_MachineMaster = () => {
 					<h4 className="page-title mb-0" style={{fontFamily:'Poppins'}}>Machine Master</h4>
 				</Col>
 				<Col md="3" className="ms-auto">
-					<Button
-						type="button"
-						onClick={btnAddOnClick}
-						variant="success"
-						size="sm"
-						className="w-100"
-					>
-						<i className="fas fa-plus me-1"></i>Add New
-					</Button>
+					{canAdd && (
+						<Button
+							type="button"
+							onClick={btnAddOnClick}
+							variant="success"
+							size="sm"
+							className="w-100"
+						>
+							<i className="fas fa-plus me-1"></i>Add New
+						</Button>
+					)}
 				</Col>
 			</Row>
 			<Row className="mb-2">

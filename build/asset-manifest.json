@@ -1,20 +1,20 @@
 {
   "files": {
-    "main.css": "/static/css/main.3eb014b0.css",
-    "main.js": "/static/js/main.3721eecf.js",
-    "static/js/323.106d4b41.chunk.js": "/static/js/323.106d4b41.chunk.js",
-    "static/js/527.a330c16f.chunk.js": "/static/js/527.a330c16f.chunk.js",
-    "static/js/459.2b56b867.chunk.js": "/static/js/459.2b56b867.chunk.js",
-    "static/js/932.0a8b85bf.chunk.js": "/static/js/932.0a8b85bf.chunk.js",
-    "static/js/688.0ff89d12.chunk.js": "/static/js/688.0ff89d12.chunk.js",
-    "static/js/845.7e2d4831.chunk.js": "/static/js/845.7e2d4831.chunk.js",
-    "static/js/415.87d893f5.chunk.js": "/static/js/415.87d893f5.chunk.js",
-    "static/js/886.c30b21e0.chunk.js": "/static/js/886.c30b21e0.chunk.js",
-    "static/js/596.96dcfabe.chunk.js": "/static/js/596.96dcfabe.chunk.js",
-    "static/js/699.81bd7b44.chunk.js": "/static/js/699.81bd7b44.chunk.js",
-    "static/js/82.da2b74d3.chunk.js": "/static/js/82.da2b74d3.chunk.js",
-    "static/js/239.56fcf992.chunk.js": "/static/js/239.56fcf992.chunk.js",
-    "static/js/206.fe8d9f55.chunk.js": "/static/js/206.fe8d9f55.chunk.js",
+    "main.css": "/static/css/main.97c14224.css",
+    "main.js": "/static/js/main.c4be8e38.js",
+    "static/js/323.b7f3071e.chunk.js": "/static/js/323.b7f3071e.chunk.js",
+    "static/js/527.16f3f2f8.chunk.js": "/static/js/527.16f3f2f8.chunk.js",
+    "static/js/459.dbce296f.chunk.js": "/static/js/459.dbce296f.chunk.js",
+    "static/js/932.80bc642a.chunk.js": "/static/js/932.80bc642a.chunk.js",
+    "static/js/688.83e1967a.chunk.js": "/static/js/688.83e1967a.chunk.js",
+    "static/js/845.214feec8.chunk.js": "/static/js/845.214feec8.chunk.js",
+    "static/js/415.a7ffb19f.chunk.js": "/static/js/415.a7ffb19f.chunk.js",
+    "static/js/886.018bef21.chunk.js": "/static/js/886.018bef21.chunk.js",
+    "static/js/596.01a29864.chunk.js": "/static/js/596.01a29864.chunk.js",
+    "static/js/699.c9034fb1.chunk.js": "/static/js/699.c9034fb1.chunk.js",
+    "static/js/82.a3d6b911.chunk.js": "/static/js/82.a3d6b911.chunk.js",
+    "static/js/239.3bdc2514.chunk.js": "/static/js/239.3bdc2514.chunk.js",
+    "static/js/206.6caa9e86.chunk.js": "/static/js/206.6caa9e86.chunk.js",
     "static/media/materialdesignicons-webfont.svg?v=2.4.85": "/static/media/materialdesignicons-webfont.d9035469ed9a1d0991d8.svg",
     "static/media/la-brands-400.svg": "/static/media/la-brands-400.511a8f9310e28ebea8f8.svg",
     "static/media/la-solid-900.svg": "/static/media/la-solid-900.0f874d69730f8631d632.svg",
@@ -130,7 +130,7 @@
     "static/media/check.svg": "/static/media/check.86e716744d392803c0d8.svg"
   },
   "entrypoints": [
-    "static/css/main.3eb014b0.css",
-    "static/js/main.3721eecf.js"
+    "static/css/main.97c14224.css",
+    "static/js/main.c4be8e38.js"
   ]
 }

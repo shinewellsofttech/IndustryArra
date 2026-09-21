@@ -6,8 +6,8 @@ import {Collapse} from 'react-bootstrap';
 import { Link } from "react-router-dom";
 import {useScrollPosition} from "@n8tb1t/use-scroll-position";
 import { ThemeContext } from "../../../context/ThemeContext";
-import {MenuList} from './Menu';
-import { openSidebar, scheduleSidebarClose } from "./sidebarHover";
+import { MenuList } from './Menu';
+import { openSidebar, scheduleSidebarClose, closeSidebarMobile } from "./sidebarHover";
 
 
 const reducer = (previousState, updatedState) => ({
@@ -121,7 +121,7 @@ const SideBar = () => {
                                 </span>
                             </Link>
                         :
-                          <Link  to={data.to} >
+                          <Link to={data.to} onClick={closeSidebarMobile}>
                               {data.iconStyle}
                               <span 
                                 className={`nav-text ${data.customClass || ''}`}
@@ -156,7 +156,7 @@ const SideBar = () => {
                                                   return(	
                                                     <>
                                                       <li key={index}>
-                                                        <Link className={`${path === data.to ? "mm-active" : ""}`} to={data.to}>{data.title}</Link>
+                                                        <Link className={`${path === data.to ? "mm-active" : ""}`} to={data.to} onClick={closeSidebarMobile}>{data.title}</Link>
                                                       </li>
                                                     </>
                                                   )
@@ -165,7 +165,7 @@ const SideBar = () => {
                                           </Collapse>
                                         </>
                                       :
-                                      <Link to={data.to}>
+                                      <Link to={data.to} onClick={closeSidebarMobile}>
                                         {data.title}
                                       </Link>
                                     }

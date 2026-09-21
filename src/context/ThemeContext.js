@@ -19,7 +19,7 @@ const ThemeContextProvider = (props) => {
 	const [sidebarColor, setSidebarColor] = useState("color_1");
 	const [iconHover, setIconHover] = useState(false);
   const [sidebariconHover, setSidebariconHover] = useState(false);
-	const [menuToggle, setMenuToggle] = useState(true);
+	const [menuToggle, setMenuToggle] = useState(typeof window !== 'undefined' ? window.innerWidth > 768 : true);
 	const [background, setBackground] = useState(defaultTheme);
 	const [containerPosition_, setcontainerPosition_] = useState({value: "wide-boxed", label: "Wide Boxed",});
   const body = document.querySelector("body");

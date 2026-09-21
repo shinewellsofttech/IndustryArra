@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState, useCallback } from "react";
 import { Html5Qrcode } from "html5-qrcode";
 import { parseBarcodeValue } from "./BarcodeHelper";
-import { Fn_GetReport, Fn_AddEditData } from "../../store/Functions";
+import { Fn_GetReport, Fn_AddEditData, Fn_FillListData } from "../../store/Functions";
 import { useDispatch } from "react-redux";
 import { useNavigate } from "react-router-dom";
 import { HubConnectionBuilder, HttpTransportType } from "@microsoft/signalr";
@@ -252,6 +252,551 @@ console.log("machine", machine,'IsEngagedElsewhere',isEngagedElsewhere,'skipMach
   );
 };
 
+// ─── Auth Header Helper for Scanner API Calls ──────────────────────────────
+const getAuthHeaders = () => {
+  try {
+    const authUser = JSON.parse(localStorage.getItem("authUser") || "{}");
+    const token =
+      authUser?.jwtToken ||
+      authUser?.token ||
+      authUser?.UserToken ||
+      authUser?.UserTokenNew ||
+      authUser?.accessToken ||
+      authUser?.Token ||
+      localStorage.getItem("token") ||
+      localStorage.getItem("jwtToken") ||
+      localStorage.getItem("accessToken");
+    if (token) {
+      const cleanToken = String(token).trim();
+      return {
+        Authorization: cleanToken.startsWith("Bearer ") ? cleanToken : `Bearer ${cleanToken}`
+      };
+    }
+  } catch (e) {
+    console.error("Error reading auth header:", e);
+  }
+  return {};
+};
+
+// ─── Machine Swap Modal Component ──────────────────────────────────────────
+const MachineSwapModal = ({
+  isOpen,
+  onClose,
+  currentMachine,
+  jobCard,
+  availableMachines,
+  loadingMachines,
+  onSubmitSwap,
+  submitLoading,
+  isBulk = false,
+  sessionsList = []
+}) => {
+  const [targetMachineId, setTargetMachineId] = useState("");
+  const [reasonCategory, setReasonCategory] = useState("Workload Balancing / Long Queue");
+  const [customReason, setCustomReason] = useState("");
+  const [searchFilter, setSearchFilter] = useState("");
+
+  useEffect(() => {
+    if (isOpen) {
+      setTargetMachineId("");
+      setReasonCategory("Workload Balancing / Long Queue");
+      setCustomReason("");
+      setSearchFilter("");
+    }
+  }, [isOpen]);
+
+  if (!isOpen || !currentMachine) return null;
+
+  const currentMachId = currentMachine?.F_MachineMaster ?? currentMachine?.ID ?? currentMachine?.Id;
+  const isAlreadyStarted = !!(currentMachine.StartTime && String(currentMachine.StartTime).trim() !== "");
+
+  const filteredMachines = (availableMachines || []).filter(m => {
+    if (!searchFilter.trim()) return true;
+    const q = searchFilter.toLowerCase().trim();
+    const name = String(m.Name || m.MachineName || "").toLowerCase();
+    const no = String(m.MachineNo || m.Code || "").toLowerCase();
+    return name.includes(q) || no.includes(q);
+  });
+
+  return (
+    <div style={{
+      position: "fixed",
+      top: 0,
+      left: 0,
+      right: 0,
+      bottom: 0,
+      backgroundColor: "rgba(15, 23, 42, 0.65)",
+      backdropFilter: "blur(3px)",
+      zIndex: 99999,
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "center",
+      padding: "16px",
+      fontFamily: "Poppins, sans-serif"
+    }}>
+      <div style={{
+        backgroundColor: "#fff",
+        borderRadius: "14px",
+        maxWidth: "540px",
+        width: "100%",
+        boxShadow: "0 25px 50px -12px rgba(0, 0, 0, 0.25)",
+        overflow: "hidden"
+      }}>
+        {/* Header */}
+        <div style={{
+          padding: "16px 20px",
+          background: "linear-gradient(135deg, #1e293b 0%, #0f172a 100%)",
+          color: "#fff",
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center"
+        }}>
+          <div>
+            <h5 style={{ margin: 0, fontSize: "16px", fontWeight: 700, color: "#fff", display: "flex", alignItems: "center", gap: "8px" }}>
+              <i className="fas fa-exchange-alt" style={{ color: "#38bdf8" }}></i>
+              {isBulk ? `Bulk Machine Switch (${sessionsList.length} Job Cards)` : "Change / Re-assign Machine"}
+            </h5>
+            <div style={{ color: "#94a3b8", fontSize: "12px", marginTop: "3px" }}>
+              {isBulk ? (
+                <span>
+                  Switching machine for {sessionsList.length} active sessions:{" "}
+                  <strong style={{ color: "#38bdf8" }}>
+                    {sessionsList.map(s => s.jobCardData?.JobCardNo || s.label).filter(Boolean).join(", ")}
+                  </strong>
+                </span>
+              ) : (
+                <span>Job Card: {jobCard?.JobCardNo || currentMachine?.JobCardNo || "N/A"}</span>
+              )}
+            </div>
+          </div>
+          <button
+            onClick={onClose}
+            style={{
+              background: "transparent",
+              border: "none",
+              color: "#94a3b8",
+              fontSize: "18px",
+              cursor: "pointer",
+              padding: "4px 8px"
+            }}
+          >
+            ✕
+          </button>
+        </div>
+
+        {/* Body */}
+        <div style={{ padding: "20px", maxHeight: "75vh", overflowY: "auto" }}>
+          {isAlreadyStarted && (
+            <div style={{
+              backgroundColor: "#fef2f2",
+              border: "1px solid #fecaca",
+              borderRadius: "8px",
+              padding: "12px 14px",
+              marginBottom: "16px",
+              color: "#991b1b",
+              fontSize: "13px",
+              fontWeight: 600,
+              display: "flex",
+              alignItems: "center",
+              gap: "8px"
+            }}>
+              <i className="fas fa-exclamation-circle fs-16"></i>
+              <span>Cannot change machine: This operation has already started or completed on this step.</span>
+            </div>
+          )}
+
+          {/* Current Machine Info Card */}
+          <div style={{
+            backgroundColor: "#f8fafc",
+            border: "1px solid #e2e8f0",
+            borderRadius: "10px",
+            padding: "12px 16px",
+            marginBottom: "18px"
+          }}>
+            <div style={{ fontSize: "11px", fontWeight: 700, color: "#64748b", textTransform: "uppercase", letterSpacing: "0.5px" }}>
+              Current Machine
+            </div>
+            <div style={{ fontSize: "15px", fontWeight: 700, color: "#0f172a", marginTop: "2px" }}>
+              {currentMachine.MachineName || "Unnamed Machine"} ({currentMachine.MachineNo || "N/A"})
+            </div>
+            <div style={{ fontSize: "12px", color: "#475569", marginTop: "2px" }}>
+              <span style={{ fontWeight: 600 }}>Operation: </span>{currentMachine.Process || "General Operations"}
+            </div>
+          </div>
+
+          {/* New Machine Selection */}
+          <div style={{ marginBottom: "16px" }}>
+            <label style={{ fontSize: "12px", fontWeight: 700, color: "#334155", display: "block", marginBottom: "6px" }}>
+              Select New Machine <span style={{ color: "#ef4444" }}>*</span>
+            </label>
+
+            <input
+              type="text"
+              placeholder="Search machine name or code..."
+              value={searchFilter}
+              onChange={(e) => setSearchFilter(e.target.value)}
+              style={{
+                width: "100%",
+                padding: "8px 12px",
+                borderRadius: "6px",
+                border: "1px solid #cbd5e1",
+                fontSize: "13px",
+                marginBottom: "8px"
+              }}
+            />
+
+            {loadingMachines ? (
+              <div style={{ textAlign: "center", padding: "16px", color: "#64748b", fontSize: "13px" }}>
+                <span className="spinner-border spinner-border-sm mr-2"></span> Loading available machines...
+              </div>
+            ) : (
+              <select
+                value={targetMachineId}
+                onChange={(e) => setTargetMachineId(e.target.value)}
+                disabled={isAlreadyStarted}
+                style={{
+                  width: "100%",
+                  padding: "10px 12px",
+                  borderRadius: "8px",
+                  border: "1px solid #cbd5e1",
+                  backgroundColor: isAlreadyStarted ? "#f1f5f9" : "#fff",
+                  fontSize: "13.5px",
+                  fontWeight: 500,
+                  color: "#1e293b",
+                  outline: "none",
+                  cursor: isAlreadyStarted ? "not-allowed" : "pointer"
+                }}
+              >
+                <option value="">
+                  {filteredMachines.length === 0
+                    ? "-- No Machines Available --"
+                    : `-- Choose Target Machine (${filteredMachines.length} available) --`}
+                </option>
+                {filteredMachines.map((m) => {
+                  const mId = m.ID ?? m.Id ?? m.F_MachineMaster;
+                  const isCurrent = String(mId) === String(currentMachId);
+                  const isBusy = !!(m.EngagedJobCardNo && String(m.EngagedJobCardNo).trim() !== "");
+                  return (
+                    <option key={mId} value={mId} disabled={isCurrent}>
+                      {isCurrent ? `[CURRENT] ` : isBusy ? `⚠️ [BUSY on JC: ${m.EngagedJobCardNo}] ` : `✅ `}
+                      {m.Name || m.MachineName || `Machine #${mId}`} {m.MachineNo ? `(${m.MachineNo})` : ""}
+                    </option>
+                  );
+                })}
+              </select>
+            )}
+          </div>
+
+          {/* Reason Category */}
+          <div style={{ marginBottom: "16px" }}>
+            <label style={{ fontSize: "12px", fontWeight: 700, color: "#334155", display: "block", marginBottom: "6px" }}>
+              Reason for Change <span style={{ color: "#ef4444" }}>*</span>
+            </label>
+            <select
+              value={reasonCategory}
+              onChange={(e) => setReasonCategory(e.target.value)}
+              disabled={isAlreadyStarted}
+              style={{
+                width: "100%",
+                padding: "9px 12px",
+                borderRadius: "8px",
+                border: "1px solid #cbd5e1",
+                fontSize: "13px",
+                color: "#1e293b",
+                backgroundColor: isAlreadyStarted ? "#f1f5f9" : "#fff"
+              }}
+            >
+              <option value="Workload Balancing / Long Queue">Workload Balancing / Long Queue</option>
+              <option value="Machine Breakdown / Maintenance">Machine Breakdown / Under Maintenance</option>
+              <option value="Operator Reassignment">Operator Reassignment</option>
+              <option value="Tooling / Setup Available on Machine">Tooling / Setup Available on Other Machine</option>
+              <option value="Quality / Calibration Issue">Quality / Calibration Issue</option>
+              <option value="Other">Other Reason</option>
+            </select>
+          </div>
+
+          {/* Additional Notes */}
+          <div style={{ marginBottom: "12px" }}>
+            <label style={{ fontSize: "12px", fontWeight: 600, color: "#475569", display: "block", marginBottom: "6px" }}>
+              Remarks / Specific Notes (Optional)
+            </label>
+            <textarea
+              rows="2"
+              placeholder="e.g. Panel Saw 1 maintenance, shifting to Panel Saw 2"
+              value={customReason}
+              onChange={(e) => setCustomReason(e.target.value)}
+              disabled={isAlreadyStarted}
+              style={{
+                width: "100%",
+                padding: "8px 12px",
+                borderRadius: "8px",
+                border: "1px solid #cbd5e1",
+                fontSize: "13px",
+                resize: "vertical"
+              }}
+            />
+          </div>
+        </div>
+
+        {/* Footer */}
+        <div style={{
+          padding: "14px 20px",
+          backgroundColor: "#f8fafc",
+          borderTop: "1px solid #e2e8f0",
+          display: "flex",
+          justifyContent: "flex-end",
+          gap: "10px"
+        }}>
+          <button
+            type="button"
+            onClick={onClose}
+            style={{
+              padding: "8px 16px",
+              borderRadius: "6px",
+              border: "1px solid #cbd5e1",
+              backgroundColor: "#fff",
+              color: "#475569",
+              fontSize: "13px",
+              fontWeight: 600,
+              cursor: "pointer"
+            }}
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            onClick={() => onSubmitSwap(targetMachineId, reasonCategory, customReason)}
+            disabled={isAlreadyStarted || !targetMachineId || submitLoading}
+            style={{
+              padding: "8px 20px",
+              borderRadius: "6px",
+              border: "none",
+              backgroundColor: (isAlreadyStarted || !targetMachineId || submitLoading) ? "#94a3b8" : "#0284c7",
+              color: "#fff",
+              fontSize: "13px",
+              fontWeight: 600,
+              cursor: (isAlreadyStarted || !targetMachineId || submitLoading) ? "not-allowed" : "pointer",
+              display: "flex",
+              alignItems: "center",
+              gap: "8px"
+            }}
+          >
+            {submitLoading ? (
+              <>
+                <span className="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+                {isBulk ? "Updating All Machines..." : "Updating..."}
+              </>
+            ) : (
+              <>
+                <i className={isBulk ? "fas fa-check-double" : "fas fa-check"}></i>{" "}
+                {isBulk ? `Update All (${sessionsList.length}) Machines` : "Update Machine"}
+              </>
+            )}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// ─── Machine Change Logs Modal Component ───────────────────────────────────
+const MachineLogsModal = ({
+  isOpen,
+  onClose,
+  jobCard,
+  logsList,
+  loading
+}) => {
+  if (!isOpen) return null;
+
+  return (
+    <div style={{
+      position: "fixed",
+      top: 0,
+      left: 0,
+      right: 0,
+      bottom: 0,
+      backgroundColor: "rgba(15, 23, 42, 0.65)",
+      backdropFilter: "blur(3px)",
+      zIndex: 99999,
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "center",
+      padding: "16px",
+      fontFamily: "Poppins, sans-serif"
+    }}>
+      <div style={{
+        backgroundColor: "#fff",
+        borderRadius: "14px",
+        maxWidth: "680px",
+        width: "100%",
+        boxShadow: "0 25px 50px -12px rgba(0, 0, 0, 0.25)",
+        overflow: "hidden"
+      }}>
+        {/* Header */}
+        <div style={{
+          padding: "16px 20px",
+          background: "linear-gradient(135deg, #334155 0%, #1e293b 100%)",
+          color: "#fff",
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center"
+        }}>
+          <div>
+            <h5 style={{ margin: 0, fontSize: "16px", fontWeight: 700, color: "#fff", display: "flex", alignItems: "center", gap: "8px" }}>
+              <i className="fas fa-history" style={{ color: "#38bdf8" }}></i>
+              Machine Change Audit Logs
+            </h5>
+            <small style={{ color: "#94a3b8", fontSize: "12px" }}>
+              Job Card No: {jobCard?.JobCardNo || "N/A"}
+            </small>
+          </div>
+          <button
+            onClick={onClose}
+            style={{
+              background: "transparent",
+              border: "none",
+              color: "#94a3b8",
+              fontSize: "18px",
+              cursor: "pointer",
+              padding: "4px 8px"
+            }}
+          >
+            ✕
+          </button>
+        </div>
+
+        {/* Body */}
+        <div style={{ padding: "20px", maxHeight: "70vh", overflowY: "auto" }}>
+          {loading ? (
+            <div style={{ textAlign: "center", padding: "40px", color: "#64748b" }}>
+              <span className="spinner-border spinner-border-sm mr-2"></span> Loading audit logs...
+            </div>
+          ) : (!logsList || logsList.length === 0) ? (
+            <div style={{
+              textAlign: "center",
+              padding: "40px 20px",
+              backgroundColor: "#f8fafc",
+              borderRadius: "10px",
+              border: "1px dashed #cbd5e1",
+              color: "#64748b"
+            }}>
+              <i className="fas fa-clipboard-check fs-30 mb-2" style={{ color: "#94a3b8" }}></i>
+              <div style={{ fontWeight: 600, fontSize: "14px", color: "#475569" }}>No Machine Changes Recorded</div>
+              <div style={{ fontSize: "12px", marginTop: "4px" }}>
+                All operations on this Job Card are running on their originally allocated machines.
+              </div>
+            </div>
+          ) : (
+            <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+              {logsList.map((log, index) => {
+                const logId = log.Id ?? log.id ?? log.ID ?? index;
+                const processName = log.ProcessName ?? log.processName ?? log.Process ?? log.process ?? "Operation";
+                const changeDate = log.ChangeDateFormatted ?? log.changeDateFormatted ?? log.ChangeDate ?? log.changeDate ?? "Recently";
+                const oldMachine = log.OldMachineName ?? log.oldMachineName ?? log.OldMachine ?? log.oldMachine ?? "Previous Machine";
+                const newMachine = log.NewMachineName ?? log.newMachineName ?? log.NewMachine ?? log.newMachine ?? "New Machine";
+                const reason = log.Reason ?? log.reason ?? "Not specified";
+                const changedBy = log.ChangedByUserName ?? log.changedByUserName ?? log.UserName ?? log.userName ?? "Operator";
+
+                return (
+                  <div
+                    key={logId}
+                    style={{
+                      border: "1px solid #e2e8f0",
+                      borderRadius: "10px",
+                      padding: "14px 16px",
+                      backgroundColor: "#f8fafc"
+                    }}
+                  >
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "6px" }}>
+                      <span style={{
+                        backgroundColor: "#e0f2fe",
+                        color: "#0369a1",
+                        padding: "2px 8px",
+                        borderRadius: "4px",
+                        fontSize: "11.5px",
+                        fontWeight: 700
+                      }}>
+                        {processName}
+                      </span>
+                      <span style={{ fontSize: "11.5px", color: "#64748b", fontFamily: "monospace" }}>
+                        <i className="far fa-clock mr-1"></i>
+                        {changeDate}
+                      </span>
+                    </div>
+
+                    <div style={{ display: "flex", alignItems: "center", gap: "10px", margin: "8px 0" }}>
+                      <div style={{
+                        backgroundColor: "#fee2e2",
+                        color: "#991b1b",
+                        padding: "6px 10px",
+                        borderRadius: "6px",
+                        fontSize: "12.5px",
+                        fontWeight: 600
+                      }}>
+                        <i className="fas fa-times-circle mr-1"></i>
+                        {oldMachine}
+                      </div>
+                      <i className="fas fa-arrow-right" style={{ color: "#94a3b8", fontSize: "14px" }}></i>
+                      <div style={{
+                        backgroundColor: "#dcfce7",
+                        color: "#166534",
+                        padding: "6px 10px",
+                        borderRadius: "6px",
+                        fontSize: "12.5px",
+                        fontWeight: 700
+                      }}>
+                        <i className="fas fa-check-circle mr-1"></i>
+                        {newMachine}
+                      </div>
+                    </div>
+
+                    <div style={{ fontSize: "12.5px", color: "#334155", marginTop: "6px" }}>
+                      <span style={{ fontWeight: 600, color: "#475569" }}>Reason: </span>
+                      {reason}
+                    </div>
+
+                    <div style={{ fontSize: "11.5px", color: "#64748b", marginTop: "4px" }}>
+                      <span style={{ fontWeight: 600 }}>Changed By: </span>
+                      {changedBy}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+
+        {/* Footer */}
+        <div style={{
+          padding: "12px 20px",
+          backgroundColor: "#f8fafc",
+          borderTop: "1px solid #e2e8f0",
+          display: "flex",
+          justifyContent: "flex-end"
+        }}>
+          <button
+            type="button"
+            onClick={onClose}
+            style={{
+              padding: "8px 18px",
+              borderRadius: "6px",
+              border: "1px solid #cbd5e1",
+              backgroundColor: "#fff",
+              color: "#475569",
+              fontSize: "13px",
+              fontWeight: 600,
+              cursor: "pointer"
+            }}
+          >
+            Close
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 // ─── Scanned Wood Job Card View ───────────────────────────────────────────────
 const ScannedWoodJobCard = ({ 
   jobCard, 
@@ -264,7 +809,9 @@ const ScannedWoodJobCard = ({
   onStopMachine, 
   actionLoading, 
   onRescan,
-  skipMachineIds = ""
+  skipMachineIds = "",
+  onOpenSwapModal = null,
+  onOpenLogsModal = null
 }) => {
   console.log("ScannedWoodJobCard received skipMachineIds prop:", skipMachineIds);
   const currentIndex = machineList && machineData 
@@ -363,124 +910,10 @@ const ScannedWoodJobCard = ({
           boxShadow: "0 4px 6px -1px rgba(0,0,0,0.1), 0 2px 4px -1px rgba(0,0,0,0.06)",
         }}
       >
-        {/* Main Grid */}
-        <div className="responsive-grid-2" style={{ display: "grid", gridTemplateColumns: "1fr 1fr" }}>
-          <div className="responsive-border-r" style={{ borderRight: "1px solid #e2e8f0" }}>
-            {cell("WOOD MACHINE CENTRE", "JOB CARD")}
-            {cell("SHIPMENT NO", jobCard.ContainerNumber)}
-            {cell("PRODUCT CODE", jobCard.ProductCode)}
-            {cell("COMPONENT", jobCard.ComponentsName)}
-          </div>
-          <div>
-            {cell("JOB CARD NO", jobCard.JobCardNo)}
-            {cell("INSPECTION DATE", jobCard.InspectionDate)}
-            {cell("ITEM NAME", jobCard.ItemName)}
-            {cell("ORDER QTY", jobCard.OrderQty)}
-          </div>
+        {/* Job Card No Only */}
+        <div>
+          {cell("JOB CARD NO", jobCard.JobCardNo)}
         </div>
-
-        {/* Batch Code and Component Qty */}
-        <div className="responsive-grid-2" style={{ display: "grid", gridTemplateColumns: "1fr 1fr" }}>
-          <div className="responsive-border-r" style={{ borderRight: "1px solid #e2e8f0" }}>
-            {cell("BATCH CODE", jobCard.BatchCode)}
-          </div>
-          <div>
-            {cell("COMPONENT QUANTITY", jobCard.ComponentQty)}
-          </div>
-        </div>
-
-        {/* Wood Issue Size Section */}
-        <div style={{ borderTop: "2px solid #e2e8f0" }}>
-          <div
-            style={{
-              padding: "8px 14px",
-              background: "#ecfdf5",
-              fontWeight: 700,
-              color: "#065f46",
-              fontSize: 12,
-              letterSpacing: 1,
-              borderBottom: "1px solid #e2e8f0",
-            }}
-          >
-            WOOD ISSUE SIZE (inch)
-          </div>
-          
-          <div style={{ overflowX: "auto" }}>
-            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
-              <thead>
-                <tr style={{ background: "#f8fafc" }}>
-                  <th style={{ borderBottom: "1px solid #e2e8f0", borderRight: "1px solid #e2e8f0", padding: "8px 12px", color: "#475569", fontWeight: 600, textAlign: "center" }}>Length (in inch)</th>
-                  <th style={{ borderBottom: "1px solid #e2e8f0", borderRight: "1px solid #e2e8f0", padding: "8px 12px", color: "#475569", fontWeight: 600, textAlign: "center" }}>Width (in inch)</th>
-                  <th style={{ borderBottom: "1px solid #e2e8f0", borderRight: "1px solid #e2e8f0", padding: "8px 12px", color: "#475569", fontWeight: 600, textAlign: "center" }}>Thickness (in inch)</th>
-                  <th style={{ borderBottom: "1px solid #e2e8f0", padding: "8px 12px", color: "#475569", fontWeight: 600, textAlign: "center" }}>CFT</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr>
-                  <td style={{ borderBottom: "1px solid #e2e8f0", borderRight: "1px solid #e2e8f0", padding: "10px 12px", textAlign: "center", fontWeight: 600 }}>
-                    {jobCard.W1 ? (jobCard.W1 % 1 === 0 ? Math.round(jobCard.W1) : jobCard.W1.toFixed(2)) : "—"}
-                  </td>
-                  <td style={{ borderBottom: "1px solid #e2e8f0", borderRight: "1px solid #e2e8f0", padding: "10px 12px", textAlign: "center", fontWeight: 600 }}>
-                    {jobCard.W2 ? (jobCard.W2 % 1 === 0 ? Math.round(jobCard.W2) : jobCard.W2.toFixed(2)) : "—"}
-                  </td>
-                  <td style={{ borderBottom: "1px solid #e2e8f0", borderRight: "1px solid #e2e8f0", padding: "10px 12px", textAlign: "center", fontWeight: 600 }}>
-                    {jobCard.W3 ? (jobCard.W3 % 1 === 0 ? Math.round(jobCard.W3) : jobCard.W3.toFixed(2)) : "—"}
-                  </td>
-                  <td style={{ borderBottom: "1px solid #e2e8f0", padding: "10px 12px", textAlign: "center", fontWeight: 600 }}>
-                    {jobCard.CFT ? (jobCard.CFT % 1 === 0 ? Math.round(jobCard.CFT) : jobCard.CFT.toFixed(4)) : "—"}
-                  </td>
-                </tr>
-                {/* Additional Wood Issue Size Row */}
-                {(jobCard.W_1 || jobCard.W_2 || jobCard.W_3 || jobCard.CFT2) && (
-                  <tr>
-                    <td style={{ borderRight: "1px solid #e2e8f0", padding: "10px 12px", textAlign: "center", fontWeight: 600 }}>
-                      {jobCard.W_1 ? (jobCard.W_1 % 1 === 0 ? Math.round(jobCard.W_1) : jobCard.W_1.toFixed(2)) : "—"}
-                    </td>
-                    <td style={{ borderRight: "1px solid #e2e8f0", padding: "10px 12px", textAlign: "center", fontWeight: 600 }}>
-                      {jobCard.W_2 ? (jobCard.W_2 % 1 === 0 ? Math.round(jobCard.W_2) : jobCard.W_2.toFixed(2)) : "—"}
-                    </td>
-                    <td style={{ borderRight: "1px solid #e2e8f0", padding: "10px 12px", textAlign: "center", fontWeight: 600 }}>
-                      {jobCard.W_3 ? (jobCard.W_3 % 1 === 0 ? Math.round(jobCard.W_3) : jobCard.W_3.toFixed(2)) : "—"}
-                    </td>
-                    <td style={{ padding: "10px 12px", textAlign: "center", fontWeight: 600 }}>
-                      {jobCard.CFT2 ? (jobCard.CFT2 % 1 === 0 ? Math.round(jobCard.CFT2) : jobCard.CFT2.toFixed(4)) : "—"}
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
-          </div>
-        </div>
-
-        {/* Final Dimension mm Section */}
-        <div style={{ borderTop: "2px solid #e2e8f0" }}>
-          <div
-            style={{
-              padding: "8px 14px",
-              background: "#ecfdf5",
-              fontWeight: 700,
-              color: "#065f46",
-              fontSize: 12,
-              letterSpacing: 1,
-              borderBottom: "1px solid #e2e8f0",
-            }}
-          >
-            FINAL DIMENSIONS (mm)
-          </div>
-          <div className="responsive-grid-3" style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr" }}>
-            {cell("Length (L)", jobCard.F1 ? (jobCard.F1 % 1 === 0 ? Math.round(jobCard.F1) : jobCard.F1.toFixed(2)) : "")}
-            {cell("Width (W)", jobCard.F2 ? (jobCard.F2 % 1 === 0 ? Math.round(jobCard.F2) : jobCard.F2.toFixed(2)) : "")}
-            {cell("Thickness (T)", jobCard.F3 ? (jobCard.F3 % 1 === 0 ? Math.round(jobCard.F3) : jobCard.F3.toFixed(2)) : "")}
-          </div>
-        </div>
-
-        {/* Notes */}
-        {jobCard.Notes && (
-          <div style={{ padding: "14px 20px", borderTop: "1px solid #e2e8f0", background: "#fffbeb" }}>
-            <span style={{ fontWeight: 700, color: "#92400e", fontSize: 12 }}>NOTES: </span>
-            <span style={{ fontSize: 13, color: "#78350f" }}>{jobCard.Notes}</span>
-          </div>
-        )}
 
         {/* Machine Selection Dropdown & Control Panel */}
         <div style={{ padding: "20px", borderTop: "1px solid #e2e8f0", background: "#f8fafc" }}>
@@ -491,9 +924,53 @@ const ScannedWoodJobCard = ({
             if (machineMasterId) {
               return machineData ? (
                 <div>
-                  <label style={{ fontSize: "11px", fontWeight: 700, color: "#065f46", display: "block", marginBottom: "8px", letterSpacing: "0.5px" }}>
-                    <i className="fas fa-desktop mr-2" style={{ color: "#065f46" }}></i> ASSIGNED MACHINE
-                  </label>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "8px" }}>
+                    <label style={{ fontSize: "11px", fontWeight: 700, color: "#065f46", margin: 0, letterSpacing: "0.5px" }}>
+                      <i className="fas fa-desktop mr-2" style={{ color: "#065f46" }}></i> ASSIGNED MACHINE
+                    </label>
+                    <div style={{ display: "flex", gap: "6px" }}>
+                      <button
+                        type="button"
+                        onClick={() => onOpenSwapModal && onOpenSwapModal(machineData)}
+                        disabled={actionLoading || (machineData?.StartTime && String(machineData.StartTime).trim() !== "")}
+                        title={machineData?.StartTime ? "Cannot change: operation already started" : "Switch / Update machine"}
+                        style={{
+                          padding: "3px 10px",
+                          fontSize: "11.5px",
+                          fontWeight: 600,
+                          borderRadius: "5px",
+                          border: "1px solid #10b981",
+                          backgroundColor: "#ecfdf5",
+                          color: "#047857",
+                          cursor: (machineData?.StartTime && String(machineData.StartTime).trim() !== "") ? "not-allowed" : "pointer",
+                          display: "inline-flex",
+                          alignItems: "center",
+                          gap: "4px"
+                        }}
+                      >
+                        <i className="fas fa-exchange-alt"></i> Switch Machine
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => onOpenLogsModal && onOpenLogsModal(jobCard)}
+                        style={{
+                          padding: "3px 10px",
+                          fontSize: "11.5px",
+                          fontWeight: 600,
+                          borderRadius: "5px",
+                          border: "1px solid #cbd5e1",
+                          backgroundColor: "#fff",
+                          color: "#475569",
+                          cursor: "pointer",
+                          display: "inline-flex",
+                          alignItems: "center",
+                          gap: "4px"
+                        }}
+                      >
+                        <i className="fas fa-history"></i> Logs
+                      </button>
+                    </div>
+                  </div>
                   <div style={{
                     padding: "10px 14px",
                     borderRadius: "8px",
@@ -526,9 +1003,55 @@ const ScannedWoodJobCard = ({
             return (
               <>
                 <div style={{ marginBottom: "16px" }}>
-                  <label style={{ fontSize: "11px", fontWeight: 700, color: "#065f46", display: "block", marginBottom: "8px", letterSpacing: "0.5px" }}>
-                    <i className="fas fa-desktop mr-2" style={{ color: "#065f46" }}></i> SELECT MACHINE FOR OPERATION
-                  </label>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "8px" }}>
+                    <label style={{ fontSize: "11px", fontWeight: 700, color: "#065f46", margin: 0, letterSpacing: "0.5px" }}>
+                      <i className="fas fa-desktop mr-2" style={{ color: "#065f46" }}></i> SELECT MACHINE FOR OPERATION
+                    </label>
+                    <div style={{ display: "flex", gap: "6px" }}>
+                      {machineData && (
+                        <button
+                          type="button"
+                          onClick={() => onOpenSwapModal && onOpenSwapModal(machineData)}
+                          disabled={actionLoading || (machineData?.StartTime && String(machineData.StartTime).trim() !== "")}
+                          title={machineData?.StartTime ? "Cannot change: operation already started" : "Switch / Update machine"}
+                          style={{
+                            padding: "3px 10px",
+                            fontSize: "11.5px",
+                            fontWeight: 600,
+                            borderRadius: "5px",
+                            border: "1px solid #10b981",
+                            backgroundColor: "#ecfdf5",
+                            color: "#047857",
+                            cursor: (machineData?.StartTime && String(machineData.StartTime).trim() !== "") ? "not-allowed" : "pointer",
+                            display: "inline-flex",
+                            alignItems: "center",
+                            gap: "4px"
+                          }}
+                        >
+                          <i className="fas fa-exchange-alt"></i> Switch Machine
+                        </button>
+                      )}
+                      <button
+                        type="button"
+                        onClick={() => onOpenLogsModal && onOpenLogsModal(jobCard)}
+                        style={{
+                          padding: "3px 10px",
+                          fontSize: "11.5px",
+                          fontWeight: 600,
+                          borderRadius: "5px",
+                          border: "1px solid #cbd5e1",
+                          backgroundColor: "#fff",
+                          color: "#475569",
+                          cursor: "pointer",
+                          display: "inline-flex",
+                          alignItems: "center",
+                          gap: "4px"
+                        }}
+                      >
+                        <i className="fas fa-history"></i> Logs
+                      </button>
+                    </div>
+                  </div>
                   <select
                     value={selectedMachineId || ""}
                     onChange={(e) => onMachineSelect(e.target.value)}
@@ -588,7 +1111,9 @@ const ScannedMetalJobCard = ({
   onStopMachine, 
   actionLoading, 
   onRescan,
-  skipMachineIds = ""
+  skipMachineIds = "",
+  onOpenSwapModal = null,
+  onOpenLogsModal = null
 }) => {
   const currentIndex = machineList && machineData 
     ? machineList.findIndex(m => String(m.ID) === String(machineData.ID)) 
@@ -686,61 +1211,10 @@ const ScannedMetalJobCard = ({
           boxShadow: "0 4px 6px -1px rgba(0,0,0,0.1), 0 2px 4px -1px rgba(0,0,0,0.06)",
         }}
       >
-        {/* Main Grid */}
-        <div className="responsive-grid-2" style={{ display: "grid", gridTemplateColumns: "1fr 1fr" }}>
-          <div className="responsive-border-r" style={{ borderRight: "1px solid #e2e8f0" }}>
-            {cell("WOOD MACHINE CENTRE", "JOB CARD")}
-            {cell("SHIPMENT NO", jobCard.ContainerNumber)}
-            {cell("ITEM NAME", jobCard.ItemName)}
-            {cell("COMPONENT", jobCard.ComponentsName)}
-          </div>
-          <div>
-            {cell("JOB CARD NO", jobCard.JobCardNo)}
-            {cell("INSPECTION DATE", jobCard.InspectionDate)}
-            {cell("ORDER QTY", jobCard.OrderQty)}
-            {cell("COMPONENT QTY.", jobCard.ComponentQty)}
-          </div>
+        {/* Job Card No Only */}
+        <div>
+          {cell("JOB CARD NO", jobCard.JobCardNo)}
         </div>
-
-        {/* Batch Code Fields */}
-        <div className="responsive-grid-2" style={{ display: "grid", gridTemplateColumns: "1fr 1fr" }}>
-          <div className="responsive-border-r" style={{ borderRight: "1px solid #e2e8f0" }}>
-            {cell("BATCH CODE OF MATERIAL", jobCard.BatchCode)}
-          </div>
-          <div>
-            {cell("BATCH CODE OF POWDER", jobCard.PowderBatchCode)}
-          </div>
-        </div>
-
-        {/* Final Dimension mm Section */}
-        <div style={{ borderTop: "2px solid #e2e8f0" }}>
-          <div
-            style={{
-              padding: "8px 14px",
-              background: "#eff6ff",
-              fontWeight: 700,
-              color: "#1e3a8a",
-              fontSize: 12,
-              letterSpacing: 1,
-              borderBottom: "1px solid #e2e8f0",
-            }}
-          >
-            FINAL DIMENSIONS (mm)
-          </div>
-          <div className="responsive-grid-3" style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr" }}>
-            {cell("Length", jobCard.F1 ? (jobCard.F1 % 1 === 0 ? Math.round(jobCard.F1) : jobCard.F1.toFixed(2)) : "")}
-            {cell("Width", jobCard.F2 ? (jobCard.F2 % 1 === 0 ? Math.round(jobCard.F2) : jobCard.F2.toFixed(2)) : "")}
-            {cell("Thickness", jobCard.F3 ? (jobCard.F3 % 1 === 0 ? Math.round(jobCard.F3) : jobCard.F3.toFixed(2)) : "")}
-          </div>
-        </div>
-
-        {/* Notes */}
-        {jobCard.Notes && (
-          <div style={{ padding: "14px 20px", borderTop: "1px solid #e2e8f0", background: "#fffbeb" }}>
-            <span style={{ fontWeight: 700, color: "#92400e", fontSize: 12 }}>NOTES: </span>
-            <span style={{ fontSize: 13, color: "#78350f" }}>{jobCard.Notes}</span>
-          </div>
-        )}
 
         {/* Machine Selection Dropdown & Control Panel */}
         <div style={{ padding: "20px", borderTop: "1px solid #e2e8f0", background: "#f8fafc" }}>
@@ -751,9 +1225,53 @@ const ScannedMetalJobCard = ({
             if (machineMasterId) {
               return machineData ? (
                 <div>
-                  <label style={{ fontSize: "11px", fontWeight: 700, color: "#1e3a8a", display: "block", marginBottom: "8px", letterSpacing: "0.5px" }}>
-                    <i className="fas fa-desktop mr-2" style={{ color: "#1e3a8a" }}></i> ASSIGNED MACHINE
-                  </label>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "8px" }}>
+                    <label style={{ fontSize: "11px", fontWeight: 700, color: "#1e3a8a", margin: 0, letterSpacing: "0.5px" }}>
+                      <i className="fas fa-desktop mr-2" style={{ color: "#1e3a8a" }}></i> ASSIGNED MACHINE
+                    </label>
+                    <div style={{ display: "flex", gap: "6px" }}>
+                      <button
+                        type="button"
+                        onClick={() => onOpenSwapModal && onOpenSwapModal(machineData)}
+                        disabled={actionLoading || (machineData?.StartTime && String(machineData.StartTime).trim() !== "")}
+                        title={machineData?.StartTime ? "Cannot change: operation already started" : "Switch / Update machine"}
+                        style={{
+                          padding: "3px 10px",
+                          fontSize: "11.5px",
+                          fontWeight: 600,
+                          borderRadius: "5px",
+                          border: "1px solid #3b82f6",
+                          backgroundColor: "#eff6ff",
+                          color: "#1d4ed8",
+                          cursor: (machineData?.StartTime && String(machineData.StartTime).trim() !== "") ? "not-allowed" : "pointer",
+                          display: "inline-flex",
+                          alignItems: "center",
+                          gap: "4px"
+                        }}
+                      >
+                        <i className="fas fa-exchange-alt"></i> Switch Machine
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => onOpenLogsModal && onOpenLogsModal(jobCard)}
+                        style={{
+                          padding: "3px 10px",
+                          fontSize: "11.5px",
+                          fontWeight: 600,
+                          borderRadius: "5px",
+                          border: "1px solid #cbd5e1",
+                          backgroundColor: "#fff",
+                          color: "#475569",
+                          cursor: "pointer",
+                          display: "inline-flex",
+                          alignItems: "center",
+                          gap: "4px"
+                        }}
+                      >
+                        <i className="fas fa-history"></i> Logs
+                      </button>
+                    </div>
+                  </div>
                   <div style={{
                     padding: "10px 14px",
                     borderRadius: "8px",
@@ -786,9 +1304,55 @@ const ScannedMetalJobCard = ({
             return (
               <>
                 <div style={{ marginBottom: "16px" }}>
-                  <label style={{ fontSize: "11px", fontWeight: 700, color: "#1e3a8a", display: "block", marginBottom: "8px", letterSpacing: "0.5px" }}>
-                    <i className="fas fa-desktop mr-2" style={{ color: "#1e3a8a" }}></i> SELECT MACHINE FOR OPERATION
-                  </label>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "8px" }}>
+                    <label style={{ fontSize: "11px", fontWeight: 700, color: "#1e3a8a", margin: 0, letterSpacing: "0.5px" }}>
+                      <i className="fas fa-desktop mr-2" style={{ color: "#1e3a8a" }}></i> SELECT MACHINE FOR OPERATION
+                    </label>
+                    <div style={{ display: "flex", gap: "6px" }}>
+                      {machineData && (
+                        <button
+                          type="button"
+                          onClick={() => onOpenSwapModal && onOpenSwapModal(machineData)}
+                          disabled={actionLoading || (machineData?.StartTime && String(machineData.StartTime).trim() !== "")}
+                          title={machineData?.StartTime ? "Cannot change: operation already started" : "Switch / Update machine"}
+                          style={{
+                            padding: "3px 10px",
+                            fontSize: "11.5px",
+                            fontWeight: 600,
+                            borderRadius: "5px",
+                            border: "1px solid #3b82f6",
+                            backgroundColor: "#eff6ff",
+                            color: "#1d4ed8",
+                            cursor: (machineData?.StartTime && String(machineData.StartTime).trim() !== "") ? "not-allowed" : "pointer",
+                            display: "inline-flex",
+                            alignItems: "center",
+                            gap: "4px"
+                          }}
+                        >
+                          <i className="fas fa-exchange-alt"></i> Switch Machine
+                        </button>
+                      )}
+                      <button
+                        type="button"
+                        onClick={() => onOpenLogsModal && onOpenLogsModal(jobCard)}
+                        style={{
+                          padding: "3px 10px",
+                          fontSize: "11.5px",
+                          fontWeight: 600,
+                          borderRadius: "5px",
+                          border: "1px solid #cbd5e1",
+                          backgroundColor: "#fff",
+                          color: "#475569",
+                          cursor: "pointer",
+                          display: "inline-flex",
+                          alignItems: "center",
+                          gap: "4px"
+                        }}
+                      >
+                        <i className="fas fa-history"></i> Logs
+                      </button>
+                    </div>
+                  </div>
                   <select
                     value={selectedMachineId || ""}
                     onChange={(e) => onMachineSelect(e.target.value)}
@@ -848,7 +1412,9 @@ const ScannedMDFJobCard = ({
   onStopMachine, 
   actionLoading, 
   onRescan,
-  skipMachineIds = ""
+  skipMachineIds = "",
+  onOpenSwapModal = null,
+  onOpenLogsModal = null
 }) => {
   const currentIndex = machineList && machineData 
     ? machineList.findIndex(m => String(m.ID) === String(machineData.ID)) 
@@ -946,102 +1512,10 @@ const ScannedMDFJobCard = ({
           boxShadow: "0 4px 6px -1px rgba(0,0,0,0.1), 0 2px 4px -1px rgba(0,0,0,0.06)",
         }}
       >
-        {/* Main Grid */}
-        <div className="responsive-grid-2" style={{ display: "grid", gridTemplateColumns: "1fr 1fr" }}>
-          <div className="responsive-border-r" style={{ borderRight: "1px solid #e2e8f0" }}>
-            {cell("SHIPMENT NO", jobCard.ContainerNumber)}
-            {cell("INSPECTION DATE", jobCard.InspectionDate)}
-            {cell("ITEM CODE", jobCard.ProductCode)}
-            {cell("COMPONENT NAME", jobCard.ComponentsName)}
-          </div>
-          <div>
-            {cell("JOB CARD NUMBER", jobCard.JobCardNo)}
-            {cell("ITEM NAME", jobCard.ItemName)}
-            {cell("ORDER QUANTITY", jobCard.OrderQty)}
-            {cell("COMPONENT QTY", jobCard.ComponentQty)}
-          </div>
+        {/* Job Card No Only */}
+        <div>
+          {cell("JOB CARD NO", jobCard.JobCardNo)}
         </div>
-
-        {/* Batch Code */}
-        <div style={{ borderTop: "1px solid #e2e8f0" }}>
-          {cell("BATCH CODE", jobCard.BatchCode)}
-        </div>
-
-        {/* MDF Sheet Size Section */}
-        <div style={{ borderTop: "2px solid #e2e8f0" }}>
-          <div
-            style={{
-              padding: "8px 14px",
-              background: "#fff7ed",
-              fontWeight: 700,
-              color: "#c2410c",
-              fontSize: 12,
-              letterSpacing: 1,
-              borderBottom: "1px solid #e2e8f0",
-            }}
-          >
-            MDF SHEET SIZE
-          </div>
-          
-          <div style={{ overflowX: "auto" }}>
-            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
-              <thead>
-                <tr style={{ background: "#f8fafc" }}>
-                  <th style={{ borderBottom: "1px solid #e2e8f0", borderRight: "1px solid #e2e8f0", padding: "8px 12px", color: "#475569", fontWeight: 600, textAlign: "center" }}>L (ft)</th>
-                  <th style={{ borderBottom: "1px solid #e2e8f0", borderRight: "1px solid #e2e8f0", padding: "8px 12px", color: "#475569", fontWeight: 600, textAlign: "center" }}>W (ft)</th>
-                  <th style={{ borderBottom: "1px solid #e2e8f0", borderRight: "1px solid #e2e8f0", padding: "8px 12px", color: "#475569", fontWeight: 600, textAlign: "center" }}>Thk. (mm)</th>
-                  <th style={{ borderBottom: "1px solid #e2e8f0", padding: "8px 12px", color: "#475569", fontWeight: 600, textAlign: "center" }}>Required Sheet Qty</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr>
-                  <td style={{ padding: "10px 12px", borderRight: "1px solid #e2e8f0", textAlign: "center", fontWeight: 600 }}>
-                    {jobCard.W1 ? (jobCard.W1 % 1 === 0 ? Math.round(jobCard.W1) : jobCard.W1.toFixed(2)) : "—"}
-                  </td>
-                  <td style={{ padding: "10px 12px", borderRight: "1px solid #e2e8f0", textAlign: "center", fontWeight: 600 }}>
-                    {jobCard.W2 ? (jobCard.W2 % 1 === 0 ? Math.round(jobCard.W2) : jobCard.W2.toFixed(2)) : "—"}
-                  </td>
-                  <td style={{ padding: "10px 12px", borderRight: "1px solid #e2e8f0", textAlign: "center", fontWeight: 600 }}>
-                    {jobCard.W3 ? (jobCard.W3 % 1 === 0 ? Math.round(jobCard.W3) : jobCard.W3.toFixed(2)) : "—"}
-                  </td>
-                  <td style={{ padding: "10px 12px", textAlign: "center", fontWeight: 600 }}>
-                    {jobCard.Qty2 || "—"}
-                  </td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-        </div>
-
-        {/* Final Dimension mm Section */}
-        <div style={{ borderTop: "2px solid #e2e8f0" }}>
-          <div
-            style={{
-              padding: "8px 14px",
-              background: "#fff7ed",
-              fontWeight: 700,
-              color: "#c2410c",
-              fontSize: 12,
-              letterSpacing: 1,
-              borderBottom: "1px solid #e2e8f0",
-            }}
-          >
-            FINAL COMPONENT DIMENSION (mm)
-          </div>
-          <div className="responsive-grid-3" style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr" }}>
-            {cell("Length", jobCard.F1 ? (jobCard.F1 % 1 === 0 ? Math.round(jobCard.F1) : jobCard.F1.toFixed(2)) : "")}
-            {cell("Width", jobCard.F2 ? (jobCard.F2 % 1 === 0 ? Math.round(jobCard.F2) : jobCard.F2.toFixed(2)) : "")}
-            {cell("Thickness", jobCard.F3 ? (jobCard.F3 % 1 === 0 ? Math.round(jobCard.F3) : jobCard.F3.toFixed(2)) : "")}
-          </div>
-        </div>
-
-        {/* Notes */}
-        {jobCard.Notes && (
-          <div style={{ padding: "14px 20px", borderTop: "1px solid #e2e8f0", background: "#fffbeb" }}>
-            <span style={{ fontWeight: 700, color: "#92400e", fontSize: 12 }}>NOTES: </span>
-            <span style={{ fontSize: 13, color: "#78350f" }}>{jobCard.Notes}</span>
-          </div>
-        )}
 
         {/* Machine Selection Dropdown & Control Panel */}
         <div style={{ padding: "20px", borderTop: "1px solid #e2e8f0", background: "#f8fafc" }}>
@@ -1052,9 +1526,53 @@ const ScannedMDFJobCard = ({
             if (machineMasterId) {
               return machineData ? (
                 <div>
-                  <label style={{ fontSize: "11px", fontWeight: 700, color: "#c2410c", display: "block", marginBottom: "8px", letterSpacing: "0.5px" }}>
-                    <i className="fas fa-desktop mr-2" style={{ color: "#c2410c" }}></i> ASSIGNED MACHINE
-                  </label>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "8px" }}>
+                    <label style={{ fontSize: "11px", fontWeight: 700, color: "#c2410c", margin: 0, letterSpacing: "0.5px" }}>
+                      <i className="fas fa-desktop mr-2" style={{ color: "#c2410c" }}></i> ASSIGNED MACHINE
+                    </label>
+                    <div style={{ display: "flex", gap: "6px" }}>
+                      <button
+                        type="button"
+                        onClick={() => onOpenSwapModal && onOpenSwapModal(machineData)}
+                        disabled={actionLoading || (machineData?.StartTime && String(machineData.StartTime).trim() !== "")}
+                        title={machineData?.StartTime ? "Cannot change: operation already started" : "Switch / Update machine"}
+                        style={{
+                          padding: "3px 10px",
+                          fontSize: "11.5px",
+                          fontWeight: 600,
+                          borderRadius: "5px",
+                          border: "1px solid #f97316",
+                          backgroundColor: "#fff7ed",
+                          color: "#c2410c",
+                          cursor: (machineData?.StartTime && String(machineData.StartTime).trim() !== "") ? "not-allowed" : "pointer",
+                          display: "inline-flex",
+                          alignItems: "center",
+                          gap: "4px"
+                        }}
+                      >
+                        <i className="fas fa-exchange-alt"></i> Switch Machine
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => onOpenLogsModal && onOpenLogsModal(jobCard)}
+                        style={{
+                          padding: "3px 10px",
+                          fontSize: "11.5px",
+                          fontWeight: 600,
+                          borderRadius: "5px",
+                          border: "1px solid #cbd5e1",
+                          backgroundColor: "#fff",
+                          color: "#475569",
+                          cursor: "pointer",
+                          display: "inline-flex",
+                          alignItems: "center",
+                          gap: "4px"
+                        }}
+                      >
+                        <i className="fas fa-history"></i> Logs
+                      </button>
+                    </div>
+                  </div>
                   <div style={{
                     padding: "10px 14px",
                     borderRadius: "8px",
@@ -1087,9 +1605,55 @@ const ScannedMDFJobCard = ({
             return (
               <>
                 <div style={{ marginBottom: "16px" }}>
-                  <label style={{ fontSize: "11px", fontWeight: 700, color: "#c2410c", display: "block", marginBottom: "8px", letterSpacing: "0.5px" }}>
-                    <i className="fas fa-desktop mr-2" style={{ color: "#c2410c" }}></i> SELECT MACHINE FOR OPERATION
-                  </label>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "8px" }}>
+                    <label style={{ fontSize: "11px", fontWeight: 700, color: "#c2410c", margin: 0, letterSpacing: "0.5px" }}>
+                      <i className="fas fa-desktop mr-2" style={{ color: "#c2410c" }}></i> SELECT MACHINE FOR OPERATION
+                    </label>
+                    <div style={{ display: "flex", gap: "6px" }}>
+                      {machineData && (
+                        <button
+                          type="button"
+                          onClick={() => onOpenSwapModal && onOpenSwapModal(machineData)}
+                          disabled={actionLoading || (machineData?.StartTime && String(machineData.StartTime).trim() !== "")}
+                          title={machineData?.StartTime ? "Cannot change: operation already started" : "Switch / Update machine"}
+                          style={{
+                            padding: "3px 10px",
+                            fontSize: "11.5px",
+                            fontWeight: 600,
+                            borderRadius: "5px",
+                            border: "1px solid #f97316",
+                            backgroundColor: "#fff7ed",
+                            color: "#c2410c",
+                            cursor: (machineData?.StartTime && String(machineData.StartTime).trim() !== "") ? "not-allowed" : "pointer",
+                            display: "inline-flex",
+                            alignItems: "center",
+                            gap: "4px"
+                          }}
+                        >
+                          <i className="fas fa-exchange-alt"></i> Switch Machine
+                        </button>
+                      )}
+                      <button
+                        type="button"
+                        onClick={() => onOpenLogsModal && onOpenLogsModal(jobCard)}
+                        style={{
+                          padding: "3px 10px",
+                          fontSize: "11.5px",
+                          fontWeight: 600,
+                          borderRadius: "5px",
+                          border: "1px solid #cbd5e1",
+                          backgroundColor: "#fff",
+                          color: "#475569",
+                          cursor: "pointer",
+                          display: "inline-flex",
+                          alignItems: "center",
+                          gap: "4px"
+                        }}
+                      >
+                        <i className="fas fa-history"></i> Logs
+                      </button>
+                    </div>
+                  </div>
                   <select
                     value={selectedMachineId || ""}
                     onChange={(e) => onMachineSelect(e.target.value)}
@@ -1151,7 +1715,9 @@ const ScannedJobCardView = ({
   onRescan,
   skipMachineIds = "",
   onMinimize = null,
-  sessionCount = 0
+  sessionCount = 0,
+  onOpenSwapModal = null,
+  onOpenLogsModal = null
 }) => {
   const cat = String(parsedIds?.F_CategoryMaster || jobCard?.F_CategoryMaster || "");
   
@@ -1210,6 +1776,8 @@ const ScannedJobCardView = ({
         actionLoading={actionLoading}
         onRescan={onRescan}
         skipMachineIds={skipMachineIds}
+        onOpenSwapModal={onOpenSwapModal}
+        onOpenLogsModal={onOpenLogsModal}
       />
     );
   } else if (cat === "5") {
@@ -1226,6 +1794,8 @@ const ScannedJobCardView = ({
         actionLoading={actionLoading}
         onRescan={onRescan}
         skipMachineIds={skipMachineIds}
+        onOpenSwapModal={onOpenSwapModal}
+        onOpenLogsModal={onOpenLogsModal}
       />
     );
   } else {
@@ -1242,6 +1812,8 @@ const ScannedJobCardView = ({
         actionLoading={actionLoading}
         onRescan={onRescan}
         skipMachineIds={skipMachineIds}
+        onOpenSwapModal={onOpenSwapModal}
+        onOpenLogsModal={onOpenLogsModal}
       />
     );
   }
@@ -1299,13 +1871,15 @@ const QRScanner = () => {
   const [isCameraActive, setIsCameraActive] = useState(false);
   const [isTransitioning, setIsTransitioning] = useState(false);
   const [copiedId, setCopiedId] = useState(null);
+  const [cameraFacingMode, setCameraFacingMode] = useState("user"); // "user" (front) by default, or "environment" (back)
+  const cameraFacingModeRef = useRef("user");
 
   // ── Multi-session state ───────────────────────────────────────────────────────
   // Each session: { id, jobCardData, machineList, machineData, selectedMachineId, parsedIds, isMinimized, label }
   const [scannedSessions, setScannedSessions] = useState([]);
   const [activeSessionId, setActiveSessionId] = useState(null); // which session is expanded
   const [bulkStartLoading, setBulkStartLoading] = useState(false);
-  const MAX_SESSIONS = 10;
+  const [bulkStopLoading, setBulkStopLoading] = useState(false);
 
   // Legacy single-session state — kept for fetchJobCardData internals
   const [jobCardData, setJobCardData] = useState(null);
@@ -1313,6 +1887,424 @@ const QRScanner = () => {
   const [machineList, setMachineList] = useState([]);
   const [selectedMachineId, setSelectedMachineId] = useState("");
   // ─────────────────────────────────────────────────────────────────────────────
+
+  // ── Machine Swap & Audit Logs State ──────────────────────────────────────────
+  const [isSwapModalOpen, setIsSwapModalOpen] = useState(false);
+  const [isBulkSwap, setIsBulkSwap] = useState(false);
+  const [swapTargetMachine, setSwapTargetMachine] = useState(null);
+  const [allAvailableMachines, setAllAvailableMachines] = useState([]);
+  const [swapMachinesLoading, setSwapMachinesLoading] = useState(false);
+  const [swapSubmitLoading, setSwapSubmitLoading] = useState(false);
+
+  const [isLogsModalOpen, setIsLogsModalOpen] = useState(false);
+  const [logsJobCard, setLogsJobCard] = useState(null);
+  const [machineLogsList, setMachineLogsList] = useState([]);
+  const [logsLoading, setLogsLoading] = useState(false);
+
+  const handleOpenSwapModal = async (machine, isBulk = false) => {
+    if (!machine) return;
+    if (!isBulk) {
+      setIsBulkSwap(false);
+    }
+    setSwapTargetMachine(machine);
+    setIsSwapModalOpen(true);
+    setSwapMachinesLoading(true);
+
+    const headers = getAuthHeaders();
+    let machineOptions = [];
+
+    // Attempt 1: Call JobCardMachineSwap/AvailableMachines with auth
+    try {
+      const resp = await axios.get(
+        `${API_WEB_URLS.BASE}JobCardMachineSwap/AvailableMachines/0/token`,
+        { headers }
+      );
+      const list =
+        resp?.data?.Data?.response ||
+        resp?.data?.data?.response ||
+        resp?.data?.response ||
+        resp?.data?.Data?.DataList ||
+        resp?.data?.dataList ||
+        resp?.data?.data ||
+        resp?.data;
+      if (Array.isArray(list) && list.length > 0) {
+        machineOptions = list;
+      }
+    } catch (err) {
+      console.warn("AvailableMachines endpoint failed or returned error, attempting fallback to MachineMaster:", err);
+    }
+
+    // Attempt 2: Standard MachineMaster endpoint with auth headers
+    if (!machineOptions || machineOptions.length === 0) {
+      try {
+        const fallbackResp = await axios.get(
+          `${API_WEB_URLS.BASE}${API_WEB_URLS.MASTER}/0/token/MachineMaster/Id/0`,
+          { headers }
+        );
+        const fList =
+          fallbackResp?.data?.Data?.DataList ||
+          fallbackResp?.data?.data?.dataList ||
+          fallbackResp?.data?.dataList ||
+          fallbackResp?.data?.data?.response ||
+          fallbackResp?.data?.response ||
+          fallbackResp?.data;
+        if (Array.isArray(fList) && fList.length > 0) {
+          machineOptions = fList;
+        }
+      } catch (e) {
+        console.warn("MachineMaster fallback failed:", e);
+      }
+    }
+
+    // Attempt 3: In-memory machines from current job card / session
+    if (!machineOptions || machineOptions.length === 0) {
+      const stateMachines = (machineList && machineList.length > 0)
+        ? machineList
+        : (activeSession?.machineList && activeSession.machineList.length > 0)
+          ? activeSession.machineList
+          : [];
+      if (stateMachines.length > 0) {
+        machineOptions = stateMachines;
+      }
+    }
+
+    // Normalize machine records so ID, Name, MachineNo are guaranteed
+    const normalized = (machineOptions || []).map(m => {
+      const rawId = m.ID ?? m.Id ?? m.id ?? m.F_MachineMaster ?? m.MachineId ?? m.MachineMasterId;
+      const rawName = m.Name || m.MachineName || m.name || (m.MachineNo ? `Machine ${m.MachineNo}` : `Machine #${rawId}`);
+      const rawNo = m.MachineNo || m.Code || m.code || m.machineno || "";
+      const rawEngaged = m.EngagedJobCardNo || "";
+      return {
+        ...m,
+        ID: rawId,
+        Id: rawId,
+        Name: rawName,
+        MachineName: rawName,
+        MachineNo: rawNo,
+        EngagedJobCardNo: rawEngaged
+      };
+    }).filter(m => m.ID != null && String(m.ID).trim() !== "");
+
+    setAllAvailableMachines(normalized);
+    setSwapMachinesLoading(false);
+  };
+
+  const handleOpenBulkSwapModal = () => {
+    if (scannedSessions.length < 2) return;
+    const firstMachine = scannedSessions[0]?.machineData;
+    if (!firstMachine) return;
+    setIsBulkSwap(true);
+    handleOpenSwapModal(firstMachine, true);
+  };
+
+  const handleCloseSwapModal = () => {
+    setIsSwapModalOpen(false);
+    setSwapTargetMachine(null);
+    setIsBulkSwap(false);
+  };
+
+  const handleSubmitMachineSwap = async (targetMachineId, reasonCategory, customReason) => {
+    if (!targetMachineId) {
+      alert("Please select a target machine.");
+      return;
+    }
+
+    const authUser = JSON.parse(localStorage.getItem("authUser") || "{}");
+    const userName = authUser?.name || authUser?.username || authUser?.fullName || "Operator";
+    const userId = authUser?.id || authUser?.ID || "0";
+
+    // ── Bulk Switch Mode ──────────────────────────────────────────────────────
+    if (isBulkSwap) {
+      const allHaveMachine = scannedSessions.every(s => !!s.machineData);
+      const firstMachineId = scannedSessions[0]?.machineData
+        ? String(scannedSessions[0].machineData.F_MachineMaster || scannedSessions[0].machineData.ID || "")
+        : null;
+      const allSameMachine = allHaveMachine && scannedSessions.every(s => {
+        const mid = String(s.machineData.F_MachineMaster || s.machineData.ID || "");
+        return mid === firstMachineId;
+      });
+      const noneStarted = scannedSessions.every(s =>
+        !s.machineData?.StartTime || String(s.machineData.StartTime).trim() === ""
+      );
+
+      if (!allHaveMachine || !allSameMachine || !noneStarted) {
+        alert("Bulk switch requirement violated: All sessions must have the same unstarted machine selected.");
+        return;
+      }
+
+      const reasonText = customReason && customReason.trim()
+        ? `[Bulk Switch] ${reasonCategory}: ${customReason.trim()}`
+        : `[Bulk Switch] ${reasonCategory}`;
+
+      setSwapSubmitLoading(true);
+      let successCount = 0;
+      let errorCount = 0;
+      const errors = [];
+      const updatedSessionIds = [];
+
+      try {
+        const headers = getAuthHeaders();
+        const newMachObj = allAvailableMachines.find(m => String(m.ID ?? m.Id) === String(targetMachineId));
+        let resolvedNewMachineName = newMachObj?.Name || newMachObj?.MachineName || "Selected Machine";
+        let resolvedNewMachineNo = newMachObj?.MachineNo || "";
+
+        for (const session of scannedSessions) {
+          try {
+            const lineId = session.machineData.ID ?? session.machineData.Id;
+            const jcId = session.machineData.F_JobCardMaster || session.jobCardData?.ID || session.jobCardData?.Id || "0";
+
+            const vFormData = new FormData();
+            vFormData.append("JobCardLineId", lineId);
+            vFormData.append("F_JobCardMaster", jcId);
+            vFormData.append("NewMachineId", targetMachineId);
+            vFormData.append("Reason", reasonText);
+            vFormData.append("ChangedByUserName", userName);
+
+            const res = await axios.post(
+              `${API_WEB_URLS.BASE}JobCardMachineSwap/UpdateMachine/${userId}/token`,
+              vFormData,
+              { headers }
+            );
+
+            if (res?.data?.Success || res?.data?.success || res?.status === 200) {
+              successCount++;
+              updatedSessionIds.push(session.id);
+              if (res?.data?.Data?.NewMachineName) {
+                resolvedNewMachineName = res.data.Data.NewMachineName;
+              }
+              if (res?.data?.Data?.NewMachineNo) {
+                resolvedNewMachineNo = res.data.Data.NewMachineNo;
+              }
+            } else {
+              errorCount++;
+              errors.push(`${session.jobCardData?.JobCardNo || session.label}: ${res?.data?.Message || "Failed"}`);
+            }
+          } catch (itemErr) {
+            errorCount++;
+            const errMsg = itemErr?.response?.data?.Message || itemErr?.response?.data?.message || itemErr?.message || "Failed";
+            errors.push(`${session.jobCardData?.JobCardNo || session.label}: ${errMsg}`);
+          }
+        }
+
+        // Apply state updates for all sessions that succeeded
+        if (successCount > 0) {
+          setScannedSessions(prev => prev.map(s => {
+            if (updatedSessionIds.includes(s.id) && s.machineData) {
+              const lineId = s.machineData.ID ?? s.machineData.Id;
+              const updatedMachine = {
+                ...s.machineData,
+                F_MachineMaster: targetMachineId,
+                MachineName: resolvedNewMachineName,
+                MachineNo: resolvedNewMachineNo,
+                StartTime: null,
+                EndTime: null,
+                StartDate: null,
+                EndDate: null,
+              };
+
+              return {
+                ...s,
+                selectedMachineId: String(targetMachineId),
+                machineData: updatedMachine,
+                machineList: (s.machineList || []).map(m =>
+                  String(m.ID ?? m.Id) === String(lineId) ? updatedMachine : m
+                )
+              };
+            }
+            return s;
+          }));
+
+          // If active session was in the updated list, keep legacy single state synced
+          if (activeSessionId && updatedSessionIds.includes(activeSessionId)) {
+            setSelectedMachineId(String(targetMachineId));
+            if (machineData) {
+              setMachineData(prev => ({
+                ...prev,
+                F_MachineMaster: targetMachineId,
+                MachineName: resolvedNewMachineName,
+                MachineNo: resolvedNewMachineNo,
+                StartTime: null,
+                EndTime: null,
+                StartDate: null,
+                EndDate: null,
+              }));
+            }
+            if (machineList && machineList.length > 0) {
+              setMachineList(prevList => prevList.map(m =>
+                String(m.ID ?? m.Id) === String(swapTargetMachine?.ID ?? swapTargetMachine?.Id)
+                  ? {
+                      ...m,
+                      F_MachineMaster: targetMachineId,
+                      MachineName: resolvedNewMachineName,
+                      MachineNo: resolvedNewMachineNo,
+                      StartTime: null,
+                      EndTime: null,
+                      StartDate: null,
+                      EndDate: null,
+                    }
+                  : m
+              ));
+            }
+          }
+
+          if (errorCount === 0) {
+            alert(`✅ Bulk machine switch successful! All ${successCount} job cards updated to '${resolvedNewMachineName}'.`);
+          } else {
+            alert(`⚠️ Bulk machine switch finished with partial results:\n- ${successCount} succeeded\n- ${errorCount} failed\n\nErrors:\n${errors.join("\n")}`);
+          }
+
+          setIsSwapModalOpen(false);
+          setSwapTargetMachine(null);
+          setIsBulkSwap(false);
+        } else {
+          alert(`❌ Bulk machine switch failed for all job cards:\n${errors.join("\n")}`);
+        }
+      } catch (err) {
+        console.error("Bulk machine swap unexpected error:", err);
+        alert(`❌ Unexpected error during bulk machine switch: ${err?.message || "Failed"}`);
+      } finally {
+        setSwapSubmitLoading(false);
+      }
+      return;
+    }
+
+    // ── Single Switch Mode ────────────────────────────────────────────────────
+    if (!swapTargetMachine) {
+      alert("Please select a target machine.");
+      return;
+    }
+
+    if (swapTargetMachine.StartTime && String(swapTargetMachine.StartTime).trim() !== "") {
+      alert("Cannot change machine: this operation has already started or completed.");
+      return;
+    }
+
+    const reasonText = customReason && customReason.trim()
+      ? `${reasonCategory}: ${customReason.trim()}`
+      : reasonCategory;
+
+    setSwapSubmitLoading(true);
+    try {
+      const lineId = swapTargetMachine.ID ?? swapTargetMachine.Id;
+      const jcId = swapTargetMachine.F_JobCardMaster || jobCardData?.ID || jobCardData?.Id || "0";
+
+      const vFormData = new FormData();
+      vFormData.append("JobCardLineId", lineId);
+      vFormData.append("F_JobCardMaster", jcId);
+      vFormData.append("NewMachineId", targetMachineId);
+      vFormData.append("Reason", reasonText);
+      vFormData.append("ChangedByUserName", userName);
+
+      const headers = getAuthHeaders();
+      const res = await axios.post(
+        `${API_WEB_URLS.BASE}JobCardMachineSwap/UpdateMachine/${userId}/token`,
+        vFormData,
+        { headers }
+      );
+      if (res?.data?.Success || res?.data?.success || res?.status === 200) {
+        const newMachObj = allAvailableMachines.find(m => String(m.ID ?? m.Id) === String(targetMachineId));
+        const newMachineName = res?.data?.Data?.NewMachineName || newMachObj?.Name || newMachObj?.MachineName || "Selected Machine";
+        const newMachineNo = res?.data?.Data?.NewMachineNo || newMachObj?.MachineNo || "";
+
+        const updatedMachine = {
+          ...swapTargetMachine,
+          F_MachineMaster: targetMachineId,
+          MachineName: newMachineName,
+          MachineNo: newMachineNo,
+          StartTime: null,
+          EndTime: null,
+          StartDate: null,
+          EndDate: null,
+        };
+
+        setMachineData(updatedMachine);
+        setSelectedMachineId(String(targetMachineId));
+
+        const matchId = swapTargetMachine.ID ?? swapTargetMachine.Id;
+        setMachineList(prevList => prevList.map(m =>
+          String(m.ID ?? m.Id) === String(matchId) ? updatedMachine : m
+        ));
+
+        setScannedSessions(prev => prev.map(s => {
+          const matchLine = s.machineList?.find(m => String(m.ID ?? m.Id) === String(matchId));
+          if (matchLine) {
+            return {
+              ...s,
+              selectedMachineId: String(targetMachineId),
+              machineData: updatedMachine,
+              machineList: s.machineList.map(m => String(m.ID ?? m.Id) === String(matchId) ? updatedMachine : m)
+            };
+          }
+          return s;
+        }));
+
+        alert(`✅ Machine updated successfully to '${newMachineName}'!`);
+        setIsSwapModalOpen(false);
+        setSwapTargetMachine(null);
+      } else {
+        alert(res?.data?.Message || res?.data?.message || "Failed to update machine.");
+      }
+    } catch (err) {
+      console.error("Machine swap error:", err);
+      const errMsg = err?.response?.data?.Message || err?.response?.data?.message || err?.message || "Failed to update machine.";
+      alert(errMsg);
+    } finally {
+      setSwapSubmitLoading(false);
+    }
+  };
+
+  const handleOpenLogsModal = async (jc) => {
+    const targetJc = jc || (activeSession ? activeSession.jobCardData : null) || jobCardData;
+    const jcId =
+      targetJc?.ID ??
+      targetJc?.Id ??
+      targetJc?.F_JobCardMaster ??
+      targetJc?.JobCardMasterId ??
+      targetJc?.JobCardId ??
+      targetJc?.JobCardNo ??
+      jobCardData?.ID ??
+      jobCardData?.Id ??
+      parsedIds?.F_JobCardMaster ??
+      "0";
+
+    if (!jcId || String(jcId).trim() === "0" || String(jcId).trim() === "") {
+      alert("Job Card details not found.");
+      return;
+    }
+
+    setLogsJobCard(targetJc || jobCardData);
+    setIsLogsModalOpen(true);
+    setLogsLoading(true);
+
+    try {
+      const headers = getAuthHeaders();
+      const res = await axios.get(
+        `${API_WEB_URLS.BASE}JobCardMachineSwap/GetMachineChangeLogs/0/token/${encodeURIComponent(String(jcId).trim())}`,
+        { headers }
+      );
+      const logs =
+        res?.data?.Data?.response ||
+        res?.data?.data?.response ||
+        res?.data?.response ||
+        res?.data?.Data?.DataList ||
+        res?.data?.dataList ||
+        res?.data?.Data ||
+        res?.data?.data ||
+        res?.data ||
+        [];
+      setMachineLogsList(Array.isArray(logs) ? logs : []);
+    } catch (err) {
+      console.error("Failed to load machine change logs:", err);
+      setMachineLogsList([]);
+    } finally {
+      setLogsLoading(false);
+    }
+  };
+
+  const handleCloseLogsModal = () => {
+    setIsLogsModalOpen(false);
+    setLogsJobCard(null);
+  };
 
   const [fetchLoading, setFetchLoading] = useState(false);
   const [fetchError, setFetchError] = useState(null);
@@ -1368,11 +2360,7 @@ const QRScanner = () => {
 
   /** Minimize current active session and restart camera for next scan */
   const handleMinimizeAndScanAnother = (sessionId) => {
-    if (scannedSessions.length >= MAX_SESSIONS) {
-      alert(`Maximum ${MAX_SESSIONS} sessions allowed. Please start or remove existing sessions first.`);
-      return;
-    }
-    // Minimize the current session
+    // Minimize the current session (Unlimited sessions allowed)
     setScannedSessions(prev => prev.map(s =>
       s.id === sessionId ? { ...s, isMinimized: true } : s
     ));
@@ -1485,6 +2473,10 @@ const QRScanner = () => {
             ? { ...s, machineData: updatedMach, machineList: s.machineList.map(m => String(m.ID) === String(mach.ID) ? updatedMach : m) }
             : s
         ));
+        if (activeSessionId === session.id) {
+          setMachineData(updatedMach);
+          setMachineList(prev => prev.map(m => String(m.ID) === String(mach.ID) ? updatedMach : m));
+        }
         startedCount++;
       } catch (err) {
         failedLabels.push(session.label);
@@ -1495,6 +2487,70 @@ const QRScanner = () => {
 
     let msg = `✅ Started ${startedCount} machine(s).`;
     if (skippedLabels.length > 0) msg += `\n\n⚠️ Skipped (machine busy):\n${skippedLabels.join('\n')}`;
+    if (failedLabels.length > 0) msg += `\n\n❌ Failed:\n${failedLabels.join('\n')}`;
+    alert(msg);
+  };
+
+  /** Stop all sessions that are currently running (have StartTime but no EndTime) */
+  const handleBulkStopAll = async () => {
+    const runningSessions = scannedSessions.filter(s => {
+      if (!s.machineData) return false;
+      const isStarted = !!(s.machineData.StartTime && String(s.machineData.StartTime).trim() !== "");
+      const isStopped = !!(s.machineData.EndTime && String(s.machineData.EndTime).trim() !== "");
+      return isStarted && !isStopped;
+    });
+
+    if (runningSessions.length === 0) {
+      alert("No running machines to stop.");
+      return;
+    }
+
+    setBulkStopLoading(true);
+    const failedLabels = [];
+    let stoppedCount = 0;
+
+    for (const session of runningSessions) {
+      const mach = session.machineData;
+      try {
+        const nowStr = getFormattedDateTime();
+        const vFormData = new FormData();
+        vFormData.append("F_JobCardMaster", mach.F_JobCardMaster || session.jobCardData?.ID || session.parsedIds?.F_JobCardMaster || "");
+        vFormData.append("F_MachineMaster", mach.F_MachineMaster || session.parsedIds?.F_MachineMaster || session.selectedMachineId || "");
+        vFormData.append("NewDate", nowStr);
+        vFormData.append("Type", "2");
+
+        await Fn_AddEditData(
+          dispatch,
+          (s) => {},
+          { arguList: { id: 0, formData: vFormData } },
+          "UpdateTransferDateByJobCard/0/token",
+          true,
+          "Id",
+          () => {},
+          "#"
+        );
+
+        const updatedMach = { ...mach, EndTime: nowStr, EndDate: nowStr };
+        setScannedSessions(prev => prev.map(s =>
+          s.id === session.id
+            ? { ...s, machineData: updatedMach, machineList: s.machineList.map(m => String(m.ID) === String(mach.ID) ? updatedMach : m) }
+            : s
+        ));
+
+        if (activeSessionId === session.id) {
+          setMachineData(updatedMach);
+          setMachineList(prev => prev.map(m => String(m.ID) === String(mach.ID) ? updatedMach : m));
+        }
+
+        stoppedCount++;
+      } catch (err) {
+        failedLabels.push(session.label);
+      }
+    }
+
+    setBulkStopLoading(false);
+
+    let msg = `✅ Stopped ${stoppedCount} machine(s).`;
     if (failedLabels.length > 0) msg += `\n\n❌ Failed:\n${failedLabels.join('\n')}`;
     alert(msg);
   };
@@ -1581,6 +2637,13 @@ const QRScanner = () => {
       setMachineList(prevList => prevList.map(m => 
         String(m.ID) === String(machineData.ID) ? updatedData : m
       ));
+      if (activeSessionId) {
+        setScannedSessions(prev => prev.map(s =>
+          s.id === activeSessionId
+            ? { ...s, machineData: updatedData, machineList: s.machineList.map(m => String(m.ID) === String(machineData.ID) ? updatedData : m) }
+            : s
+        ));
+      }
       
       alert("Machine started successfully!");
     } catch (err) {
@@ -1640,6 +2703,13 @@ const QRScanner = () => {
       setMachineList(prevList => prevList.map(m => 
         String(m.ID) === String(machineData.ID) ? updatedData : m
       ));
+      if (activeSessionId) {
+        setScannedSessions(prev => prev.map(s =>
+          s.id === activeSessionId
+            ? { ...s, machineData: updatedData, machineList: s.machineList.map(m => String(m.ID) === String(machineData.ID) ? updatedData : m) }
+            : s
+        ));
+      }
       
       alert("Machine stopped successfully!");
     } catch (err) {
@@ -1848,18 +2918,14 @@ const QRScanner = () => {
       try {
         const user = JSON.parse(localStorage.getItem("authUser") || "{}");
         const userId = user.id || user.UserId || 0;
-        const userToken = user.token || user.UserToken || "token";
+        // JWT sent via Authorization header by ApiHelper - use literal 'token' in path
         
-        const response = await axios.get(
-          `${API_WEB_URLS.BASE}MachineDelayDashboard/GlobalOptions/${userId}/${userToken}`
+        const dataList = await Fn_FillListData(
+          dispatch,
+          () => {},
+          "gridData",
+          `MachineDelayDashboard/GlobalOptions/${userId}/token`
         );
-        const responseData = response.data;
-        // API response shape: { success, data: { dataList: [...] } }
-        const dataList = responseData?.data?.dataList 
-                      || responseData?.dataList 
-                      || responseData?.data 
-                      || responseData;
-        console.log("[GlobalOptions] raw response.data:", responseData);
         console.log("[GlobalOptions] resolved dataList:", dataList);
         if (Array.isArray(dataList)) {
           console.log("[GlobalOptions] keys in first item:", dataList[0] ? Object.keys(dataList[0]) : "(empty array)");
@@ -2018,9 +3084,13 @@ const QRScanner = () => {
 
   // Start the camera
   // preserveSessions=true: don't clear the sessions array (called from minimize)
-  const startCamera = async (preserveSessions = false) => {
+  const startCamera = async (preserveSessions = false, targetFacingMode = null) => {
     if (!qrCodeRef.current || isTransitioning) return;
     setIsTransitioning(true);
+
+    const mode = targetFacingMode || cameraFacingModeRef.current || "user";
+    setCameraFacingMode(mode);
+    cameraFacingModeRef.current = mode;
 
     // If camera is somehow already running, stop it first to reset state
     try {
@@ -2056,7 +3126,7 @@ const QRScanner = () => {
     try {
       isScanningRef.current = true;
       await qrCodeRef.current.start(
-        { facingMode: "environment" },
+        { facingMode: mode },
         {
           fps: 15,
           qrbox: (viewfinderWidth, viewfinderHeight) => {
@@ -2076,6 +3146,34 @@ const QRScanner = () => {
       alert("Could not access camera. Please check camera permissions and make sure you are using HTTPS.");
     } finally {
       setIsTransitioning(false);
+    }
+  };
+
+  // Switch camera between Front and Back (environment / user)
+  const handleSwitchFacingMode = async (newMode = null) => {
+    const nextMode = newMode || (cameraFacingModeRef.current === "user" ? "environment" : "user");
+    if (nextMode === cameraFacingModeRef.current && isCameraActiveRef.current) return;
+
+    setCameraFacingMode(nextMode);
+    cameraFacingModeRef.current = nextMode;
+
+    if (isCameraActiveRef.current) {
+      setIsTransitioning(true);
+      try {
+        if (qrCodeRef.current) {
+          await qrCodeRef.current.stop();
+        }
+        isCameraActiveRef.current = false;
+        isScanningRef.current = false;
+        setIsCameraActive(false);
+
+        // Short pause for html5-qrcode video element cleanup
+        await new Promise((resolve) => setTimeout(resolve, 250));
+        await startCamera(true, nextMode);
+      } catch (err) {
+        console.error("Failed to switch camera:", err);
+        setIsTransitioning(false);
+      }
     }
   };
 
@@ -2133,7 +3231,7 @@ const QRScanner = () => {
     );
     const canStartAll     = scannedSessions.length > 1 && allHaveMachine && allSameMachine && noneStarted;
 
-    // Reason why button is disabled (shown as tooltip)
+    // Reason why Start All button is disabled (shown as tooltip)
     let disabledReason = "";
     if (scannedSessions.length <= 1) {
       disabledReason = "Need at least 2 sessions";
@@ -2143,6 +3241,41 @@ const QRScanner = () => {
       disabledReason = "All sessions must have same machine selected";
     } else if (!noneStarted) {
       disabledReason = "One or more sessions already started";
+    }
+
+    // ── Switch All validation (Identical machines across all queued sessions & none started) ──
+    const canSwitchAll    = scannedSessions.length > 1 && allHaveMachine && allSameMachine && noneStarted;
+    let switchDisabledReason = "";
+    if (scannedSessions.length <= 1) {
+      switchDisabledReason = "Need at least 2 sessions";
+    } else if (!allHaveMachine) {
+      switchDisabledReason = "Select machine in all sessions first";
+    } else if (!allSameMachine) {
+      switchDisabledReason = "All sessions must have same machine selected";
+    } else if (!noneStarted) {
+      switchDisabledReason = "One or more sessions already started";
+    }
+
+    // ── Stop All validation ───────────────────────────────────────────────────
+    const runningSessions = scannedSessions.filter(s => {
+      if (!s.machineData) return false;
+      const isStarted = !!(s.machineData.StartTime && String(s.machineData.StartTime).trim() !== "");
+      const isStopped = !!(s.machineData.EndTime && String(s.machineData.EndTime).trim() !== "");
+      return isStarted && !isStopped;
+    });
+    const canStopAll      = scannedSessions.length > 1 && runningSessions.length > 0;
+
+    // Reason why Stop All button is disabled (shown as tooltip)
+    let stopDisabledReason = "";
+    if (scannedSessions.length <= 1) {
+      stopDisabledReason = "Need at least 2 sessions";
+    } else if (runningSessions.length === 0) {
+      const anyStarted = scannedSessions.some(s => !!(s.machineData?.StartTime && String(s.machineData.StartTime).trim() !== ""));
+      if (!anyStarted) {
+        stopDisabledReason = "No sessions running yet";
+      } else {
+        stopDisabledReason = "All running sessions already stopped";
+      }
     }
     // ─────────────────────────────────────────────────────────────────────────
 
@@ -2169,14 +3302,15 @@ const QRScanner = () => {
         {scannedSessions.map((session, idx) => {
           const hasMachine = !!session.machineData;
           const isStarted  = !!(session.machineData?.StartTime && String(session.machineData.StartTime).trim() !== "");
+          const isStopped  = !!(session.machineData?.EndTime && String(session.machineData.EndTime).trim() !== "");
           const isActive   = session.id === activeSessionId;
 
           return (
             <div key={session.id} style={{
               display: "flex",
               alignItems: "center",
-              background: isActive ? "#34d399" : (hasMachine ? "#1e3a2f" : "#3b1f0a"),
-              border: `1px solid ${isActive ? "#34d399" : (hasMachine ? "#2d5a3d" : "#c2410c")}`,
+              background: isActive ? "#34d399" : (isStopped ? "#1e293b" : (isStarted ? "#14532d" : (hasMachine ? "#1e3a2f" : "#3b1f0a"))),
+              border: `1px solid ${isActive ? "#34d399" : (isStopped ? "#475569" : (isStarted ? "#22c55e" : (hasMachine ? "#2d5a3d" : "#c2410c")))}`,
               borderRadius: "20px",
               padding: "4px 10px 4px 12px",
               gap: "6px",
@@ -2186,7 +3320,7 @@ const QRScanner = () => {
               <span
                 onClick={() => handleExpandSession(session.id)}
                 style={{
-                  color: isActive ? "#0f172a" : (hasMachine ? "#34d399" : "#fb923c"),
+                  color: isActive ? "#0f172a" : (isStopped ? "#94a3b8" : (isStarted ? "#86efac" : (hasMachine ? "#34d399" : "#fb923c"))),
                   fontSize: "12px",
                   fontWeight: 700,
                   whiteSpace: "nowrap"
@@ -2195,9 +3329,11 @@ const QRScanner = () => {
                 #{idx + 1} {session.label}
                 {!hasMachine
                   ? " ⚠️ Select machine"
-                  : isStarted
-                    ? " ✅"
-                    : ` — ${session.machineData?.MachineName || "Machine"} ⏳`
+                  : isStopped
+                    ? " 🛑 Done"
+                    : isStarted
+                      ? " ⚡ Running"
+                      : ` — ${session.machineData?.MachineName || "Machine"} ⏳`
                 }
               </span>
               <button
@@ -2218,43 +3354,120 @@ const QRScanner = () => {
           );
         })}
 
-        {/* Start All button — always visible, enabled only when conditions are met */}
-        <div style={{ marginLeft: "auto", display: "flex", flexDirection: "column", alignItems: "flex-end", gap: "3px" }}>
-          {!canStartAll && disabledReason && (
-            <span style={{ color: "#fb923c", fontSize: "10px", fontWeight: 600, whiteSpace: "nowrap" }}>
-              ⚠️ {disabledReason}
-            </span>
-          )}
-          <button
-            onClick={canStartAll ? handleBulkStartAll : undefined}
-            disabled={!canStartAll || bulkStartLoading}
-            title={canStartAll ? "Start all sessions" : disabledReason}
-            style={{
-              background: canStartAll
-                ? (bulkStartLoading ? "#374151" : "linear-gradient(135deg, #059669, #34d399)")
-                : "#1e293b",
-              color: canStartAll ? "#fff" : "#475569",
-              border: `1px solid ${canStartAll ? "transparent" : "#334155"}`,
-              borderRadius: "20px",
-              padding: "6px 16px",
-              fontSize: "12px",
-              fontWeight: 700,
-              cursor: canStartAll && !bulkStartLoading ? "pointer" : "not-allowed",
-              display: "flex",
-              alignItems: "center",
-              gap: "6px",
-              whiteSpace: "nowrap",
-              boxShadow: canStartAll ? "0 2px 8px rgba(52,211,153,0.3)" : "none",
-              transition: "all 0.3s",
-              opacity: canStartAll ? 1 : 0.5
-            }}
-          >
-            {bulkStartLoading ? (
-              <><span className="spinner-border spinner-border-sm" role="status"></span> Starting...</>
-            ) : (
-              <><i className="fas fa-play-circle"></i> Start All ({scannedSessions.length})</>
+        {/* Bulk Action Buttons (Switch All, Start All & Stop All) */}
+        <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: "10px", flexWrap: "wrap" }}>
+          {/* Switch All button */}
+          <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: "2px" }}>
+            {!canSwitchAll && switchDisabledReason && (
+              <span style={{ color: "#38bdf8", fontSize: "10px", fontWeight: 600, whiteSpace: "nowrap" }}>
+                ℹ️ {switchDisabledReason}
+              </span>
             )}
-          </button>
+            <button
+              onClick={canSwitchAll ? handleOpenBulkSwapModal : undefined}
+              disabled={!canSwitchAll || bulkStartLoading || bulkStopLoading || swapSubmitLoading}
+              title={canSwitchAll ? `Switch machine for all ${scannedSessions.length} sessions` : switchDisabledReason}
+              style={{
+                background: canSwitchAll
+                  ? "linear-gradient(135deg, #0284c7, #38bdf8)"
+                  : "#1e293b",
+                color: canSwitchAll ? "#fff" : "#475569",
+                border: `1px solid ${canSwitchAll ? "transparent" : "#334155"}`,
+                borderRadius: "20px",
+                padding: "6px 16px",
+                fontSize: "12px",
+                fontWeight: 700,
+                cursor: canSwitchAll && !bulkStartLoading && !bulkStopLoading && !swapSubmitLoading ? "pointer" : "not-allowed",
+                display: "flex",
+                alignItems: "center",
+                gap: "6px",
+                whiteSpace: "nowrap",
+                boxShadow: canSwitchAll ? "0 2px 8px rgba(56,189,248,0.3)" : "none",
+                transition: "all 0.3s",
+                opacity: canSwitchAll ? 1 : 0.5
+              }}
+            >
+              <i className="fas fa-exchange-alt"></i> Switch All ({scannedSessions.length})
+            </button>
+          </div>
+
+          {/* Start All button */}
+          <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: "2px" }}>
+            {!canStartAll && disabledReason && (
+              <span style={{ color: "#fb923c", fontSize: "10px", fontWeight: 600, whiteSpace: "nowrap" }}>
+                ⚠️ {disabledReason}
+              </span>
+            )}
+            <button
+              onClick={canStartAll ? handleBulkStartAll : undefined}
+              disabled={!canStartAll || bulkStartLoading || bulkStopLoading}
+              title={canStartAll ? "Start all sessions" : disabledReason}
+              style={{
+                background: canStartAll
+                  ? (bulkStartLoading ? "#374151" : "linear-gradient(135deg, #059669, #34d399)")
+                  : "#1e293b",
+                color: canStartAll ? "#fff" : "#475569",
+                border: `1px solid ${canStartAll ? "transparent" : "#334155"}`,
+                borderRadius: "20px",
+                padding: "6px 16px",
+                fontSize: "12px",
+                fontWeight: 700,
+                cursor: canStartAll && !bulkStartLoading && !bulkStopLoading ? "pointer" : "not-allowed",
+                display: "flex",
+                alignItems: "center",
+                gap: "6px",
+                whiteSpace: "nowrap",
+                boxShadow: canStartAll ? "0 2px 8px rgba(52,211,153,0.3)" : "none",
+                transition: "all 0.3s",
+                opacity: canStartAll ? 1 : 0.5
+              }}
+            >
+              {bulkStartLoading ? (
+                <><span className="spinner-border spinner-border-sm" role="status"></span> Starting...</>
+              ) : (
+                <><i className="fas fa-play-circle"></i> Start All ({scannedSessions.length})</>
+              )}
+            </button>
+          </div>
+
+          {/* Stop All button */}
+          <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: "2px" }}>
+            {!canStopAll && stopDisabledReason && (
+              <span style={{ color: "#94a3b8", fontSize: "10px", fontWeight: 600, whiteSpace: "nowrap" }}>
+                ℹ️ {stopDisabledReason}
+              </span>
+            )}
+            <button
+              onClick={canStopAll ? handleBulkStopAll : undefined}
+              disabled={!canStopAll || bulkStopLoading || bulkStartLoading}
+              title={canStopAll ? `Stop all running sessions (${runningSessions.length})` : stopDisabledReason}
+              style={{
+                background: canStopAll
+                  ? (bulkStopLoading ? "#374151" : "linear-gradient(135deg, #b91c1c, #ef4444)")
+                  : "#1e293b",
+                color: canStopAll ? "#fff" : "#475569",
+                border: `1px solid ${canStopAll ? "transparent" : "#334155"}`,
+                borderRadius: "20px",
+                padding: "6px 16px",
+                fontSize: "12px",
+                fontWeight: 700,
+                cursor: canStopAll && !bulkStopLoading && !bulkStartLoading ? "pointer" : "not-allowed",
+                display: "flex",
+                alignItems: "center",
+                gap: "6px",
+                whiteSpace: "nowrap",
+                boxShadow: canStopAll ? "0 2px 8px rgba(239,68,68,0.3)" : "none",
+                transition: "all 0.3s",
+                opacity: canStopAll ? 1 : 0.5
+              }}
+            >
+              {bulkStopLoading ? (
+                <><span className="spinner-border spinner-border-sm" role="status"></span> Stopping...</>
+              ) : (
+                <><i className="fas fa-stop-circle"></i> Stop All ({runningSessions.length})</>
+              )}
+            </button>
+          </div>
         </div>
       </div>
     );
@@ -2269,7 +3482,7 @@ const QRScanner = () => {
         <MinimizedSessionsBar />
         <div style={{ paddingBottom: scannedSessions.length > 0 ? "70px" : "0" }}>
           <ScannedJobCardView
-            jobCard={jobCardData}
+            jobCard={activeSession ? activeSession.jobCardData : jobCardData}
             parsedIds={parsedIds}
             machineList={machineList}
             selectedMachineId={activeSession ? activeSession.selectedMachineId : selectedMachineId}
@@ -2285,8 +3498,29 @@ const QRScanner = () => {
             skipMachineIds={skipMachineIds}
             onMinimize={activeSessionId ? () => handleMinimizeAndScanAnother(activeSessionId) : null}
             sessionCount={scannedSessions.length}
+            onOpenSwapModal={handleOpenSwapModal}
+            onOpenLogsModal={handleOpenLogsModal}
           />
         </div>
+
+        <MachineSwapModal
+          isOpen={isSwapModalOpen}
+          onClose={handleCloseSwapModal}
+          currentMachine={swapTargetMachine}
+          jobCard={jobCardData || activeSession?.jobCardData}
+          availableMachines={allAvailableMachines.length > 0 ? allAvailableMachines : (machineList && machineList.length > 0 ? machineList : (activeSession?.machineList || []))}
+          loadingMachines={swapMachinesLoading}
+          onSubmitSwap={handleSubmitMachineSwap}
+          submitLoading={swapSubmitLoading}
+        />
+
+        <MachineLogsModal
+          isOpen={isLogsModalOpen}
+          onClose={handleCloseLogsModal}
+          jobCard={logsJobCard}
+          logsList={machineLogsList}
+          loading={logsLoading}
+        />
       </>
     );
   }
@@ -2432,6 +3666,70 @@ const QRScanner = () => {
                 </button>
               </div>
 
+              {/* Camera Facing Selector (Front / Back) — visible in Live Camera mode */}
+              {scanMode === "camera" && (
+                <div 
+                  style={{
+                    display: "flex",
+                    justifyContent: "space-between",
+                    alignItems: "center",
+                    width: "100%",
+                    maxWidth: "400px",
+                    marginBottom: "14px",
+                    background: "#f8fafc",
+                    padding: "6px 12px",
+                    borderRadius: "8px",
+                    border: "1px solid #e2e8f0"
+                  }}
+                >
+                  <span style={{ fontSize: "12px", fontWeight: 700, color: "#334155" }}>
+                    <i className="fas fa-video mr-1.5" style={{ color: "#065f46" }}></i>
+                    Camera: <span style={{ color: "#065f46" }}>{cameraFacingMode === "user" ? "Front (Selfie)" : "Back (Rear)"}</span>
+                  </span>
+
+                  <div style={{ display: "flex", gap: "4px" }}>
+                    <button
+                      type="button"
+                      onClick={() => handleSwitchFacingMode("user")}
+                      disabled={isTransitioning}
+                      style={{
+                        padding: "4px 10px",
+                        borderRadius: "6px",
+                        border: "none",
+                        fontSize: "12px",
+                        fontWeight: 600,
+                        background: cameraFacingMode === "user" ? "#065f46" : "#e2e8f0",
+                        color: cameraFacingMode === "user" ? "#ffffff" : "#475569",
+                        cursor: isTransitioning ? "not-allowed" : "pointer",
+                        transition: "all 0.2s"
+                      }}
+                      title="Select Front Camera"
+                    >
+                      <i className="fas fa-user mr-1"></i> Front
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleSwitchFacingMode("environment")}
+                      disabled={isTransitioning}
+                      style={{
+                        padding: "4px 10px",
+                        borderRadius: "6px",
+                        border: "none",
+                        fontSize: "12px",
+                        fontWeight: 600,
+                        background: cameraFacingMode === "environment" ? "#065f46" : "#e2e8f0",
+                        color: cameraFacingMode === "environment" ? "#ffffff" : "#475569",
+                        cursor: isTransitioning ? "not-allowed" : "pointer",
+                        transition: "all 0.2s"
+                      }}
+                      title="Select Back Camera"
+                    >
+                      <i className="fas fa-camera mr-1"></i> Back
+                    </button>
+                  </div>
+                </div>
+              )}
+
               {/* Hidden file input */}
               <input
                 type="file"
@@ -2564,23 +3862,52 @@ const QRScanner = () => {
                     )}
                   </button>
                 ) : (
-                  <button
-                    className="btn btn-danger btn-block py-2.5 font-w700 fs-16 shadow-sm"
-                    style={{ borderRadius: "6px" }}
-                    onClick={stopCamera}
-                    disabled={isTransitioning}
-                  >
-                    {isTransitioning ? (
-                      <>
-                        <span className="spinner-border spinner-border-sm mr-2" role="status" aria-hidden="true"></span>
-                        Stopping Camera...
-                      </>
-                    ) : (
-                      <>
-                        <i className="fas fa-stop mr-2"></i> TURN OFF CAMERA
-                      </>
-                    )}
-                  </button>
+                  <div style={{ display: "flex", gap: "10px" }}>
+                    <button
+                      type="button"
+                      className="btn py-2.5 font-w700 fs-14 shadow-sm"
+                      style={{
+                        flex: 1,
+                        borderRadius: "6px",
+                        border: "1px solid #065f46",
+                        color: "#065f46",
+                        backgroundColor: "#f0fdf4"
+                      }}
+                      onClick={() => handleSwitchFacingMode()}
+                      disabled={isTransitioning}
+                      title={`Switch to ${cameraFacingMode === "user" ? "Back" : "Front"} Camera`}
+                    >
+                      {isTransitioning ? (
+                        <>
+                          <span className="spinner-border spinner-border-sm mr-1.5" role="status" aria-hidden="true"></span>
+                          Switching...
+                        </>
+                      ) : (
+                        <>
+                          <i className="fas fa-sync-alt mr-1.5"></i>
+                          {cameraFacingMode === "user" ? "Switch to Back" : "Switch to Front"}
+                        </>
+                      )}
+                    </button>
+                    <button
+                      type="button"
+                      className="btn btn-danger py-2.5 font-w700 fs-14 shadow-sm"
+                      style={{ flex: 1, borderRadius: "6px" }}
+                      onClick={stopCamera}
+                      disabled={isTransitioning}
+                    >
+                      {isTransitioning ? (
+                        <>
+                          <span className="spinner-border spinner-border-sm mr-2" role="status" aria-hidden="true"></span>
+                          Stopping...
+                        </>
+                      ) : (
+                        <>
+                          <i className="fas fa-stop mr-2"></i> TURN OFF
+                        </>
+                      )}
+                    </button>
+                  </div>
                 )}
               </div>
             </div>
@@ -2588,6 +3915,27 @@ const QRScanner = () => {
         </div>
       </div>
       </div>
+
+      <MachineSwapModal
+        isOpen={isSwapModalOpen}
+        onClose={handleCloseSwapModal}
+        currentMachine={swapTargetMachine}
+        jobCard={jobCardData || activeSession?.jobCardData}
+        availableMachines={allAvailableMachines.length > 0 ? allAvailableMachines : (machineList && machineList.length > 0 ? machineList : (activeSession?.machineList || []))}
+        loadingMachines={swapMachinesLoading}
+        onSubmitSwap={handleSubmitMachineSwap}
+        submitLoading={swapSubmitLoading}
+        isBulk={isBulkSwap}
+        sessionsList={scannedSessions}
+      />
+
+      <MachineLogsModal
+        isOpen={isLogsModalOpen}
+        onClose={handleCloseLogsModal}
+        jobCard={logsJobCard}
+        logsList={machineLogsList}
+        loading={logsLoading}
+      />
     </>
   );
 };

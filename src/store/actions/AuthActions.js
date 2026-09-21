@@ -68,59 +68,66 @@ export function loginAction(email, password, navigate) {
                }
                else {
                 const userRole = parseInt(response.data.data.response[0].F_UserRole, 10);
+                const token = response.data.data.response[0].Token || response.data.data.response[0].UserToken || "";
                 
-                // Fetch RoleWisePermission
-                axios.get(API_WEB_URLS.BASE + 'Masters/0/token/RoleWisePermission/Id/' + userRole)
+                // Fetch RoleWisePermission passing the JWT token in authorization header
+                axios.get(API_WEB_URLS.BASE + 'Masters/0/token/RoleWisePermission/Id/' + userRole, {
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                })
                     .then((permResponse) => {
                         const permissions = permResponse.data.data?.dataList || [];
                         
-                        // Set user data in localStorage
-                        const userData = {
-                            id: response.data.data.response[0].Id,
-                            userName: response.data.data.response[0].UserName,
-                            isLoginable: response.data.data.response[0].IsActive,
-                            dateOfCreation: response.data.data.response[0].DateOfCreation,
-                            userType: userRole,
-                            machineMaster: response.data.data.response[0].F_MachineMaster,
-                            name: response.data.data.response[0].Name,
-                            roleNames: response.data.data.response[0].RoleNames,
-                            expiresIn: 3600, // 1 hour in seconds
-                            permissions: permissions
-                        };
-                        
-                        // Save to localStorage
-                        localStorage.setItem('authUser', JSON.stringify(userData));
-                        
-                        // Run logout timer
-                        runLogoutTimer(
-                            dispatch,
-                            userData.expiresIn * 1000,
-                            navigate
-                        );
-                        
-                        // Dispatch login success
-                        dispatch(loginConfirmedAction(userData));
-                        
-                        // Navigate to dashboard
-                        navigate('/dashboard');
-                    })
-                    .catch((err) => {
-                        console.error("Failed to fetch permissions", err);
-                        // Fallback without permissions
-                        const userData = {
-                            id: response.data.data.response[0].Id,
-                            userName: response.data.data.response[0].UserName,
-                            isLoginable: response.data.data.response[0].IsActive,
-                            dateOfCreation: response.data.data.response[0].DateOfCreation,
-                            userType: userRole,
-                            machineMaster: response.data.data.response[0].F_MachineMaster,
-                            name: response.data.data.response[0].Name,
-                            roleNames: response.data.data.response[0].RoleNames,
-                            expiresIn: 3600,
-                            permissions: []
-                        };
-                        localStorage.setItem('authUser', JSON.stringify(userData));
-                        runLogoutTimer(dispatch, userData.expiresIn * 1000, navigate);
+                         // Set user data in localStorage
+                         const userData = {
+                             id: response.data.data.response[0].Id,
+                             userName: response.data.data.response[0].UserName,
+                             isLoginable: response.data.data.response[0].IsActive,
+                             dateOfCreation: response.data.data.response[0].DateOfCreation,
+                             userType: userRole,
+                             machineMaster: response.data.data.response[0].F_MachineMaster,
+                             name: response.data.data.response[0].Name,
+                             roleNames: response.data.data.response[0].RoleNames,
+                             jwtToken: token,
+                             expiresIn: 3600, // 1 hour in seconds
+                             permissions: permissions
+                         };
+                         
+                         // Save to localStorage
+                         localStorage.setItem('authUser', JSON.stringify(userData));
+                         
+                         // Run logout timer
+                         runLogoutTimer(
+                             dispatch,
+                             userData.expiresIn * 1000,
+                             navigate
+                         );
+                         
+                         // Dispatch login success
+                         dispatch(loginConfirmedAction(userData));
+                         
+                         // Navigate to dashboard
+                         navigate('/dashboard');
+                     })
+                     .catch((err) => {
+                         console.error("Failed to fetch permissions", err);
+                         // Fallback without permissions
+                         const userData = {
+                             id: response.data.data.response[0].Id,
+                             userName: response.data.data.response[0].UserName,
+                             isLoginable: response.data.data.response[0].IsActive,
+                             dateOfCreation: response.data.data.response[0].DateOfCreation,
+                             userType: userRole,
+                             machineMaster: response.data.data.response[0].F_MachineMaster,
+                             name: response.data.data.response[0].Name,
+                             roleNames: response.data.data.response[0].RoleNames,
+                             jwtToken: token,
+                             expiresIn: 3600,
+                             permissions: []
+                         };
+                         localStorage.setItem('authUser', JSON.stringify(userData));
+                         runLogoutTimer(dispatch, userData.expiresIn * 1000, navigate);
                         dispatch(loginConfirmedAction(userData));
                         navigate('/dashboard');
                     });

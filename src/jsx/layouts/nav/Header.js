@@ -4,8 +4,8 @@ import { Link } from "react-router-dom";
 /// Scroll
 import PerfectScrollbar from "react-perfect-scrollbar";
 
-/// Image
-import profile from "../../../images/avatar/profile-1.jpg";
+/// Icons & Components
+import { FaUserCircle } from "react-icons/fa";
 import avatar from "../../../images/avatar/1.jpg";
 import { Dropdown } from "react-bootstrap";
 import LogoutPage from './Logout';
@@ -337,7 +337,7 @@ const Header = ({ onNote }) => {
                 <Dropdown.Toggle variant="" as="a" className="nav-link i-false c-pointer"
                   role="button" data-toggle="dropdown"
                 >
-                  <img src={profile} width={20} alt="" />
+                  <FaUserCircle size={22} style={{ color: '#9B9B9B' }} />
                 </Dropdown.Toggle>
 
                 <Dropdown.Menu align="right" className="mt-3 dropdown-menu dropdown-menu-end">

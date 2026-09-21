@@ -15,6 +15,7 @@ import { Fn_FillListData, Fn_AddEditData, Fn_DeleteData } from '../../store/Func
 import JSZip from 'jszip';
 import { Container } from 'reactstrap';
 import { ThemeContext } from '../../context/ThemeContext';
+import usePagePermissions from '../../helpers/usePagePermissions';
 
 export const PageList_ComponentMaster = ({ filterItemCode, filterIsActive, isModalView = false }) => {
 	const [State, setState] = useState({
@@ -45,6 +46,7 @@ export const PageList_ComponentMaster = ({ filterItemCode, filterIsActive, isMod
 	const tableBorderColor = isDarkMode ? '#ffffff' : '#000000';
 	const tableBgColor = isDarkMode ? '#1a1a1a' : '#ffffff';
 	const tableHeaderBgColor = isDarkMode ? '#2d2d2d' : '#f8f9fa';
+	const { canAdd, canEdit, canDelete } = usePagePermissions('componentMaster');
 	const API_URL = API_WEB_URLS.MASTER + "/0/token/Components";
 	const API_URL_IsActive = API_WEB_URLS.MASTER + "/0/token/ComponentsUpdateIsActive";
 	const API_URL1 = API_WEB_URLS.MASTER + "/0/token/MachineComponentMap";
@@ -315,6 +317,7 @@ export const PageList_ComponentMaster = ({ filterItemCode, filterIsActive, isMod
 					type="switch"
 					id={`isActive-switch-${row.original.Id}`}
 					checked={row.original.IsActive || false}
+					disabled={!canEdit}
 					onChange={(e) => {
 						handleIsActiveChange(row.original.Id, e.target.checked);
 					}}
@@ -342,42 +345,48 @@ export const PageList_ComponentMaster = ({ filterItemCode, filterIsActive, isMod
 		{
 			Header: "Machine Sequence",
 			Cell: ({ row }) => (
-			  <Button
-				variant="info"
-				size="sm"
-				onClick={() => btnMachineSequenceOnClick(row.original)}
-			  >
-				Machine Sequence
-			  </Button>
+			  canEdit ? (
+				<Button
+				  variant="info"
+				  size="sm"
+				  onClick={() => btnMachineSequenceOnClick(row.original)}
+				>
+				  Machine Sequence
+				</Button>
+			  ) : null
 			),
 		},
 		  {
-			Header: "Edit",
-			Cell: ({ row }) => (
-			  <Button
-				variant="warning"
-				size="sm"
-				onClick={() => btnEditOnClick(row.original.Id)}
-			  >
-				Edit
-			  </Button>
-			),
-		  },
-		  {
-			Header: "Delete",
-			Cell: ({ row }) => (
-			  <Button
-				variant="danger"
-				size="sm"
-				onClick={() => btnDeleteOnClick(row.original.Id)}
-			  >
-				Delete
-			  </Button>
-			),
-		  }, 
+		Header: "Edit",
+		Cell: ({ row }) => (
+		  canEdit ? (
+			<Button
+			  variant="warning"
+			  size="sm"
+			  onClick={() => btnEditOnClick(row.original.Id)}
+			>
+			  Edit
+			</Button>
+		  ) : null
+		),
+	  },
+	  {
+		Header: "Delete",
+		Cell: ({ row }) => (
+		  canDelete ? (
+			<Button
+			  variant="danger"
+			  size="sm"
+			  onClick={() => btnDeleteOnClick(row.original.Id)}
+			>
+			  Delete
+			</Button>
+		  ) : null
+		),
+	  }, 
 
 	]
-	const columns = useMemo( () => COLUMNS, [] )
+	const columns = useMemo( () => COLUMNS, [canEdit, canDelete] )
 	const data = useMemo(() => {
 		let filtered = gridData;
 		if (filterItemCode) {
@@ -683,7 +692,7 @@ export const PageList_ComponentMaster = ({ filterItemCode, filterIsActive, isMod
 								onChange={handleZipUpload}
 								className="me-2"
 								size="sm"
-								disabled={isUploading || isSaving}
+								disabled={isUploading || isSaving || (!canAdd && !canEdit)}
 							/>
 							{isUploading && (
 								<div className="spinner-border spinner-border-sm text-primary" role="status">
@@ -698,7 +707,7 @@ export const PageList_ComponentMaster = ({ filterItemCode, filterIsActive, isMod
 								variant="primary"
 								size="sm"
 								onClick={handleSubmitZip}
-								disabled={isSaving || isUploading}
+								disabled={isSaving || isUploading || (!canAdd && !canEdit)}
 								className="w-100"
 							>
 								{isSaving ? (
@@ -713,15 +722,17 @@ export const PageList_ComponentMaster = ({ filterItemCode, filterIsActive, isMod
 						)}
 					</Col>
 					<Col md="2">
-						<Button
-							type="button"
-							onClick={btnAddOnClick}
-							variant="success"
-							size="sm"
-							className="w-100"
-						>
-							<i className="fas fa-plus me-1"></i>Add New
-						</Button>
+						{canAdd && (
+							<Button
+								type="button"
+								onClick={btnAddOnClick}
+								variant="success"
+								size="sm"
+								className="w-100"
+							>
+								<i className="fas fa-plus me-1"></i>Add New
+							</Button>
+						)}
 					</Col>
 				</Row>
 			)}

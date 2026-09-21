@@ -1,10 +1,9 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { Row, Col, Button, Table, Card, Badge, Form, Spinner, Modal, Tabs, Tab } from "react-bootstrap";
 import { useDispatch } from "react-redux";
-import axios from "axios";
 import { Doughnut, Bar } from "react-chartjs-2";
 import { API_WEB_URLS } from "../../../constants/constAPI";
-import { Fn_FillListData } from "../../../store/Functions";
+import { Fn_FillListData, Fn_AddEditData } from "../../../store/Functions";
 import { HubConnectionBuilder } from "@microsoft/signalr";
 import {
   Chart as ChartJS,
@@ -122,29 +121,29 @@ const Home = () => {
   // Retrieve user session data
   const userData = JSON.parse(localStorage.getItem("authUser")) || {};
   const userId = userData.id || userData.UserId || 0;
-  const userToken = userData.token || userData.UserToken || "token";
+  const userToken = "token"; // JWT sent via Authorization header, not in URL path
 
   // Fetch dashboard data
   const fetchDashboardData = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
-      const response = await axios.get(
-        `${API_WEB_URLS.BASE}MachineDelayDashboard/${userId}/${userToken}`
+      const dataList = await Fn_FillListData(
+        dispatch,
+        setData,
+        "gridData",
+        `MachineDelayDashboard/${userId}/${userToken}`
       );
-      if (response.data && response.data.success && response.data.data) {
-        setData(response.data.data);
-        setThresholdVal(response.data.data.thresholdHours || 4);
-      } else {
-        setError(response.data.message || "Failed to load dashboard data.");
+      if (dataList) {
+        setThresholdVal(dataList.thresholdHours || 4);
       }
     } catch (err) {
       console.error("Dashboard fetch error:", err);
-      setError(err.response?.data?.message || err.message || "An error occurred.");
+      setError(err.message || "An error occurred.");
     } finally {
       setLoading(false);
     }
-  }, [userId, userToken]);
+  }, [dispatch, userId, userToken]);
 
   const fetchAllMachines = useCallback(async () => {
     try {
@@ -211,19 +210,25 @@ const Home = () => {
       const formData = new FormData();
       formData.append("ThresholdHours", thresholdVal);
 
-      const response = await axios.post(
-        `${API_WEB_URLS.BASE}MachineDelayDashboard/UpdateThreshold/${userId}/${userToken}`,
-        formData
+      const postData = {
+        arguList: {
+          id: 0,
+          formData: formData
+        }
+      };
+
+      await Fn_AddEditData(
+        dispatch,
+        () => {},
+        postData,
+        `MachineDelayDashboard/UpdateThreshold/${userId}/${userToken}`,
+        true
       );
-      if (response.data && response.data.success) {
-        setShowThresholdInput(false);
-        fetchDashboardData();
-      } else {
-        alert(response.data.message || "Failed to update threshold.");
-      }
+      setShowThresholdInput(false);
+      fetchDashboardData();
     } catch (err) {
       console.error("Threshold update error:", err);
-      alert(err.response?.data?.message || err.message || "Error updating threshold.");
+      alert(err || "Error updating threshold.");
     } finally {
       setIsUpdatingThreshold(false);
     }
@@ -238,17 +243,15 @@ const Home = () => {
     setShowFlowModal(true);
 
     try {
-      const response = await axios.get(
-        `${API_WEB_URLS.BASE}MachineDelayDashboard/JobCardFlow/${userId}/${userToken}/${jobCardId}`
+      await Fn_FillListData(
+        dispatch,
+        setJobCardFlow,
+        "gridData",
+        `MachineDelayDashboard/JobCardFlow/${userId}/${userToken}/${jobCardId}`
       );
-      if (response.data && response.data.success && response.data.data) {
-        setJobCardFlow(response.data.data);
-      } else {
-        alert(response.data.message || "Failed to fetch flow steps.");
-      }
     } catch (err) {
       console.error("Flow fetch error:", err);
-      alert(err.response?.data?.message || err.message || "Error loading flow.");
+      alert(err.message || "Error loading flow.");
     } finally {
       setLoadingFlow(false);
     }
@@ -256,12 +259,12 @@ const Home = () => {
 
   const fetchJobCardFlowData = async (jobCardId) => {
     try {
-      const response = await axios.get(
-        `${API_WEB_URLS.BASE}MachineDelayDashboard/JobCardFlow/${userId}/${userToken}/${jobCardId}`
+      await Fn_FillListData(
+        dispatch,
+        setJobCardFlow,
+        "gridData",
+        `MachineDelayDashboard/JobCardFlow/${userId}/${userToken}/${jobCardId}`
       );
-      if (response.data && response.data.success && response.data.data) {
-        setJobCardFlow(response.data.data);
-      }
     } catch (err) {
       console.error("Flow refresh error:", err);
     }
@@ -295,24 +298,29 @@ const Home = () => {
       vFormData.append("NewDate", nowStr);
       vFormData.append("Type", "2");
 
-      const token = user.token || user.UserToken || "token";
-      const response = await axios.post(
-        `${API_WEB_URLS.BASE}UpdateTransferDateByJobCard/0/${token}`,
-        vFormData
+      const postData = {
+        arguList: {
+          id: 0,
+          formData: vFormData
+        }
+      };
+
+      await Fn_AddEditData(
+        dispatch,
+        () => {},
+        postData,
+        `UpdateTransferDateByJobCard/0/token`,
+        true
       );
 
-      if (response.data && (response.data.success || response.data.Id)) {
-        alert(`Machine "${machineName}" stopped successfully!`);
-        fetchDashboardData();
-        if (jobCardMasterId) {
-          fetchJobCardFlowData(jobCardMasterId);
-        }
-      } else {
-        alert(response.data?.message || response.data?.Message || "Failed to stop machine.");
+      alert(`Machine "${machineName}" stopped successfully!`);
+      fetchDashboardData();
+      if (jobCardMasterId) {
+        fetchJobCardFlowData(jobCardMasterId);
       }
     } catch (err) {
       console.error("Error stopping machine from dashboard:", err);
-      alert(err.response?.data?.message || err.message || "Error stopping machine.");
+      alert(err || "Error stopping machine.");
     } finally {
       setStopMachineLoading((prev) => ({ ...prev, [jobCardLineId]: false }));
     }

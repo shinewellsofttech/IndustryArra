@@ -1,9 +1,8 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { Row, Col, Button, Card, Form, Spinner, Alert } from "react-bootstrap";
 import { useDispatch } from "react-redux";
-import axios from "axios";
 import { API_WEB_URLS } from "../../constants/constAPI";
-import { Fn_FillListData } from "../../store/Functions";
+import { Fn_FillListData, Fn_AddEditData } from "../../store/Functions";
 
 const GlobalOptions = () => {
   const [options, setOptions] = useState([]);
@@ -23,7 +22,7 @@ const GlobalOptions = () => {
   // Retrieve user session data
   const userData = JSON.parse(localStorage.getItem("authUser")) || {};
   const userId = userData.id || userData.UserId || 0;
-  const userToken = userData.token || userData.UserToken || "token";
+  // JWT sent via Authorization header by ApiHelper - use literal 'token' in path
 
   const dispatch = useDispatch();
 
@@ -36,7 +35,7 @@ const GlobalOptions = () => {
         dispatch,
         setOptions,
         "gridData",
-        `MachineDelayDashboard/GlobalOptions/${userId}/${userToken}`
+        `MachineDelayDashboard/GlobalOptions/${userId}/token`
       );
     } catch (err) {
       console.error("Global options fetch error:", err);
@@ -44,7 +43,7 @@ const GlobalOptions = () => {
     } finally {
       setLoading(false);
     }
-  }, [dispatch, userId, userToken]);
+  }, [dispatch, userId]);
 
   const fetchMachines = useCallback(async () => {
     setMachineLoading(true);
@@ -109,19 +108,25 @@ const GlobalOptions = () => {
       formData.append("OptionValue", thresholdValue);
       formData.append("ExcludedMachineIds", excludedIds);
 
-      const response = await axios.post(
-        `${API_WEB_URLS.BASE}MachineDelayDashboard/GlobalOptions/Save/${userId}/${userToken}`,
-        formData
+      const postData = {
+        arguList: {
+          id: 0,
+          formData: formData
+        }
+      };
+
+      await Fn_AddEditData(
+        dispatch,
+        () => {},
+        postData,
+        `MachineDelayDashboard/GlobalOptions/Save/${userId}/token`,
+        true
       );
-      if (response.data && response.data.success) {
-        setSuccessMessage("Global options updated successfully!");
-        fetchOptions();
-      } else {
-        alert(response.data.message || "Failed to update global options.");
-      }
+      setSuccessMessage("Global options updated successfully!");
+      fetchOptions();
     } catch (err) {
       console.error("Save option error:", err);
-      alert(err.response?.data?.message || err.message || "Error saving options.");
+      alert(err || "Error saving options.");
     } finally {
       setActionLoading(false);
     }

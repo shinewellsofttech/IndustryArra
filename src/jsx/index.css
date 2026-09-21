@@ -739,3 +739,131 @@ button.react-calendar__tile.react-calendar__tile--active.react-calendar__tile--r
 .content-body {
   transition: margin-left 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
 }
+
+/* =========================================================
+   MOBILE SAFE-AREA & NOTCH SUPPORT (iPhone / Android)
+   ========================================================= */
+@media only screen and (max-width: 768px) {
+  /* Header container on mobile: include top safe-area padding */
+  .header {
+    height: calc(4.5rem + env(safe-area-inset-top, 0px)) !important;
+    padding-top: env(safe-area-inset-top, 0px) !important;
+    padding-left: 0 !important;
+    box-sizing: border-box !important;
+  }
+
+  .header .header-content {
+    height: 4.5rem !important;
+    padding-left: 5.5rem !important; /* Space for logo & hamburger toggle */
+    padding-right: 0.75rem !important;
+    display: flex !important;
+    align-items: center !important;
+  }
+
+  /* Nav header containing logo and hamburger */
+  .nav-header {
+    height: calc(4.5rem + env(safe-area-inset-top, 0px)) !important;
+    padding-top: env(safe-area-inset-top, 0px) !important;
+    width: auto !important;
+    min-width: 5rem !important;
+    box-sizing: border-box !important;
+  }
+
+  .nav-header .brand-logo {
+    height: 4.5rem !important;
+    padding-left: 0.75rem !important;
+    padding-right: 0.5rem !important;
+    display: flex !important;
+    align-items: center !important;
+  }
+
+  .nav-header .brand-logo img {
+    height: 32px !important;
+    width: auto !important;
+    max-width: 100px !important;
+  }
+
+  /* Hamburger toggle position: centered in the 4.5rem content area below notch */
+  .nav-control {
+    top: calc(env(safe-area-inset-top, 0px) + 2.25rem) !important;
+    transform: translateY(-50%) !important;
+    right: -2.5rem !important;
+    padding: 0.5rem !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    z-index: 99999 !important;
+  }
+
+  .hamburger {
+    width: 24px !important;
+    height: 20px !important;
+    display: flex !important;
+    flex-direction: column !important;
+    justify-content: space-around !important;
+  }
+
+  .hamburger .line {
+    margin: 0 !important;
+  }
+
+  /* Header user info & right controls */
+  .header-left {
+    display: flex !important;
+    align-items: center !important;
+    min-width: 0 !important;
+  }
+
+  .header-left .user-info {
+    padding: 2px 4px !important;
+    font-size: 0.78rem !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    max-width: 130px !important;
+  }
+
+  .header-right {
+    display: flex !important;
+    align-items: center !important;
+    gap: 4px !important;
+    margin-left: auto !important;
+  }
+
+  .header-right .nav-item {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+  }
+
+  /* Profile icon & theme toggle touch target */
+  .header-profile .nav-link,
+  .header-right button.nav-link {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    min-width: 38px !important;
+    min-height: 38px !important;
+    padding: 6px !important;
+    border-radius: 8px !important;
+  }
+
+  .header-profile .dropdown-menu {
+    top: 100% !important;
+    margin-top: 8px !important;
+    right: 0 !important;
+    left: auto !important;
+  }
+
+  /* Content body top padding so content is not hidden behind the taller notch header */
+  .content-body {
+    padding-top: calc(4.5rem + env(safe-area-inset-top, 0px) + 12px) !important;
+  }
+
+  /* Sidebar top offset so it sits cleanly below the notch header */
+  [data-sidebar-style="overlay"] .deznav {
+    top: calc(4.5rem + env(safe-area-inset-top, 0px)) !important;
+    height: calc(100vh - (4.5rem + env(safe-area-inset-top, 0px))) !important;
+    height: calc(100dvh - (4.5rem + env(safe-area-inset-top, 0px))) !important;
+  }
+}

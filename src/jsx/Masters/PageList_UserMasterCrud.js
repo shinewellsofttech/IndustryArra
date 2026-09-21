@@ -4,12 +4,16 @@ import { useNavigate } from "react-router-dom";
 import { Fn_FillListData } from "../../store/Functions";
 import { API_WEB_URLS } from "../../constants/constAPI";
 import { HubConnectionBuilder } from "@microsoft/signalr";
+import usePagePermissions from "../../helpers/usePagePermissions";
+import { FaEye, FaEyeSlash } from "react-icons/fa";
 
 const PageList_UserMasterCrud = () => {
   const [state, setState] = useState({ FillArray: [], isProgress: true });
+  const [visiblePasswords, setVisiblePasswords] = useState({});
   const dispatch = useDispatch();
   const navigate = useNavigate();
   const connectionRef = useRef(null);
+  const { canAdd, canEdit } = usePagePermissions('UserMasterCrud');
 
   const API_URL = `${API_WEB_URLS.MASTER}/0/token/UserMaster`;
 
@@ -85,7 +89,7 @@ const PageList_UserMasterCrud = () => {
         <div className="card">
           <div className="card-header d-flex justify-content-between align-items-center">
             <h4 className="card-title">User Master</h4>
-            <button className="btn btn-primary" onClick={handleAdd}>Add User</button>
+            {canAdd && <button className="btn btn-primary" onClick={handleAdd}>Add User</button>}
           </div>
           <div className="card-body">
             <div className="table-responsive">
@@ -95,6 +99,7 @@ const PageList_UserMasterCrud = () => {
                     <th>#</th>
                     <th>Name</th>
                     <th>User Name</th>
+                    <th>Password</th>
                     <th>Mobile No</th>
                     <th>Email</th>
                     <th>Role ID</th>
@@ -111,6 +116,32 @@ const PageList_UserMasterCrud = () => {
                         <td>{idx + 1}</td>
                         <td>{row.Name}</td>
                         <td>{row.UserName}</td>
+                        <td>
+                          <div className="d-flex align-items-center justify-content-between">
+                            <span>
+                              {visiblePasswords[row.Id || row.UserId || idx]
+                                ? row.PasswordHash
+                                : "••••••••"}
+                            </span>
+                            <button
+                              type="button"
+                              className="btn btn-xs btn-link p-0 ms-2"
+                              style={{ border: "none", background: "none", color: "#6c757d" }}
+                              onClick={() =>
+                                setVisiblePasswords((prev) => ({
+                                  ...prev,
+                                  [row.Id || row.UserId || idx]: !prev[row.Id || row.UserId || idx],
+                                }))
+                              }
+                            >
+                              {visiblePasswords[row.Id || row.UserId || idx] ? (
+                                <FaEye />
+                              ) : (
+                                <FaEyeSlash />
+                              )}
+                            </button>
+                          </div>
+                        </td>
                         <td>{row.MobileNo}</td>
                         <td>{row.Email}</td>
                         <td>{row.F_UserRole}</td>
@@ -132,7 +163,7 @@ const PageList_UserMasterCrud = () => {
                                     <strong>IP:</strong> {session.IpAddress || session.ipAddress || "Unknown"}<br />
                                     <strong>MAC:</strong> {session.MacId || session.macId || "Unknown"}
                                   </div>
-                                  {(session.ConnectionId || session.connectionId) && (
+                                  {(session.ConnectionId || session.connectionId) && canEdit && (
                                     <button 
                                       className="btn btn-xs btn-danger p-1 ms-2" 
                                       style={{ fontSize: '9px', padding: '2px 5px', minWidth: '50px' }}
@@ -150,7 +181,7 @@ const PageList_UserMasterCrud = () => {
                           )}
                         </td>
                         <td>
-                          <button className="btn btn-sm btn-secondary me-2" onClick={() => handleEdit(row.Id || row.UserId)}>Edit</button>
+                          {canEdit && <button className="btn btn-sm btn-secondary me-2" onClick={() => handleEdit(row.Id || row.UserId)}>Edit</button>}
                         </td>
                       </tr>
                     ))

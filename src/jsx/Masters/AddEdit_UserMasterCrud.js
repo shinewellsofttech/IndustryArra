@@ -7,6 +7,7 @@ import { Fn_AddEditData, Fn_DisplayData, Fn_FillListData } from "../../store/Fun
 import { useDispatch } from "react-redux";
 import { API_WEB_URLS } from "../../constants/constAPI";
 import swal from "sweetalert";
+import { FaEye, FaEyeSlash } from "react-icons/fa";
 
 const ValidationSchema = Yup.object().shape({
   Name: Yup.string().required("Name is required"),
@@ -37,6 +38,7 @@ const AddEdit_UserMasterCrud = () => {
     machines: [],
     isProgress: true,
   });
+  const [showPassword, setShowPassword] = useState(false);
   
   const dispatch = useDispatch()
   const location = useLocation()
@@ -207,14 +209,27 @@ const AddEdit_UserMasterCrud = () => {
 
                         <div className="col-md-6 form-group mb-3">
                           <label className="text-label">Password *</label>
-                          <input
-                            type="password"
-                            className="form-control"
-                            name="PasswordHash"
-                            onChange={handleChange}
-                            onBlur={handleBlur}
-                            value={values.PasswordHash || ""}
-                          />
+                          <div className="input-group transparent-append">
+                            <input
+                              type={showPassword ? "text" : "password"}
+                              className="form-control"
+                              name="PasswordHash"
+                              onChange={handleChange}
+                              onBlur={handleBlur}
+                              value={values.PasswordHash || ""}
+                            />
+                            <div
+                              className="input-group-text show-validate"
+                              style={{ cursor: "pointer" }}
+                              onClick={() => setShowPassword(!showPassword)}
+                            >
+                              {showPassword ? (
+                                <FaEye />
+                              ) : (
+                                <FaEyeSlash />
+                              )}
+                            </div>
+                          </div>
                           {errors.PasswordHash && (
                             <div className="text-danger">{errors.PasswordHash}</div>
                           )}

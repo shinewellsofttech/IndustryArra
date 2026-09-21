@@ -13,14 +13,26 @@ import { useNavigate } from 'react-router-dom';
 import { API_WEB_URLS } from '../../constants/constAPI';
 import { Fn_FillListData, Fn_AddEditData } from '../../store/Functions';
 import * as XLSX from "xlsx";
+import axios from "axios";
 import { ToastContainer, toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
+import usePagePermissions from '../../helpers/usePagePermissions';
 
+const getAuthHeaders = () => {
+  const token =
+    localStorage.getItem("token") ||
+    localStorage.getItem("authToken") ||
+    localStorage.getItem("userToken") ||
+    "";
+  return {
+    Authorization: token ? `Bearer ${token}` : "",
+    "Content-Type": "multipart/form-data",
+  };
+};
 
 export const PageList_ContainerMaster = () => {
 	const [State, setState] = useState({
 		id: 0,
-		FillArray: [],
 		FillArray: [],
 		formData: {},
 		OtherDataScore: [],
@@ -38,7 +50,7 @@ export const PageList_ContainerMaster = () => {
 	const API_URL_QUANTITY_BY_CONTRACT = API_WEB_URLS.MASTER + "/0/token/QuantityByContract";
 	const rtPage_Add = "/AddContainer";
 	const rtPage_Edit = "/AddContainer";
-	 const [excelData, setExcelData] = useState(null);
+	const [excelData, setExcelData] = useState(null);
 	const [F_ItemMaster, setItemMaster] = useState(0);
 	const API_URL_SAVE = "ContainerMaster/0/token";
 	const API_URL_SAVE_BREAK = "BreakContainerMaster/0/token";
@@ -47,27 +59,173 @@ export const PageList_ContainerMaster = () => {
 	const [selRow, setSelRow] = useState(0);
 	const [showModal, setShowModal] = useState(false);
 	const [breakUpArray, setBreakUpArray] = useState([]);
+	const { canAdd, canEdit, canDelete } = usePagePermissions('ContainerMaster');
 
-	
 	useEffect(() => {
 		const fetchData = async () => {
-		  setLoading(true);
-		   Fn_FillListData(dispatch, setGridData, "gridData", API_URL + "/Id/0");
-		   Fn_FillListData(dispatch, setState, "FillArray", API_URL_BREAK + "/Id/0");
-		  setLoading(false);
+			setLoading(true);
+			await Fn_FillListData(dispatch, setGridData, "gridData", API_URL + "/Id/0");
+			await Fn_FillListData(dispatch, setState, "FillArray", API_URL_BREAK + "/Id/0");
+			setLoading(false);
 		};
-	
+
 		fetchData();
-	  }, [dispatch, API_URL]);
-	
-	  const btnAddOnClick = () => {
-		
-		 navigate(rtPage_Add, { state: { Id: 0 } });
-	  };
-	
-	  const btnEditOnClick = (Id) => {
-		navigate(rtPage_Edit, { state: { Id } });
-	  };
+	}, [dispatch, API_URL, API_URL_BREAK]);
+
+	// ── Edit Shipment State & Handlers ──────────────────────────────────────────
+	const [showEditModal, setShowEditModal] = useState(false);
+	const [editRowData, setEditRowData] = useState({
+		F_ContainerMasterL: 0,
+		ContainerNumber: "",
+		ContractNo: "",
+		ItemCode: "",
+		ItemName: "",
+		Quantity: "",
+		InspectionDate: "",
+		JobCardInitial: "",
+		IsTikamoon: false,
+	});
+	const [isUpdating, setIsUpdating] = useState(false);
+
+	// ── Delete Shipment State & Handlers ────────────────────────────────────────
+	const [showDeleteModal, setShowDeleteModal] = useState(false);
+	const [deleteRowData, setDeleteRowData] = useState(null);
+	const [isDeleting, setIsDeleting] = useState(false);
+	const btnAddOnClick = () => {
+		navigate(rtPage_Add, { state: { Id: 0 } });
+	};
+
+	const btnEditOnClick = (rowData) => {
+		setEditRowData({
+			F_ContainerMasterL: rowData.F_ContainerMasterL,
+			ContainerNumber: rowData.ContainerNumber || "",
+			ContractNo: rowData.ContractNo || "",
+			ItemCode: rowData.ItemCode || "",
+			ItemName: rowData.ItemName || "",
+			Quantity: rowData.Quantity || "",
+			InspectionDate: rowData.InspectionDate ? rowData.InspectionDate.split("T")[0] : "",
+			JobCardInitial: rowData.JobCardInitial || "",
+			IsTikamoon: !!rowData.IsTikamoon,
+		});
+		setShowEditModal(true);
+	};
+
+	const handleCloseEditModal = () => {
+		setShowEditModal(false);
+		setIsUpdating(false);
+	};
+
+	const handleSaveEditShipment = async (e) => {
+		if (e) e.preventDefault();
+		if (!editRowData.ContainerNumber || !editRowData.ContainerNumber.trim()) {
+			alert("Shipment / Container Number is required.");
+			return;
+		}
+		if (!editRowData.ItemCode || !editRowData.ItemCode.trim()) {
+			alert("Item Code is required.");
+			return;
+		}
+		if (!editRowData.Quantity || parseFloat(editRowData.Quantity) <= 0) {
+			alert("Please enter a valid Quantity greater than 0.");
+			return;
+		}
+
+		setIsUpdating(true);
+		try {
+			const authUser = JSON.parse(localStorage.getItem("authUser") || "{}");
+			const userId = authUser?.id || authUser?.ID || "0";
+
+			const vFormData = new FormData();
+			vFormData.append("ContainerMasterLId", editRowData.F_ContainerMasterL);
+			vFormData.append("ContainerNumber", editRowData.ContainerNumber.trim());
+			vFormData.append("ContractNo", editRowData.ContractNo.trim());
+			vFormData.append("ItemCode", editRowData.ItemCode.trim());
+			vFormData.append("ItemName", editRowData.ItemName.trim());
+			vFormData.append("Quantity", editRowData.Quantity);
+			if (editRowData.InspectionDate) {
+				vFormData.append("InspectionDate", editRowData.InspectionDate);
+			}
+			vFormData.append("JobCardInitial", editRowData.JobCardInitial.trim());
+			vFormData.append("IsTikamoon", editRowData.IsTikamoon ? "true" : "false");
+
+			const headers = getAuthHeaders();
+			const res = await axios.post(
+				`${API_WEB_URLS.BASE}ShipmentMaster/UpdateLine/${userId}/token`,
+				vFormData,
+				{ headers }
+			);
+
+			if (res?.data?.Success || res?.data?.success || res?.status === 200) {
+				toast.success("✅ Shipment updated successfully!", {
+					position: "top-right",
+					autoClose: 3000,
+				});
+				setShowEditModal(false);
+				// Refresh list
+				await Fn_FillListData(dispatch, setGridData, "gridData", API_URL + "/Id/0");
+				await Fn_FillListData(dispatch, setState, "FillArray", API_URL_BREAK + "/Id/0");
+			} else {
+				alert(res?.data?.Message || res?.data?.message || "Failed to update shipment.");
+			}
+		} catch (err) {
+			console.error("Error updating shipment line:", err);
+			const errMsg = err?.response?.data?.Message || err?.response?.data?.message || err?.message || "Failed to update shipment.";
+			alert(errMsg);
+		} finally {
+			setIsUpdating(false);
+		}
+	};
+
+	const btnDeleteOnClick = (rowData) => {
+		setDeleteRowData(rowData);
+		setShowDeleteModal(true);
+	};
+
+	const handleCloseDeleteModal = () => {
+		setShowDeleteModal(false);
+		setDeleteRowData(null);
+		setIsDeleting(false);
+	};
+
+	const handleConfirmDeleteShipment = async () => {
+		if (!deleteRowData) return;
+		setIsDeleting(true);
+		try {
+			const authUser = JSON.parse(localStorage.getItem("authUser") || "{}");
+			const userId = authUser?.id || authUser?.ID || "0";
+
+			const vFormData = new FormData();
+			vFormData.append("ContainerMasterLId", deleteRowData.F_ContainerMasterL);
+
+			const headers = getAuthHeaders();
+			const res = await axios.post(
+				`${API_WEB_URLS.BASE}ShipmentMaster/DeleteLine/${userId}/token`,
+				vFormData,
+				{ headers }
+			);
+
+			if (res?.data?.Success || res?.data?.success || res?.status === 200) {
+				toast.success("✅ Shipment deleted successfully!", {
+					position: "top-right",
+					autoClose: 3000,
+				});
+				setShowDeleteModal(false);
+				setDeleteRowData(null);
+				// Refresh list
+				await Fn_FillListData(dispatch, setGridData, "gridData", API_URL + "/Id/0");
+				await Fn_FillListData(dispatch, setState, "FillArray", API_URL_BREAK + "/Id/0");
+			} else {
+				alert(res?.data?.Message || res?.data?.message || "Failed to delete shipment.");
+			}
+		} catch (err) {
+			console.error("Error deleting shipment line:", err);
+			const errMsg = err?.response?.data?.Message || err?.response?.data?.message || err?.message || "Failed to delete shipment.";
+			alert(errMsg);
+		} finally {
+			setIsDeleting(false);
+		}
+	};
+	// ────────────────────────────────────────────────────────────────────────────
 
 	  const btnBreakOnClick = (rowData) => {
 		setSelRow(rowData);
@@ -530,6 +688,7 @@ export const PageList_ContainerMaster = () => {
 							type="date"
 							defaultValue={formatDateForInput(row.original.InspectionDate)}
 							onChange={(e) => handleDateChange(e, row.original)}
+							disabled={!canEdit}
 							style={{ width: '150px' }}
 						/>
 					);
@@ -605,6 +764,7 @@ export const PageList_ContainerMaster = () => {
 							type="number"
 							defaultValue={row.original.Quantity || ''}
 							onKeyDown={(e) => handleEnterKeyPress(e, row.original)}
+							disabled={!canEdit}
 							style={{ width: '100px' }}
 						/>
 					);
@@ -646,11 +806,31 @@ export const PageList_ContainerMaster = () => {
 							type="text"
 							defaultValue={row.original.JobCardInitial || ''}
 							onKeyDown={(e) => handleEnterKeyPress(e, row.original)}
+							disabled={!canEdit}
 							style={{ width: '150px' }}
 						/>
 					);
 				
 			},
+		},
+
+		{
+			Header: "Type",
+			Footer: "Type",
+			accessor: "IsMergedOrBroken",
+			Filter: ColumnFilter,
+			Cell: ({ row }) => {
+				const isMergedOrBroken = row.original.IsMergedOrBroken === 1 || !!(row.original.ParentIds && String(row.original.ParentIds).trim() !== "");
+				return isMergedOrBroken ? (
+					<span className="badge badge-sm" style={{ backgroundColor: "#64748b", color: "#fff", padding: "4px 8px", borderRadius: "4px", fontSize: "11px", fontWeight: 600 }}>
+						🔗 Merged/Broken
+					</span>
+				) : (
+					<span className="badge badge-sm" style={{ backgroundColor: "#10b981", color: "#fff", padding: "4px 8px", borderRadius: "4px", fontSize: "11px", fontWeight: 600 }}>
+						Single
+					</span>
+				);
+			}
 		},
 
 		{
@@ -660,27 +840,67 @@ export const PageList_ContainerMaster = () => {
 				variant="danger"
 				size="sm"
 				onClick={() => btnBreakOnClick(row.original)}
+				disabled={canEdit === false}
 			  >
 				Break
 			  </Button>
 			),
 		},
 
-		//   {
-		// 	Header: "Edit",
-		// 	Cell: ({ row }) => (
-		// 	  <Button
-		// 		variant="warning"
-		// 		size="sm"
-		// 		onClick={() => btnEditOnClick(row.original.ID)}
-		// 	  >
-		// 		Edit
-		// 	  </Button>
-		// 	),
-		//   }, 
+		{
+			Header: "Edit",
+			Cell: ({ row }) => {
+				const isMergedOrBroken = row.original.IsMergedOrBroken === 1 || !!(row.original.ParentIds && String(row.original.ParentIds).trim() !== "");
+				if (isMergedOrBroken) {
+					return (
+						<span title="Cannot edit: shipment has been merged or broken" className="text-muted font-weight-bold" style={{ fontSize: "12px" }}>
+							—
+						</span>
+					);
+				}
+				return (
+					<Button
+						variant="warning"
+						size="sm"
+						onClick={() => btnEditOnClick(row.original)}
+						disabled={canEdit === false}
+						style={{ fontWeight: 600, padding: "4px 10px" }}
+						title="Edit Shipment"
+					>
+						Edit
+					</Button>
+				);
+			},
+		},
+
+		{
+			Header: "Delete",
+			Cell: ({ row }) => {
+				const isMergedOrBroken = row.original.IsMergedOrBroken === 1 || !!(row.original.ParentIds && String(row.original.ParentIds).trim() !== "");
+				if (isMergedOrBroken) {
+					return (
+						<span title="Cannot delete: shipment has been merged or broken" className="text-muted font-weight-bold" style={{ fontSize: "12px" }}>
+							—
+						</span>
+					);
+				}
+				return (
+					<Button
+						variant="outline-danger"
+						size="sm"
+						onClick={() => btnDeleteOnClick(row.original)}
+						disabled={canDelete === false}
+						style={{ fontWeight: 600, padding: "4px 10px" }}
+						title="Delete Shipment"
+					>
+						Delete
+					</Button>
+				);
+			},
+		},
 
 	]
-	const columns = useMemo( () => COLUMNS, [] )
+	const columns = useMemo( () => COLUMNS, [canEdit, canDelete] )
 	const data = useMemo( () => gridData, [gridData] )
 	const tableInstance = useTable({
 		columns,
@@ -713,14 +933,57 @@ export const PageList_ContainerMaster = () => {
 		<>
 			<style jsx>{`
 				.custom-modal .modal-content {
-					font-family: 'Segoe UI', 'Roboto', 'Helvetica Neue', Arial, sans-serif;
+					font-family: 'Poppins', 'Segoe UI', sans-serif;
 					font-size: 14px;
-					color: #2c3e50;
+				}
+				.custom-modal .form-label,
+				.custom-modal label,
+				.custom-modal .form-check-label {
+					color: inherit;
+				}
+				[data-theme-version="dark"] .custom-modal .modal-content {
+					background-color: #1e293b !important;
+					color: #f1f5f9 !important;
+					border: 1px solid #334155 !important;
+				}
+				[data-theme-version="dark"] .custom-modal .modal-body {
+					background-color: #1e293b !important;
+					color: #f1f5f9 !important;
+				}
+				[data-theme-version="dark"] .custom-modal .modal-footer {
+					background-color: #0f172a !important;
+					border-top: 1px solid #334155 !important;
+				}
+				[data-theme-version="dark"] .custom-modal .form-label,
+				[data-theme-version="dark"] .custom-modal label,
+				[data-theme-version="dark"] .custom-modal .form-check-label {
+					color: #f1f5f9 !important;
+				}
+				[data-theme-version="dark"] .custom-modal .form-control {
+					background-color: #0f172a !important;
+					color: #f8fafc !important;
+					border: 1px solid #334155 !important;
+				}
+				[data-theme-version="dark"] .custom-modal .form-control:focus {
+					border-color: #38bdf8 !important;
+					color: #ffffff !important;
+					background-color: #0f172a !important;
+					box-shadow: 0 0 0 0.2rem rgba(56, 189, 248, 0.25) !important;
+				}
+				.custom-modal .shipment-preview-box {
+					background-color: #f8fafc;
+					border: 1px solid #e2e8f0;
+					color: #1e293b;
+				}
+				[data-theme-version="dark"] .custom-modal .shipment-preview-box {
+					background-color: #0f172a !important;
+					border: 1px solid #334155 !important;
+					color: #f1f5f9 !important;
 				}
 				.custom-modal .modal-title {
-					font-family: 'Segoe UI', 'Roboto', 'Helvetica Neue', Arial, sans-serif;
+					font-family: 'Poppins', 'Segoe UI', sans-serif;
 					font-weight: 600;
-					color: #1a252f;
+					color: #fff;
 					font-size: 1.25rem;
 				}
 				.custom-modal .modal-header {
@@ -851,6 +1114,7 @@ export const PageList_ContainerMaster = () => {
 							onChange={handleFileUpload}
 							size="sm"
 							className="me-2"
+							disabled={!canAdd && !canEdit}
 						/>
 						{uploadedRowCount > 0 && (
 							<span className="badge bg-success">
@@ -867,7 +1131,7 @@ export const PageList_ContainerMaster = () => {
 					onClick={handleSaveFile}
 					variant="primary"
 					size="sm"
-					disabled={isSaving || !excelData || excelData.length === 0}
+					disabled={isSaving || !excelData || excelData.length === 0 || (!canAdd && !canEdit)}
 					style={{marginTop: '20px'}}
 				>
 						{isSaving ? (
@@ -888,15 +1152,17 @@ export const PageList_ContainerMaster = () => {
 					</Button>
 				</Col>
 			<Col md="2">
-				<Button
-					type="button"
-					onClick={btnAddOnClick}
-					variant="success"
-					size="sm"
-					style={{marginTop: '20px'}}
-				>
-					Add New
-				</Button>
+				{canAdd && (
+					<Button
+						type="button"
+						onClick={btnAddOnClick}
+						variant="success"
+						size="sm"
+						style={{marginTop: '20px'}}
+					>
+						Add New
+					</Button>
+				)}
 			</Col>
 			</Row>
 		<div className="card">
@@ -1029,6 +1295,7 @@ export const PageList_ContainerMaster = () => {
 													as="select"
 													value={row.ContainerNumber}
 													onChange={(e) => updateBreakUpRow(index, 'ContainerNumber', e.target.value)}
+													disabled={!canEdit}
 												>
 													{getAvailableContainers(index).map((item) => (
 														<option key={item.Id} value={item.Name}>
@@ -1068,6 +1335,7 @@ export const PageList_ContainerMaster = () => {
 													onChange={(e) => updateBreakUpRow(index, 'Quantity', e.target.value)}
 													min="0"
 													max={selRow.Quantity}
+													disabled={!canEdit}
 												/>
 											</td>
 											<td className="text-center" style={{ verticalAlign: 'middle' }}>
@@ -1075,6 +1343,7 @@ export const PageList_ContainerMaster = () => {
 													type="checkbox"
 													checked={row.IsTikamoon || false}
 													onChange={(e) => updateBreakUpRow(index, 'IsTikamoon', e.target.checked)}
+													disabled={!canEdit}
 													style={{
 														width: '20px',
 														height: '20px',
@@ -1103,6 +1372,7 @@ export const PageList_ContainerMaster = () => {
 														variant="success"
 														size="sm"
 														onClick={addBreakUpRow}
+														disabled={!canEdit}
 														title="Add New Row"
 													>
 														+
@@ -1111,7 +1381,7 @@ export const PageList_ContainerMaster = () => {
 														variant="danger"
 														size="sm"
 														onClick={() => removeBreakUpRow(index)}
-														disabled={breakUpArray.length === 1}
+														disabled={!canEdit || breakUpArray.length === 1}
 														title="Delete Row"
 													>
 														🗑️
@@ -1131,10 +1401,199 @@ export const PageList_ContainerMaster = () => {
 						Close
 					</Button>
 					{isQuantityExact() && (
-						<Button variant="primary" onClick={handleSubmit} size="sm">
+						<Button variant="primary" onClick={handleSubmit} size="sm" disabled={!canEdit}>
 							OK
 						</Button>
 						)}
+					</Modal.Footer>
+				</Modal>
+			)}
+
+			{/* Edit Shipment Modal */}
+			{showEditModal && (
+				<Modal show={showEditModal} onHide={handleCloseEditModal} size="lg" className="custom-modal" centered>
+					<Modal.Header closeButton style={{ background: "linear-gradient(135deg, #1e293b 0%, #0f172a 100%)", color: "#fff" }}>
+						<Modal.Title style={{ color: "#fff", display: "flex", alignItems: "center", gap: "8px" }}>
+							<i className="fa fa-edit" style={{ color: "#f59e0b" }}></i> Edit Shipment Line
+						</Modal.Title>
+					</Modal.Header>
+					<Modal.Body style={{ padding: "20px" }}>
+						<form onSubmit={handleSaveEditShipment}>
+							<Row className="g-3">
+								<Col md={6} className="mb-3">
+									<label className="form-label font-weight-bold" style={{ fontSize: "13px" }}>
+										Shipment / Container No <span className="text-danger">*</span>
+									</label>
+									<FormControl
+										type="text"
+										value={editRowData.ContainerNumber}
+										onChange={(e) => setEditRowData({ ...editRowData, ContainerNumber: e.target.value })}
+										placeholder="e.g. N474"
+										required
+										disabled={isUpdating}
+									/>
+								</Col>
+
+								<Col md={6} className="mb-3">
+									<label className="form-label font-weight-bold" style={{ fontSize: "13px" }}>
+										Contract No
+									</label>
+									<FormControl
+										type="text"
+										value={editRowData.ContractNo}
+										onChange={(e) => setEditRowData({ ...editRowData, ContractNo: e.target.value })}
+										placeholder="e.g. LF8469656"
+										disabled={isUpdating}
+									/>
+								</Col>
+
+								<Col md={6} className="mb-3">
+									<label className="form-label font-weight-bold" style={{ fontSize: "13px" }}>
+										Item Code <span className="text-danger">*</span>
+									</label>
+									<FormControl
+										type="text"
+										value={editRowData.ItemCode}
+										onChange={(e) => setEditRowData({ ...editRowData, ItemCode: e.target.value })}
+										placeholder="e.g. H57907"
+										required
+										disabled={isUpdating}
+									/>
+								</Col>
+
+								<Col md={6} className="mb-3">
+									<label className="form-label font-weight-bold" style={{ fontSize: "13px" }}>
+										Item Description / Name
+									</label>
+									<FormControl
+										type="text"
+										value={editRowData.ItemName}
+										onChange={(e) => setEditRowData({ ...editRowData, ItemName: e.target.value })}
+										placeholder="e.g. C&C CALISTO STORAGE COFFEE TABLE"
+										disabled={isUpdating}
+									/>
+								</Col>
+
+								<Col md={4} className="mb-3">
+									<label className="form-label font-weight-bold" style={{ fontSize: "13px" }}>
+										Quantity <span className="text-danger">*</span>
+									</label>
+									<FormControl
+										type="number"
+										value={editRowData.Quantity}
+										onChange={(e) => setEditRowData({ ...editRowData, Quantity: e.target.value })}
+										min="0.01"
+										step="any"
+										required
+										disabled={isUpdating}
+									/>
+								</Col>
+
+								<Col md={4} className="mb-3">
+									<label className="form-label font-weight-bold" style={{ fontSize: "13px" }}>
+										Inspection Date
+									</label>
+									<FormControl
+										type="date"
+										value={editRowData.InspectionDate}
+										onChange={(e) => setEditRowData({ ...editRowData, InspectionDate: e.target.value })}
+										disabled={isUpdating}
+									/>
+								</Col>
+
+								<Col md={4} className="mb-3">
+									<label className="form-label font-weight-bold" style={{ fontSize: "13px" }}>
+										Job Card Code / Initial
+									</label>
+									<FormControl
+										type="text"
+										value={editRowData.JobCardInitial}
+										onChange={(e) => setEditRowData({ ...editRowData, JobCardInitial: e.target.value })}
+										placeholder="e.g. A829"
+										disabled={isUpdating}
+									/>
+								</Col>
+
+								<Col md={12} className="mb-2">
+									<div className="form-check" style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+										<input
+											type="checkbox"
+											className="form-check-input"
+											id="editIsTikamoonCheck"
+											checked={editRowData.IsTikamoon}
+											onChange={(e) => setEditRowData({ ...editRowData, IsTikamoon: e.target.checked })}
+											disabled={isUpdating}
+											style={{ width: "18px", height: "18px", cursor: "pointer" }}
+										/>
+										<label className="form-check-label font-weight-bold" htmlFor="editIsTikamoonCheck" style={{ cursor: "pointer", fontSize: "13px" }}>
+											Is Tikamoon Shipment
+										</label>
+									</div>
+								</Col>
+							</Row>
+						</form>
+					</Modal.Body>
+					<Modal.Footer>
+						<Button variant="secondary" onClick={handleCloseEditModal} disabled={isUpdating} size="sm">
+							Cancel
+						</Button>
+						<Button variant="primary" onClick={handleSaveEditShipment} disabled={isUpdating} size="sm" style={{ backgroundColor: "#0284c7", borderColor: "#0284c7" }}>
+							{isUpdating ? (
+								<>
+									<span className="spinner-border spinner-border-sm mr-1" role="status" aria-hidden="true"></span>
+									Saving...
+								</>
+							) : (
+								<>
+									<i className="fa fa-save mr-1"></i> Save Changes
+								</>
+							)}
+						</Button>
+					</Modal.Footer>
+				</Modal>
+			)}
+
+			{/* Delete Confirmation Modal */}
+			{showDeleteModal && (
+				<Modal show={showDeleteModal} onHide={handleCloseDeleteModal} size="md" centered className="custom-modal">
+					<Modal.Header closeButton style={{ background: "linear-gradient(135deg, #b91c1c 0%, #7f1d1d 100%)", color: "#fff" }}>
+						<Modal.Title style={{ color: "#fff", display: "flex", alignItems: "center", gap: "8px", fontSize: "16px" }}>
+							<i className="fa fa-exclamation-triangle" style={{ color: "#fef08a" }}></i> Confirm Shipment Deletion
+						</Modal.Title>
+					</Modal.Header>
+					<Modal.Body style={{ padding: "20px" }}>
+						<p style={{ fontSize: "14px", marginBottom: "12px" }}>
+							Are you sure you want to delete this shipment line?
+						</p>
+						{deleteRowData && (
+							<div className="shipment-preview-box" style={{ borderRadius: "8px", padding: "12px 16px", fontSize: "13px" }}>
+								<div><strong>Shipment No:</strong> {deleteRowData.ContainerNumber}</div>
+								<div><strong>Contract No:</strong> {deleteRowData.ContractNo || "N/A"}</div>
+								<div><strong>Item:</strong> {deleteRowData.ItemCode} - {deleteRowData.ItemName}</div>
+								<div><strong>Quantity:</strong> {deleteRowData.Quantity}</div>
+								<div><strong>Inspection Date:</strong> {deleteRowData.InspectionDate ? new Date(deleteRowData.InspectionDate).toLocaleDateString('en-GB') : "N/A"}</div>
+							</div>
+						)}
+						<p className="text-danger mt-3 mb-0" style={{ fontSize: "12px", fontWeight: 600 }}>
+							⚠️ This action will mark the shipment inactive and remove it from active processing.
+						</p>
+					</Modal.Body>
+					<Modal.Footer>
+						<Button variant="secondary" onClick={handleCloseDeleteModal} disabled={isDeleting} size="sm">
+							Cancel
+						</Button>
+						<Button variant="danger" onClick={handleConfirmDeleteShipment} disabled={isDeleting} size="sm">
+							{isDeleting ? (
+								<>
+									<span className="spinner-border spinner-border-sm mr-1" role="status" aria-hidden="true"></span>
+									Deleting...
+								</>
+							) : (
+								<>
+									<i className="fa fa-trash mr-1"></i> Delete Shipment
+								</>
+							)}
+						</Button>
 					</Modal.Footer>
 				</Modal>
 			)}
