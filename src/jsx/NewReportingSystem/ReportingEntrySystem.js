@@ -60,7 +60,7 @@ const ReportingEntrySystem = () => {
       await Fn_FillListData(dispatch, setState, "DepartmentArray", `${API_URL_ByContainer}/Id/${selectedContainer.ContainerMasterId}`);
     }
     if (selectedDepartment) {
-      if (selectedDepartment.DepartmentId === 1) {
+      if (selectedDepartment.IsMachineTracking === true || selectedDepartment.IsMachineTracking === 1 || selectedDepartment.DepartmentId === 1) {
         await Fn_FillListData(dispatch, setState, "MachineDepartmentData", `${API_URL_ByDepartment1}/Id/${selectedDepartment.F_ContainerMaster}`);
       } else {
         const vformData = new FormData();
@@ -100,8 +100,8 @@ const ReportingEntrySystem = () => {
     try {
       console.log('Department Data:', department);
 
-      // Handle DepartmentId = 1 separately
-      if (department.DepartmentId === 1) {
+      // Handle Machine-Level Tracking departments (Components/Machining)
+      if (department.IsMachineTracking === true || department.IsMachineTracking === 1 || department.DepartmentId === 1) {
         await handleSpecialDepartment(department);
         return;
       }

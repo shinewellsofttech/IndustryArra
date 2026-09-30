@@ -145,6 +145,7 @@ import WoodComponentReport from "./Reports/WoodComponentReport";
 import ContainerMasterReport from "./Reports/ContainerMasterReport";
 import PageList_MachineMaster from "./Masters/PageList_MachineMaster";
 import AddEdit_MachineMaster from "./Masters/AddEdit_MachineMaster";
+import PageList_DepartmentMaster from "./Masters/PageList_DepartmentMaster";
 import TotalItemSummary from "./Masters/TotalItemSummary";
 import ReportingEntrySystem from "./NewReportingSystem/ReportingEntrySystem";
 import QRScanner from "./Masters/QRScanner";
@@ -291,6 +292,8 @@ const Markup = () => {
 
     { url: "MachineMaster", component: <PageList_MachineMaster/> },
     { url: "AddMachine", component: <AddEdit_MachineMaster/> },
+    { url: "DepartmentMaster", component: <PageList_DepartmentMaster/> },
+    { url: "department-master", component: <PageList_DepartmentMaster/> },
 
     { url: "ApproveJobCards", component: <ApproveJobCards/> },
     { url: "ClosingReport", component: <PageList_ClosingReport/> },

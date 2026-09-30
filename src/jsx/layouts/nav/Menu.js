@@ -52,6 +52,10 @@ const allDocumentationItems = [
         to: 'MachineMaster',
     },
     {
+        title: 'DEPARTMENT MASTER',
+        to: 'DepartmentMaster',
+    },
+    {
         title: 'CREATE AL SLIP',
         to: 'AddALSlip',
     },

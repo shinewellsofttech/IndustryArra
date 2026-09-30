@@ -1,4 +1,5 @@
 import React, { useState, useCallback } from "react";
+import axios from "axios";
 import { useDispatch } from "react-redux";
 import { useLocation, useNavigate } from "react-router-dom";
 import { Fn_AddEditData, Fn_FillListData, Fn_GetReport } from "../../store/Functions";
@@ -59,6 +60,8 @@ function ContainerEntryReport() {
   const [departmentStatusData, setDepartmentStatusData] = useState(null);
   const [departmentStatusLoading, setDepartmentStatusLoading] = useState(false);
   const [selectedDepartmentName, setSelectedDepartmentName] = useState("");
+  const [selectedDepartmentId, setSelectedDepartmentId] = useState(null);
+  const [activeDepartments, setActiveDepartments] = useState([]);
   const [doneQty, setDoneQty] = useState(0);
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
@@ -320,6 +323,17 @@ function ContainerEntryReport() {
     setDepartmentModalLoading(true);
     setDepartmentModalOpen(true);
 
+    // Fetch dynamic active departments list
+    try {
+      const user = JSON.parse(localStorage.getItem('authUser')) || {};
+      const deptRes = await axios.get(`${API_WEB_URLS.BASE}${API_WEB_URLS.DEPARTMENT_MASTER_ACTIVE}/${user.id || 0}/${user.token || 'token'}`);
+      if (deptRes.data?.data?.dataList && Array.isArray(deptRes.data.data.dataList)) {
+        setActiveDepartments(deptRes.data.data.dataList);
+      }
+    } catch (err) {
+      console.warn("Could not fetch active departments for ContainerEntryReport:", err);
+    }
+
     let vformData = new FormData();
     vformData.append("F_ContainerMaster", container?.Id);
 
@@ -340,16 +354,31 @@ function ContainerEntryReport() {
     }
   }, [departmentModalLoading, dispatch]);
 
-  const handleDepartmentStatusClick = useCallback(async (departmentName, obj) => {
+  const handleDepartmentStatusClick = useCallback(async (dept, obj) => {
     setDepartmentStatusData(obj);
     
-    if (departmentName === 'Components') {
+    const deptName = typeof dept === 'object' && dept ? dept.Name : dept;
+    const isMachineTracking = typeof dept === 'object' && dept ? (dept.IsMachineTracking === true || dept.IsMachineTracking === 1 || dept.Id === 1) : (deptName === 'Components');
+    const deptId = typeof dept === 'object' && dept ? dept.Id : (
+      deptName == 'Components' ? 1 : 
+      deptName == 'Assembly' ? 2 : 
+      deptName == 'Sanding' ? 3 : 
+      deptName == 'Polish' ? 4 : 
+      deptName == 'Fitting' ? 5 : 
+      deptName == 'QC' ? 6 : 
+      deptName == 'Packaging' ? 7 : null
+    );
+
+    setSelectedDepartmentId(deptId);
+    setSelectedDepartmentName(deptName);
+
+    if (isMachineTracking) {
       if (componentsModalLoading) return; // Prevent multiple calls
       
       setComponentsModalLoading(true);
       setComponentsModalOpen(true);
       
-      const user  = JSON.parse(localStorage.getItem('authUser'))
+      const user = JSON.parse(localStorage.getItem('authUser'));
       let vformData = new FormData();
       vformData.append("F_ContainerMasterL", obj?.ContainerLId);
       vformData.append("UserId", user?.id);
@@ -370,35 +399,24 @@ function ContainerEntryReport() {
       }
     }
     else {
-      console.log('departmentName:', departmentName);
-      let departmentId = departmentName == 'Components' ? 1 : 
-                        departmentName == 'Assembly' ? 2 : 
-                        departmentName == 'Sanding' ? 3 : 
-                        departmentName == 'Polish' ? 4 : 
-                        departmentName == 'Fitting' ? 5 : 
-                        departmentName == 'QC' ? 6 : 
-                        departmentName == 'Packaging' ? 7 : null;
-      
-      console.log('departmentId:', departmentId);
+      console.log('Dynamic department clicked:', deptName, 'Id:', deptId);
       
       try {
         const result = await Fn_FillListData(
           dispatch,
           setState,
           "FillArray6",
-          `${API_URL2}/${departmentId}/${obj?.ContainerLId}`
+          `${API_URL2}/${deptId}/${obj?.ContainerLId}`
         );
         const result1 = await Fn_FillListData(
           dispatch,
           setState,
           "FillArray5",
-          `${API_URL3}/${departmentId}/${obj?.ContainerLId}`
+          `${API_URL3}/${deptId}/${obj?.ContainerLId}`
         );
         console.log('result1:', result1);
         const doneQtyValue = result && result.length > 0 ? result[0].DoneQty : 0;
-        console.log('result:', doneQtyValue);
         setDoneQty(doneQtyValue);
-        setSelectedDepartmentName(departmentName);
         setStartDate("");
         setEndDate("");
         setActualQuantity("");
@@ -426,14 +444,16 @@ function ContainerEntryReport() {
     setDepartmentStatusLoading(true);
     
     try {
-      const user  = JSON.parse(localStorage.getItem('authUser'))
-      const departmentId = selectedDepartmentName == 'Components' ? 1 : 
-                          selectedDepartmentName == 'Assembly' ? 2 : 
-                          selectedDepartmentName == 'Sanding' ? 3 : 
-                          selectedDepartmentName == 'Polish' ? 4 : 
-                          selectedDepartmentName == 'Fitting' ? 5 : 
-                          selectedDepartmentName == 'QC' ? 6 : 
-                          selectedDepartmentName == 'Packaging' ? 7 : null;
+      const user = JSON.parse(localStorage.getItem('authUser'));
+      const departmentId = selectedDepartmentId || (
+        selectedDepartmentName == 'Components' ? 1 : 
+        selectedDepartmentName == 'Assembly' ? 2 : 
+        selectedDepartmentName == 'Sanding' ? 3 : 
+        selectedDepartmentName == 'Polish' ? 4 : 
+        selectedDepartmentName == 'Fitting' ? 5 : 
+        selectedDepartmentName == 'QC' ? 6 : 
+        selectedDepartmentName == 'Packaging' ? 7 : null
+      );
       
       console.log('departmentStatusData:', departmentStatusData);
       console.log('DepartmentName:', selectedDepartmentName);
@@ -482,12 +502,14 @@ function ContainerEntryReport() {
     }
   }, [isFormValid, departmentStatusLoading, selectedDepartmentName, departmentStatusData, startDate, endDate, actualQuantity, selectedContainer, dispatch, navigate]);
 
-  function renderDepartmentStatusRectangle(value, departmentName,item) {
+  function renderDepartmentStatusRectangle(value, dept, item) {
     let color = '';
     if (value === 0) color = '#dc3545'; // red
     else if (value === 1) color = '#ffc107'; // yellow
-    else if (value === 3) color = '#28a745'; // green
+    else if (value === 2 || value === 3) color = '#28a745'; // green
     else color = '#adb5bd'; // gray for other/unknown
+
+    const deptTitle = typeof dept === 'object' && dept ? dept.Name : dept;
     return (
       <span 
         style={{
@@ -502,8 +524,8 @@ function ContainerEntryReport() {
           cursor: 'pointer',
           transition: 'transform 0.2s ease',
         }} 
-        title={`${departmentName}: ${value}`}
-        onClick={() => handleDepartmentStatusClick(departmentName, item)}
+        title={`${deptTitle}: ${value}`}
+        onClick={() => handleDepartmentStatusClick(dept, item)}
         onMouseEnter={(e) => e.target.style.transform = 'scale(1.1)'}
         onMouseLeave={(e) => e.target.style.transform = 'scale(1)'}
       ></span>
@@ -1428,13 +1450,23 @@ function ContainerEntryReport() {
                     <th style={{ verticalAlign: 'middle' }}>Item Name</th>
                     <th style={{ verticalAlign: 'middle' }}>Contract No</th>
                     <th style={{ verticalAlign: 'middle', textAlign: 'center' }}>Quantity</th>
-                    <th style={{ verticalAlign: 'middle', textAlign: 'center' }}>Components</th>
-                    <th style={{ verticalAlign: 'middle', textAlign: 'center' }}>Assembly</th>
-                    <th style={{ verticalAlign: 'middle', textAlign: 'center' }}>Sanding</th>
-                    <th style={{ verticalAlign: 'middle', textAlign: 'center' }}>Polish</th>
-                    <th style={{ verticalAlign: 'middle', textAlign: 'center' }}>Fitting</th>
-                    <th style={{ verticalAlign: 'middle', textAlign: 'center' }}>QC</th>
-                    <th style={{ verticalAlign: 'middle', textAlign: 'center' }}>Packaging</th>
+                    {activeDepartments && activeDepartments.length > 0 ? (
+                      activeDepartments.map((dept) => (
+                        <th key={dept.Id} style={{ verticalAlign: 'middle', textAlign: 'center' }}>
+                          {dept.Name}
+                        </th>
+                      ))
+                    ) : (
+                      <>
+                        <th style={{ verticalAlign: 'middle', textAlign: 'center' }}>Components</th>
+                        <th style={{ verticalAlign: 'middle', textAlign: 'center' }}>Assembly</th>
+                        <th style={{ verticalAlign: 'middle', textAlign: 'center' }}>Sanding</th>
+                        <th style={{ verticalAlign: 'middle', textAlign: 'center' }}>Polish</th>
+                        <th style={{ verticalAlign: 'middle', textAlign: 'center' }}>Fitting</th>
+                        <th style={{ verticalAlign: 'middle', textAlign: 'center' }}>QC</th>
+                        <th style={{ verticalAlign: 'middle', textAlign: 'center' }}>Packaging</th>
+                      </>
+                    )}
                   </tr>
                 </thead>
                 <tbody>
@@ -1444,13 +1476,30 @@ function ContainerEntryReport() {
                       <td style={{ verticalAlign: 'middle' }}>{item.ItemName}</td>
                       <td style={{ verticalAlign: 'middle' }}>{item.ContractNo}</td>
                       <td style={{ verticalAlign: 'middle', textAlign: 'center' }}>{item.Quantity}</td>
-                      <td style={{ verticalAlign: 'middle', textAlign: 'center' }}>{renderDepartmentStatusRectangle(item.COMPONENTS, 'Components',item)}</td>
-                      <td style={{ verticalAlign: 'middle', textAlign: 'center' }}>{renderDepartmentStatusRectangle(item.ASSEMBLY, 'Assembly',item)}</td>
-                      <td style={{ verticalAlign: 'middle', textAlign: 'center' }}>{renderDepartmentStatusRectangle(item.SANDING, 'Sanding',item)}</td>
-                      <td style={{ verticalAlign: 'middle', textAlign: 'center' }}>{renderDepartmentStatusRectangle(item.POLISH, 'Polish',item)}</td>
-                      <td style={{ verticalAlign: 'middle', textAlign: 'center' }}>{renderDepartmentStatusRectangle(item.FITTING, 'Fitting',item)}</td>
-                      <td style={{ verticalAlign: 'middle', textAlign: 'center' }}>{renderDepartmentStatusRectangle(item.QC, 'QC',item)}</td>
-                      <td style={{ verticalAlign: 'middle', textAlign: 'center' }}>{renderDepartmentStatusRectangle(item.PACKAGING, 'Packaging',item)}</td>
+                      {activeDepartments && activeDepartments.length > 0 ? (
+                        activeDepartments.map((dept) => {
+                          const statusVal = item[dept.Name] !== undefined 
+                            ? item[dept.Name] 
+                            : (item[dept.Name.toUpperCase()] !== undefined 
+                              ? item[dept.Name.toUpperCase()] 
+                              : (item[dept.Name.toLowerCase()] !== undefined ? item[dept.Name.toLowerCase()] : 0));
+                          return (
+                            <td key={dept.Id} style={{ verticalAlign: 'middle', textAlign: 'center' }}>
+                              {renderDepartmentStatusRectangle(statusVal, dept, item)}
+                            </td>
+                          );
+                        })
+                      ) : (
+                        <>
+                          <td style={{ verticalAlign: 'middle', textAlign: 'center' }}>{renderDepartmentStatusRectangle(item.COMPONENTS, 'Components',item)}</td>
+                          <td style={{ verticalAlign: 'middle', textAlign: 'center' }}>{renderDepartmentStatusRectangle(item.ASSEMBLY, 'Assembly',item)}</td>
+                          <td style={{ verticalAlign: 'middle', textAlign: 'center' }}>{renderDepartmentStatusRectangle(item.SANDING, 'Sanding',item)}</td>
+                          <td style={{ verticalAlign: 'middle', textAlign: 'center' }}>{renderDepartmentStatusRectangle(item.POLISH, 'Polish',item)}</td>
+                          <td style={{ verticalAlign: 'middle', textAlign: 'center' }}>{renderDepartmentStatusRectangle(item.FITTING, 'Fitting',item)}</td>
+                          <td style={{ verticalAlign: 'middle', textAlign: 'center' }}>{renderDepartmentStatusRectangle(item.QC, 'QC',item)}</td>
+                          <td style={{ verticalAlign: 'middle', textAlign: 'center' }}>{renderDepartmentStatusRectangle(item.PACKAGING, 'Packaging',item)}</td>
+                        </>
+                      )}
                     </tr>
                   ))}
                 </tbody>

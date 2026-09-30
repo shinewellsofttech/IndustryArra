@@ -2821,9 +2821,11 @@ const QRScanner = () => {
   const cameraFacingModeRef = useRef("user");
 
   // ── Multi-session state ───────────────────────────────────────────────────────
-  // Each session: { id, jobCardData, machineList, machineData, selectedMachineId, parsedIds, isMinimized, label }
   const [scannedSessions, setScannedSessions] = useState([]);
   const [activeSessionId, setActiveSessionId] = useState(null); // which session is expanded
+  const activeSession = useMemo(() => {
+    return scannedSessions.find(s => s.id === activeSessionId) || null;
+  }, [scannedSessions, activeSessionId]);
   const [bulkStartLoading, setBulkStartLoading] = useState(false);
   const [bulkStopLoading, setBulkStopLoading] = useState(false);
 
@@ -3699,9 +3701,6 @@ const QRScanner = () => {
   };
 
   // ── Session helpers ───────────────────────────────────────────────────────────
-
-  /** Active (expanded) session object */
-  const activeSession = scannedSessions.find(s => s.id === activeSessionId) || null;
 
   /** Per-session machine select */
   const handleMachineSelectForSession = (sessionId, machineId) => {

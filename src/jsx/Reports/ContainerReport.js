@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react";
+import axios from "axios";
 import { useDispatch } from "react-redux";
 import { useLocation, useNavigate } from "react-router-dom";
 import { Fn_FillListData, Fn_GetReport } from "../../store/Functions";
@@ -44,6 +45,7 @@ function ContainerReport() {
   const [selectedContainer, setSelectedContainer] = useState(null);
   const [departmentModalLoading, setDepartmentModalLoading] = useState(false);
   const [departmentSearchTerm, setDepartmentSearchTerm] = useState("");
+  const [activeDepartments, setActiveDepartments] = useState([]);
 
   // Closing report modal states
   const [closingReportModalOpen, setClosingReportModalOpen] = useState(false);
@@ -502,6 +504,17 @@ function ContainerReport() {
     setSelectedContainer(container);
     setDepartmentModalLoading(true);
     setDepartmentModalOpen(true);
+
+    // Fetch dynamic active departments list
+    try {
+      const user = JSON.parse(localStorage.getItem('authUser')) || {};
+      const deptRes = await axios.get(`${API_WEB_URLS.BASE}${API_WEB_URLS.DEPARTMENT_MASTER_ACTIVE}/${user.id || 0}/${user.token || 'token'}`);
+      if (deptRes.data?.data?.dataList && Array.isArray(deptRes.data.data.dataList)) {
+        setActiveDepartments(deptRes.data.data.dataList);
+      }
+    } catch (err) {
+      console.warn("Could not fetch active departments for ContainerReport:", err);
+    }
 
     let vformData = new FormData();
     vformData.append("F_ContainerMaster", container?.Id);
@@ -1269,8 +1282,17 @@ function ContainerReport() {
                   .map((item, index) => {
                     if (!item || typeof item !== "object") return null;
 
-                    const departments = [
-                      { key: "Machining", value: item.Machining },
+                    const departments = activeDepartments && activeDepartments.length > 0 ? (
+                      activeDepartments.map((dept) => ({
+                        key: dept.Name,
+                        value: item[dept.Name] !== undefined 
+                          ? item[dept.Name] 
+                          : (item[dept.Name.toUpperCase()] !== undefined 
+                            ? item[dept.Name.toUpperCase()] 
+                            : (item[dept.Name.toLowerCase()] !== undefined ? item[dept.Name.toLowerCase()] : 0))
+                      }))
+                    ) : [
+                      { key: "Machining", value: item.Machining || item.COMPONENTS },
                       { key: "Assembly", value: item.ASSEMBLY },
                       { key: "Sanding", value: item.SANDING },
                       { key: "Polish", value: item.POLISH },
