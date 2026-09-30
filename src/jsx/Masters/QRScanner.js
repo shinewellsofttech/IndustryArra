@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState, useCallback } from "react";
+import React, { useEffect, useRef, useState, useCallback, useMemo } from "react";
 import { Html5Qrcode } from "html5-qrcode";
 import { parseBarcodeValue } from "./BarcodeHelper";
 import { Fn_GetReport, Fn_AddEditData, Fn_FillListData } from "../../store/Functions";
@@ -32,6 +32,10 @@ const playBeepSound = () => {
 
 const getMachineStatusText = (m) => {
   if (!m) return "NOT STARTED";
+  const isBypassed = !!(m.IsBypassed === 1 || m.IsBypassed === true || m.IsBypassed === "1" || (m.UserName && String(m.UserName).includes("BYPASS")));
+  if (isBypassed) return "BYPASSED";
+  const isPaused = !!(m.IsPaused === 1 || m.IsPaused === true || m.IsPaused === "1");
+  if (isPaused) return "PAUSED";
   const hasStarted = !!m.StartTime;
   const hasEnded = !!m.EndTime;
   if (hasStarted && !hasEnded) return "IN PROGRESS";
@@ -66,6 +70,8 @@ const formatDateTime = (dateTimeStr) => {
 // Helper to get formatted option label with real-time status and fallback process
 const getMachineOptionLabel = (m, skipMachineIds = "") => {
   if (!m) return "";
+  const isBypassed = !!(m.IsBypassed === 1 || m.IsBypassed === true || m.IsBypassed === "1" || (m.UserName && String(m.UserName).includes("BYPASS")));
+  const isPaused = !!(m.IsPaused === 1 || m.IsPaused === true || m.IsPaused === "1");
   const hasStarted = m.StartTime && String(m.StartTime).trim() !== "";
   const hasEnded = m.EndTime && String(m.EndTime).trim() !== "";
 
@@ -81,7 +87,11 @@ const getMachineOptionLabel = (m, skipMachineIds = "") => {
                              !shouldSkipValidation(m, skipMachineIds);
 
   let statusLabel = "";
-  if (hasStarted && !hasEnded) {
+  if (isBypassed) {
+    statusLabel = "⏩ BYPASSED";
+  } else if (isPaused) {
+    statusLabel = "⏸️ PAUSED (ON HOLD)";
+  } else if (hasStarted && !hasEnded) {
     statusLabel = "🟡 IN PROGRESS";
   } else if (hasStarted && hasEnded) {
     statusLabel = "🟢 COMPLETED";
@@ -99,9 +109,23 @@ const getMachineOptionLabel = (m, skipMachineIds = "") => {
 };
 
 // ─── Machine Control Panel Component ─────────────────────────────────────────
-const MachineControlPanel = ({ machine, onStart, onStop, actionLoading, isPrevStarted = true, prevMachineName = "", skipMachineIds = "" }) => {
+const MachineControlPanel = ({ 
+  machine, 
+  onStart, 
+  onStop, 
+  onPause = null,
+  onResume = null,
+  actionLoading, 
+  isPrevStarted = true, 
+  prevMachineName = "", 
+  skipMachineIds = "",
+  onOpenBypassModal = null,
+  unstartedPrecedingCount = 0
+}) => {
   if (!machine) return null;
 
+  const isBypassed = !!(machine.IsBypassed === 1 || machine.IsBypassed === true || machine.IsBypassed === "1" || (machine.UserName && String(machine.UserName).includes("BYPASS")));
+  const isPaused = !!(machine.IsPaused === 1 || machine.IsPaused === true || machine.IsPaused === "1");
   const hasStarted = !!machine.StartTime;
   const hasEnded = !!machine.EndTime;
 
@@ -115,12 +139,20 @@ const MachineControlPanel = ({ machine, onStart, onStop, actionLoading, isPrevSt
   const isEngagedElsewhere = machine.EngagedJobCardNo && 
                              String(machine.EngagedJobCardNo).trim() !== "" &&
                              !shouldSkipValidation(machine, skipMachineIds);
-console.log("machine", machine,'IsEngagedElsewhere',isEngagedElsewhere,'skipMachineIds',skipMachineIds,'<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<');
+
   let statusText = "NOT STARTED";
   let badgeColor = "#64748b";
   let badgeBg = "#f1f5f9";
 
-  if (hasStarted && !hasEnded) {
+  if (isBypassed) {
+    statusText = "BYPASSED (REJECTION)";
+    badgeColor = "#0284c7";
+    badgeBg = "#e0f2fe";
+  } else if (isPaused) {
+    statusText = "PAUSED (SHIFT OFF / HOLD)";
+    badgeColor = "#ea580c";
+    badgeBg = "#ffedd5";
+  } else if (hasStarted && !hasEnded) {
     statusText = "IN PROGRESS";
     badgeColor = "#d97706";
     badgeBg = "#fef3c7";
@@ -162,83 +194,266 @@ console.log("machine", machine,'IsEngagedElsewhere',isEngagedElsewhere,'skipMach
         </span>
       </div>
 
-      {hasStarted && (
+      {isBypassed && (
+        <div style={{
+          display: "flex",
+          flexDirection: "column",
+          gap: "4px",
+          fontSize: "12px",
+          color: "#0369a1",
+          backgroundColor: "#f0f9ff",
+          border: "1px solid #bae6fd",
+          borderRadius: "6px",
+          padding: "8px 12px",
+          marginBottom: "12px"
+        }}>
+          <div style={{ fontWeight: 600, display: "flex", alignItems: "center", gap: "6px" }}>
+            <i className="fas fa-forward"></i>
+            <span>Marked as Bypassed for Rejection Material</span>
+          </div>
+          {machine.BypassReason && (
+            <div style={{ fontSize: "11.5px", color: "#0284c7" }}>
+              Reason: <em>{machine.BypassReason}</em>
+            </div>
+          )}
+        </div>
+      )}
+
+      {isPaused && (
+        <div style={{
+          display: "flex",
+          flexDirection: "column",
+          gap: "6px",
+          fontSize: "12px",
+          color: "#9a3412",
+          backgroundColor: "#fff7ed",
+          border: "1px solid #fed7aa",
+          borderRadius: "8px",
+          padding: "10px 12px",
+          marginBottom: "12px"
+        }}>
+          <div style={{ fontWeight: 700, display: "flex", alignItems: "center", gap: "6px", color: "#c2410c" }}>
+            <i className="fas fa-pause-circle" style={{ fontSize: "14px" }}></i>
+            <span>Machine Operation Paused (Duty Off / Shift Ended)</span>
+          </div>
+          <div style={{ display: "flex", justifyContent: "space-between", flexWrap: "wrap", gap: "6px" }}>
+            <span><strong>Reason:</strong> {machine.CurrentPauseReason || "Shift End / Duty Off"}</span>
+            {machine.CurrentPauseStartTime && (
+              <span><strong>Paused At:</strong> {formatDateTime(machine.CurrentPauseStartTime)}</span>
+            )}
+          </div>
+          {Number(machine.TotalPauseTime) > 0 && (
+            <div style={{ fontSize: "11px", color: "#ea580c" }}>
+              Total Prior Pause Time: {Math.floor(Number(machine.TotalPauseTime) / 60)} hrs {Math.round(Number(machine.TotalPauseTime) % 60)} mins
+            </div>
+          )}
+        </div>
+      )}
+
+      {hasStarted && !isBypassed && (
         <div style={{ display: "flex", justifyContent: "space-between", fontSize: "12px", color: "#475569", marginBottom: "8px" }}>
           <span style={{ fontWeight: 600 }}>Start Time:</span>
           <span style={{ fontFamily: "monospace", fontSize: "11.5px" }}>{formatDateTime(machine.StartTime)}</span>
         </div>
       )}
-      {hasEnded && (
+      {hasEnded && !isBypassed && (
         <div style={{ display: "flex", justifyContent: "space-between", fontSize: "12px", color: "#475569", marginBottom: "16px" }}>
           <span style={{ fontWeight: 600 }}>End Time:</span>
           <span style={{ fontFamily: "monospace", fontSize: "11.5px" }}>{formatDateTime(machine.EndTime)}</span>
         </div>
       )}
 
-      <div style={{ display: "flex", gap: "12px", marginTop: "12px" }}>
-        <button
-          onClick={onStart}
-          disabled={actionLoading || hasStarted || hasEnded || !isPrevStarted || isEngagedElsewhere}
-          style={{
-            flex: 1,
-            display: "flex",
-            justifyContent: "center",
-            alignItems: "center",
-            gap: "8px",
-            padding: "10px 16px",
-            borderRadius: "8px",
-            border: "none",
-            backgroundColor: (hasStarted || hasEnded || !isPrevStarted || isEngagedElsewhere) ? "#cbd5e1" : "#16a34a",
-            color: "#fff",
-            fontWeight: 600,
-            fontSize: "13px",
-            cursor: (hasStarted || hasEnded || !isPrevStarted || isEngagedElsewhere) ? "not-allowed" : "pointer",
-            transition: "all 0.2s",
-            opacity: actionLoading ? 0.7 : 1,
-          }}
-        >
-          {actionLoading ? (
-            <span className="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
-          ) : (
-            <i className="fas fa-play"></i>
-          )}
-          START
-        </button>
+      {isPaused ? (
+        <div style={{ display: "flex", gap: "10px", marginTop: "12px" }}>
+          <button
+            onClick={onResume}
+            disabled={actionLoading}
+            style={{
+              flex: 1,
+              display: "flex",
+              justifyContent: "center",
+              alignItems: "center",
+              gap: "8px",
+              padding: "10px 14px",
+              borderRadius: "8px",
+              border: "none",
+              backgroundColor: actionLoading ? "#cbd5e1" : "#16a34a",
+              color: "#fff",
+              fontWeight: 600,
+              fontSize: "13px",
+              cursor: actionLoading ? "not-allowed" : "pointer",
+              transition: "all 0.2s",
+              boxShadow: "0 2px 4px rgba(22, 163, 74, 0.3)"
+            }}
+          >
+            {actionLoading ? (
+              <span className="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+            ) : (
+              <i className="fas fa-play"></i>
+            )}
+            ▶️ RESUME
+          </button>
 
-        <button
-          onClick={onStop}
-          disabled={actionLoading || !hasStarted || hasEnded}
-          style={{
-            flex: 1,
-            display: "flex",
-            justifyContent: "center",
-            alignItems: "center",
-            gap: "8px",
-            padding: "10px 16px",
-            borderRadius: "8px",
-            border: "none",
-            backgroundColor: (!hasStarted || hasEnded) ? "#cbd5e1" : "#dc2626",
-            color: "#fff",
-            fontWeight: 600,
-            fontSize: "13px",
-            cursor: (!hasStarted || hasEnded) ? "not-allowed" : "pointer",
-            transition: "all 0.2s",
-            opacity: actionLoading ? 0.7 : 1,
-          }}
-        >
-          {actionLoading ? (
-            <span className="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
-          ) : (
-            <i className="fas fa-stop"></i>
-          )}
-          STOP
-        </button>
-      </div>
+          <button
+            onClick={onStop}
+            disabled={actionLoading}
+            style={{
+              flex: 1,
+              display: "flex",
+              justifyContent: "center",
+              alignItems: "center",
+              gap: "8px",
+              padding: "10px 14px",
+              borderRadius: "8px",
+              border: "none",
+              backgroundColor: actionLoading ? "#cbd5e1" : "#dc2626",
+              color: "#fff",
+              fontWeight: 600,
+              fontSize: "13px",
+              cursor: actionLoading ? "not-allowed" : "pointer",
+              transition: "all 0.2s",
+            }}
+          >
+            {actionLoading ? (
+              <span className="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+            ) : (
+              <i className="fas fa-stop"></i>
+            )}
+            STOP
+          </button>
+        </div>
+      ) : (
+        <div style={{ display: "flex", gap: "10px", marginTop: "12px" }}>
+          <button
+            onClick={onStart}
+            disabled={actionLoading || hasStarted || hasEnded || !isPrevStarted || isEngagedElsewhere || isBypassed}
+            style={{
+              flex: 1,
+              display: "flex",
+              justifyContent: "center",
+              alignItems: "center",
+              gap: "6px",
+              padding: "10px 12px",
+              borderRadius: "8px",
+              border: "none",
+              backgroundColor: (hasStarted || hasEnded || !isPrevStarted || isEngagedElsewhere || isBypassed) ? "#cbd5e1" : "#16a34a",
+              color: "#fff",
+              fontWeight: 600,
+              fontSize: "13px",
+              cursor: (hasStarted || hasEnded || !isPrevStarted || isEngagedElsewhere || isBypassed) ? "not-allowed" : "pointer",
+              transition: "all 0.2s",
+              opacity: actionLoading ? 0.7 : 1,
+            }}
+          >
+            {actionLoading ? (
+              <span className="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+            ) : (
+              <i className="fas fa-play"></i>
+            )}
+            START
+          </button>
 
-      {!isPrevStarted && (
-        <div style={{ color: "#dc2626", fontSize: "12.5px", fontWeight: 600, marginTop: "12px", textAlign: "left", display: "flex", alignItems: "center", gap: "6px" }}>
-          <i className="fas fa-exclamation-triangle"></i>
-          <span>Please start the previous machine ({prevMachineName || "preceding machine"}) first.</span>
+          <button
+            onClick={onPause}
+            disabled={actionLoading || !hasStarted || hasEnded || isBypassed || isPaused}
+            title="Pause machine operation at shift end / duty off"
+            style={{
+              flex: 1,
+              display: "flex",
+              justifyContent: "center",
+              alignItems: "center",
+              gap: "6px",
+              padding: "10px 12px",
+              borderRadius: "8px",
+              border: "none",
+              backgroundColor: (!hasStarted || hasEnded || isBypassed || isPaused) ? "#cbd5e1" : "#ea580c",
+              color: "#fff",
+              fontWeight: 600,
+              fontSize: "13px",
+              cursor: (!hasStarted || hasEnded || isBypassed || isPaused) ? "not-allowed" : "pointer",
+              transition: "all 0.2s",
+              boxShadow: (!hasStarted || hasEnded || isBypassed || isPaused) ? "none" : "0 2px 4px rgba(234, 88, 12, 0.3)",
+              opacity: actionLoading ? 0.7 : 1,
+            }}
+          >
+            <i className="fas fa-pause"></i>
+            PAUSE
+          </button>
+
+          <button
+            onClick={onStop}
+            disabled={actionLoading || !hasStarted || hasEnded || isBypassed}
+            style={{
+              flex: 1,
+              display: "flex",
+              justifyContent: "center",
+              alignItems: "center",
+              gap: "6px",
+              padding: "10px 12px",
+              borderRadius: "8px",
+              border: "none",
+              backgroundColor: (!hasStarted || hasEnded || isBypassed) ? "#cbd5e1" : "#dc2626",
+              color: "#fff",
+              fontWeight: 600,
+              fontSize: "13px",
+              cursor: (!hasStarted || hasEnded || isBypassed) ? "not-allowed" : "pointer",
+              transition: "all 0.2s",
+              opacity: actionLoading ? 0.7 : 1,
+            }}
+          >
+            {actionLoading ? (
+              <span className="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+            ) : (
+              <i className="fas fa-stop"></i>
+            )}
+            STOP
+          </button>
+        </div>
+      )}
+
+      {!isPrevStarted && !isBypassed && (
+        <div style={{
+          marginTop: "12px",
+          padding: "10px 12px",
+          backgroundColor: "#fff7ed",
+          borderRadius: "8px",
+          border: "1px solid #fed7aa",
+          display: "flex",
+          flexDirection: "column",
+          gap: "8px"
+        }}>
+          <div style={{ color: "#dc2626", fontSize: "12.5px", fontWeight: 600, textAlign: "left", display: "flex", alignItems: "center", gap: "6px" }}>
+            <i className="fas fa-exclamation-triangle"></i>
+            <span>Please start the previous machine ({prevMachineName || "preceding machine"}) first.</span>
+          </div>
+          {onOpenBypassModal && unstartedPrecedingCount > 0 && (
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: "8px", paddingTop: "6px", borderTop: "1px dashed #fdba74" }}>
+              <span style={{ fontSize: "11.5px", color: "#9a3412", fontWeight: 500 }}>
+                Using rejection or pre-sized material?
+              </span>
+              <button
+                type="button"
+                onClick={onOpenBypassModal}
+                style={{
+                  padding: "5px 12px",
+                  borderRadius: "6px",
+                  backgroundColor: "#ea580c",
+                  color: "#fff",
+                  border: "none",
+                  fontSize: "12px",
+                  fontWeight: 600,
+                  cursor: "pointer",
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: "6px",
+                  boxShadow: "0 1px 3px rgba(234, 88, 12, 0.3)"
+                }}
+              >
+                <i className="fas fa-forward"></i>
+                ⚡ Bypass Previous Machines ({unstartedPrecedingCount})
+              </button>
+            </div>
+          )}
         </div>
       )}
 
@@ -599,6 +814,539 @@ const MachineSwapModal = ({
   );
 };
 
+// ─── Machine Bypass Modal Component (Rejection / Pre-sized Material) ────────
+const MachineBypassModal = ({
+  isOpen,
+  onClose,
+  targetMachine,
+  jobCard,
+  precedingMachines = [],
+  onSubmitBypass,
+  submitLoading = false
+}) => {
+  const [reasonCategory, setReasonCategory] = useState("Rejection Material Re-use (Scrap / Offcut Wood)");
+  const [customReason, setCustomReason] = useState("");
+
+  useEffect(() => {
+    if (isOpen) {
+      setReasonCategory("Rejection Material Re-use (Scrap / Offcut Wood)");
+      setCustomReason("");
+    }
+  }, [isOpen]);
+
+  if (!isOpen || !targetMachine) return null;
+
+  const targetName = targetMachine.MachineName || "Selected Machine";
+  const targetNo = targetMachine.MachineNo || "N/A";
+  const jcNo = jobCard?.JobCardNo || targetMachine?.JobCardNo || "N/A";
+
+  const handleConfirm = () => {
+    const fullReason = customReason && customReason.trim()
+      ? `${reasonCategory}: ${customReason.trim()}`
+      : reasonCategory;
+    onSubmitBypass(fullReason);
+  };
+
+  return (
+    <div style={{
+      position: "fixed",
+      top: 0,
+      left: 0,
+      right: 0,
+      bottom: 0,
+      backgroundColor: "rgba(15, 23, 42, 0.65)",
+      backdropFilter: "blur(3px)",
+      zIndex: 99999,
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "center",
+      padding: "16px",
+      fontFamily: "Poppins, sans-serif"
+    }}>
+      <div style={{
+        backgroundColor: "#fff",
+        borderRadius: "14px",
+        maxWidth: "560px",
+        width: "100%",
+        boxShadow: "0 25px 50px -12px rgba(0, 0, 0, 0.25)",
+        overflow: "hidden"
+      }}>
+        {/* Header */}
+        <div style={{
+          padding: "16px 20px",
+          background: "linear-gradient(135deg, #ea580c 0%, #c2410c 100%)",
+          color: "#fff",
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center"
+        }}>
+          <div>
+            <h5 style={{ margin: 0, fontSize: "16px", fontWeight: 700, color: "#fff", display: "flex", alignItems: "center", gap: "8px" }}>
+              <i className="fas fa-forward"></i>
+              Bypass Previous Machines (Rejection Material)
+            </h5>
+            <div style={{ color: "#ffedd5", fontSize: "12px", marginTop: "3px" }}>
+              Job Card: <strong style={{ color: "#fff" }}>{jcNo}</strong>
+            </div>
+          </div>
+          <button
+            onClick={onClose}
+            disabled={submitLoading}
+            style={{
+              background: "transparent",
+              border: "none",
+              color: "#ffedd5",
+              fontSize: "18px",
+              cursor: submitLoading ? "not-allowed" : "pointer",
+              padding: "4px 8px"
+            }}
+          >
+            <i className="fas fa-times"></i>
+          </button>
+        </div>
+
+        {/* Body */}
+        <div style={{ padding: "20px", maxHeight: "70vh", overflowY: "auto" }}>
+          {/* Explanation Banner */}
+          <div style={{
+            backgroundColor: "#fff7ed",
+            border: "1px solid #fed7aa",
+            borderRadius: "8px",
+            padding: "12px 14px",
+            marginBottom: "16px",
+            fontSize: "12.5px",
+            color: "#9a3412",
+            lineHeight: 1.5
+          }}>
+            <i className="fas fa-info-circle me-1" style={{ color: "#ea580c" }}></i>
+            Starting directly from <strong>{targetName} ({targetNo})</strong> using rejection or pre-sized offcut material.
+            The unstarted preceding machines below will be marked as bypassed so this machine unlocks immediately.
+          </div>
+
+          {/* Preceding Machines List */}
+          <div style={{ marginBottom: "16px" }}>
+            <label style={{ fontSize: "12px", fontWeight: 700, color: "#334155", display: "block", marginBottom: "6px" }}>
+              Preceding Machines to Bypass ({precedingMachines.length}):
+            </label>
+            <div style={{
+              border: "1px solid #e2e8f0",
+              borderRadius: "8px",
+              maxHeight: "150px",
+              overflowY: "auto",
+              backgroundColor: "#f8fafc"
+            }}>
+              {precedingMachines.length > 0 ? (
+                precedingMachines.map((m, idx) => (
+                  <div key={m.ID || idx} style={{
+                    padding: "8px 12px",
+                    borderBottom: idx < precedingMachines.length - 1 ? "1px solid #e2e8f0" : "none",
+                    display: "flex",
+                    justifyContent: "space-between",
+                    alignItems: "center",
+                    fontSize: "12px"
+                  }}>
+                    <div>
+                      <strong style={{ color: "#1e293b" }}>{m.MachineName || "Machine"}</strong>
+                      <span style={{ color: "#64748b", marginLeft: "6px" }}>({m.MachineNo || "N/A"})</span>
+                      <div style={{ color: "#64748b", fontSize: "11px" }}>{m.Process || "General"}</div>
+                    </div>
+                    <span style={{
+                      backgroundColor: "#fee2e2",
+                      color: "#dc2626",
+                      padding: "2px 8px",
+                      borderRadius: "4px",
+                      fontSize: "10.5px",
+                      fontWeight: 600
+                    }}>
+                      Will Bypass
+                    </span>
+                  </div>
+                ))
+              ) : (
+                <div style={{ padding: "10px", color: "#64748b", fontSize: "12px", textAlign: "center" }}>
+                  All previous machines in sequence will be marked done.
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Reason Selection */}
+          <div style={{ marginBottom: "16px" }}>
+            <label style={{ fontSize: "12px", fontWeight: 700, color: "#334155", display: "block", marginBottom: "6px" }}>
+              Reason for Bypass <span style={{ color: "#ef4444" }}>*</span>
+            </label>
+            <select
+              value={reasonCategory}
+              onChange={(e) => setReasonCategory(e.target.value)}
+              disabled={submitLoading}
+              style={{
+                width: "100%",
+                padding: "8px 12px",
+                borderRadius: "6px",
+                border: "1px solid #cbd5e1",
+                fontSize: "13px",
+                backgroundColor: "#fff",
+                outline: "none"
+              }}
+            >
+              <option value="Rejection Material Re-use (Scrap / Offcut Wood)">Rejection Material Re-use (Scrap / Offcut Wood)</option>
+              <option value="Pre-sized offcut stock used directly">Pre-sized offcut stock used directly</option>
+              <option value="Salvaged component from QC rejection">Salvaged component from QC rejection</option>
+              <option value="Pre-processed stock from previous job">Pre-processed stock from previous job</option>
+              <option value="Custom Reason">Custom Reason (Specify below)</option>
+            </select>
+          </div>
+
+          {/* Custom remarks */}
+          <div style={{ marginBottom: "16px" }}>
+            <label style={{ fontSize: "12px", fontWeight: 600, color: "#475569", display: "block", marginBottom: "6px" }}>
+              Remarks / Specific Notes (Optional)
+            </label>
+            <textarea
+              rows="2"
+              placeholder="e.g. Using 2.5ft offcuts from JC-0045 directly on Rip Saw"
+              value={customReason}
+              onChange={(e) => setCustomReason(e.target.value)}
+              disabled={submitLoading}
+              style={{
+                width: "100%",
+                padding: "8px 12px",
+                borderRadius: "8px",
+                border: "1px solid #cbd5e1",
+                fontSize: "13px",
+                resize: "vertical"
+              }}
+            />
+          </div>
+
+          {/* Safety Guarantees Notice */}
+          <div style={{
+            backgroundColor: "#f0fdf4",
+            border: "1px solid #bbf7d0",
+            borderRadius: "6px",
+            padding: "10px 12px",
+            fontSize: "11.5px",
+            color: "#166534"
+          }}>
+            <div>✔ <strong>Zero Dashboard Disturbance:</strong> Bypassed machines will not count as Running Machines.</div>
+            <div style={{ marginTop: "4px" }}>✔ <strong>Zero Delay Incurred:</strong> Runtime is recorded as 0 minutes (no false idle delays).</div>
+          </div>
+        </div>
+
+        {/* Footer */}
+        <div style={{
+          padding: "14px 20px",
+          backgroundColor: "#f8fafc",
+          borderTop: "1px solid #e2e8f0",
+          display: "flex",
+          justifyContent: "flex-end",
+          gap: "10px"
+        }}>
+          <button
+            type="button"
+            onClick={onClose}
+            disabled={submitLoading}
+            style={{
+              padding: "8px 16px",
+              borderRadius: "6px",
+              border: "1px solid #cbd5e1",
+              backgroundColor: "#fff",
+              color: "#475569",
+              fontSize: "13px",
+              fontWeight: 600,
+              cursor: submitLoading ? "not-allowed" : "pointer"
+            }}
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            onClick={handleConfirm}
+            disabled={submitLoading}
+            style={{
+              padding: "8px 20px",
+              borderRadius: "6px",
+              border: "none",
+              backgroundColor: submitLoading ? "#94a3b8" : "#ea580c",
+              color: "#fff",
+              fontSize: "13px",
+              fontWeight: 600,
+              cursor: submitLoading ? "not-allowed" : "pointer",
+              display: "flex",
+              alignItems: "center",
+              gap: "8px",
+              boxShadow: "0 2px 4px rgba(234, 88, 12, 0.3)"
+            }}
+          >
+            {submitLoading ? (
+              <>
+                <span className="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+                Bypassing Machines...
+              </>
+            ) : (
+              <>
+                <i className="fas fa-forward"></i>
+                Confirm & Bypass Machines
+              </>
+            )}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// ─── Machine Pause Modal Component (Duty Off / Shift End / Break) ───────────
+const MachinePauseModal = ({
+  isOpen,
+  onClose,
+  targetMachine,
+  jobCard,
+  onConfirmPause,
+  submitLoading = false
+}) => {
+  const [reasonCategory, setReasonCategory] = useState("Shift End / Duty Off (Will resume next day / shift)");
+  const [customReason, setCustomReason] = useState("");
+
+  useEffect(() => {
+    if (isOpen) {
+      setReasonCategory("Shift End / Duty Off (Will resume next day / shift)");
+      setCustomReason("");
+    }
+  }, [isOpen]);
+
+  if (!isOpen || !targetMachine) return null;
+
+  const targetName = targetMachine.MachineName || "Selected Machine";
+  const targetNo = targetMachine.MachineNo || "N/A";
+  const jcNo = jobCard?.JobCardNo || targetMachine?.JobCardNo || "N/A";
+  const processStr = targetMachine.Process || "General Operations";
+
+  const handleConfirm = () => {
+    const fullReason = customReason && customReason.trim()
+      ? `${reasonCategory}: ${customReason.trim()}`
+      : reasonCategory;
+    onConfirmPause(fullReason);
+  };
+
+  return (
+    <div style={{
+      position: "fixed",
+      top: 0,
+      left: 0,
+      right: 0,
+      bottom: 0,
+      backgroundColor: "rgba(15, 23, 42, 0.65)",
+      backdropFilter: "blur(3px)",
+      zIndex: 99999,
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "center",
+      padding: "16px",
+      fontFamily: "Poppins, sans-serif"
+    }}>
+      <div style={{
+        backgroundColor: "#fff",
+        borderRadius: "14px",
+        maxWidth: "540px",
+        width: "100%",
+        boxShadow: "0 25px 50px -12px rgba(0, 0, 0, 0.25)",
+        overflow: "hidden"
+      }}>
+        {/* Header */}
+        <div style={{
+          padding: "16px 20px",
+          background: "linear-gradient(135deg, #d97706 0%, #b45309 100%)",
+          color: "#fff",
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center"
+        }}>
+          <div>
+            <h5 style={{ margin: 0, fontSize: "16px", fontWeight: 700, color: "#fff", display: "flex", alignItems: "center", gap: "8px" }}>
+              <i className="fas fa-pause-circle" style={{ color: "#fef3c7" }}></i>
+              Pause Machine Operation
+            </h5>
+            <small style={{ color: "#fed7aa", fontSize: "12px" }}>
+              Job Card No: {jcNo} | Step: {processStr}
+            </small>
+          </div>
+          <button
+            onClick={onClose}
+            disabled={submitLoading}
+            style={{
+              background: "transparent",
+              border: "none",
+              color: "#fef3c7",
+              fontSize: "18px",
+              cursor: submitLoading ? "not-allowed" : "pointer",
+              padding: "4px 8px"
+            }}
+          >
+            ✕
+          </button>
+        </div>
+
+        {/* Body */}
+        <div style={{ padding: "20px", maxHeight: "75vh", overflowY: "auto" }}>
+          {/* Target Machine Info */}
+          <div style={{
+            backgroundColor: "#fffbeb",
+            border: "1px solid #fde68a",
+            borderRadius: "10px",
+            padding: "12px 16px",
+            marginBottom: "16px"
+          }}>
+            <div style={{ fontSize: "11px", fontWeight: 700, color: "#b45309", textTransform: "uppercase" }}>
+              Active Machine Step
+            </div>
+            <div style={{ fontSize: "15px", fontWeight: 700, color: "#78350f", marginTop: "2px" }}>
+              {targetName} ({targetNo})
+            </div>
+            <div style={{ fontSize: "12px", color: "#92400e", marginTop: "3px" }}>
+              <strong>Process:</strong> {processStr}
+            </div>
+          </div>
+
+          {/* Reason Selection */}
+          <div style={{ marginBottom: "16px" }}>
+            <label style={{ fontSize: "12px", fontWeight: 700, color: "#334155", display: "block", marginBottom: "6px" }}>
+              Select Pause Reason <span style={{ color: "#ef4444" }}>*</span>
+            </label>
+            <select
+              value={reasonCategory}
+              onChange={(e) => setReasonCategory(e.target.value)}
+              disabled={submitLoading}
+              style={{
+                width: "100%",
+                padding: "9px 12px",
+                borderRadius: "8px",
+                border: "1px solid #cbd5e1",
+                fontSize: "13px",
+                color: "#1e293b",
+                backgroundColor: "#fff"
+              }}
+            >
+              <option value="Shift End / Duty Off (Will resume next day / shift)">
+                🌙 Shift End / Duty Off (Will resume next day / shift)
+              </option>
+              <option value="Lunch / Tea Break">
+                ☕ Lunch / Tea Break
+              </option>
+              <option value="Material Waiting / Tooling Change">
+                📦 Material Waiting / Tooling Change
+              </option>
+              <option value="Maintenance / Machine Inspection">
+                🔧 Maintenance / Machine Inspection
+              </option>
+              <option value="Quality Inspection / Approval Hold">
+                🔍 Quality Inspection / Approval Hold
+              </option>
+              <option value="Other">
+                ✏️ Other / Custom Reason
+              </option>
+            </select>
+          </div>
+
+          {/* Additional Notes */}
+          <div style={{ marginBottom: "14px" }}>
+            <label style={{ fontSize: "12px", fontWeight: 600, color: "#475569", display: "block", marginBottom: "6px" }}>
+              Remarks / Specific Notes (Optional)
+            </label>
+            <textarea
+              rows="2"
+              placeholder="e.g. 50 pcs completed, balance 50 pcs will be cut tomorrow morning..."
+              value={customReason}
+              onChange={(e) => setCustomReason(e.target.value)}
+              disabled={submitLoading}
+              style={{
+                width: "100%",
+                padding: "8px 12px",
+                borderRadius: "8px",
+                border: "1px solid #cbd5e1",
+                fontSize: "13px",
+                resize: "vertical"
+              }}
+            />
+          </div>
+
+          {/* Business Guarantees Notice */}
+          <div style={{
+            backgroundColor: "#f0fdf4",
+            border: "1px solid #bbf7d0",
+            borderRadius: "6px",
+            padding: "10px 12px",
+            fontSize: "11.5px",
+            color: "#166534"
+          }}>
+            <div>✔ <strong>Overnight Safety:</strong> Machine will NOT count as running on dashboard while factory is closed.</div>
+            <div style={{ marginTop: "4px" }}>✔ <strong>Timer Freezes:</strong> Pause interval will be deducted from total cycle time upon completion.</div>
+          </div>
+        </div>
+
+        {/* Footer */}
+        <div style={{
+          padding: "14px 20px",
+          backgroundColor: "#f8fafc",
+          borderTop: "1px solid #e2e8f0",
+          display: "flex",
+          justifyContent: "flex-end",
+          gap: "10px"
+        }}>
+          <button
+            type="button"
+            onClick={onClose}
+            disabled={submitLoading}
+            style={{
+              padding: "8px 16px",
+              borderRadius: "6px",
+              border: "1px solid #cbd5e1",
+              backgroundColor: "#fff",
+              color: "#475569",
+              fontSize: "13px",
+              fontWeight: 600,
+              cursor: submitLoading ? "not-allowed" : "pointer"
+            }}
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            onClick={handleConfirm}
+            disabled={submitLoading}
+            style={{
+              padding: "8px 20px",
+              borderRadius: "6px",
+              border: "none",
+              backgroundColor: submitLoading ? "#94a3b8" : "#d97706",
+              color: "#fff",
+              fontSize: "13px",
+              fontWeight: 600,
+              cursor: submitLoading ? "not-allowed" : "pointer",
+              display: "flex",
+              alignItems: "center",
+              gap: "8px",
+              boxShadow: "0 2px 4px rgba(217, 119, 6, 0.3)"
+            }}
+          >
+            {submitLoading ? (
+              <>
+                <span className="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+                Pausing Machine...
+              </>
+            ) : (
+              <>
+                <i className="fas fa-pause"></i>
+                Confirm & Pause Machine
+              </>
+            )}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 // ─── Machine Change Logs Modal Component ───────────────────────────────────
 const MachineLogsModal = ({
   isOpen,
@@ -811,7 +1559,10 @@ const ScannedWoodJobCard = ({
   onRescan,
   skipMachineIds = "",
   onOpenSwapModal = null,
-  onOpenLogsModal = null
+  onOpenLogsModal = null,
+  onOpenBypassModal = null,
+  onPauseMachine = null,
+  onResumeMachine = null
 }) => {
   console.log("ScannedWoodJobCard received skipMachineIds prop:", skipMachineIds);
   const currentIndex = machineList && machineData 
@@ -822,6 +1573,11 @@ const ScannedWoodJobCard = ({
     ? (prevMachine && prevMachine.StartTime && String(prevMachine.StartTime).trim() !== "") 
     : true;
   const prevMachineName = prevMachine ? `${prevMachine.MachineName || "Unnamed Machine"} (${prevMachine.MachineNo || "N/A"})` : "";
+
+  const unstartedPreceding = (currentIndex > 0 && machineList)
+    ? machineList.slice(0, currentIndex).filter(m => !m.StartTime || String(m.StartTime).trim() === "")
+    : [];
+  const unstartedPrecedingCount = unstartedPreceding.length;
 
   const cell = (label, value, labelStyle = {}, valueStyle = {}) => (
     <div className="responsive-cell" style={{ display: "flex", borderBottom: "1px solid #e2e8f0" }}>
@@ -929,6 +1685,29 @@ const ScannedWoodJobCard = ({
                       <i className="fas fa-desktop mr-2" style={{ color: "#065f46" }}></i> ASSIGNED MACHINE
                     </label>
                     <div style={{ display: "flex", gap: "6px" }}>
+                      {unstartedPrecedingCount > 0 && machineData && (!machineData.StartTime || String(machineData.StartTime).trim() === "") && (
+                        <button
+                          type="button"
+                          onClick={() => onOpenBypassModal && onOpenBypassModal(machineData)}
+                          disabled={actionLoading}
+                          title="Bypass previous machines for rejection material"
+                          style={{
+                            padding: "3px 10px",
+                            fontSize: "11.5px",
+                            fontWeight: 600,
+                            borderRadius: "5px",
+                            border: "1px solid #f97316",
+                            backgroundColor: "#fff7ed",
+                            color: "#ea580c",
+                            cursor: "pointer",
+                            display: "inline-flex",
+                            alignItems: "center",
+                            gap: "4px"
+                          }}
+                        >
+                          <i className="fas fa-forward"></i> Bypass ({unstartedPrecedingCount})
+                        </button>
+                      )}
                       <button
                         type="button"
                         onClick={() => onOpenSwapModal && onOpenSwapModal(machineData)}
@@ -987,10 +1766,14 @@ const ScannedWoodJobCard = ({
                     machine={machineData}
                     onStart={onStartMachine}
                     onStop={onStopMachine}
+                    onPause={() => onPauseMachine && onPauseMachine(machineData)}
+                    onResume={() => onResumeMachine && onResumeMachine(machineData)}
                     actionLoading={actionLoading}
                     isPrevStarted={isPrevStarted}
                     prevMachineName={prevMachineName}
                     skipMachineIds={skipMachineIds}
+                    onOpenBypassModal={() => onOpenBypassModal && onOpenBypassModal(machineData)}
+                    unstartedPrecedingCount={unstartedPrecedingCount}
                   />
                 </div>
               ) : (
@@ -1008,6 +1791,29 @@ const ScannedWoodJobCard = ({
                       <i className="fas fa-desktop mr-2" style={{ color: "#065f46" }}></i> SELECT MACHINE FOR OPERATION
                     </label>
                     <div style={{ display: "flex", gap: "6px" }}>
+                      {unstartedPrecedingCount > 0 && machineData && (!machineData.StartTime || String(machineData.StartTime).trim() === "") && (
+                        <button
+                          type="button"
+                          onClick={() => onOpenBypassModal && onOpenBypassModal(machineData)}
+                          disabled={actionLoading}
+                          title="Bypass previous machines for rejection material"
+                          style={{
+                            padding: "3px 10px",
+                            fontSize: "11.5px",
+                            fontWeight: 600,
+                            borderRadius: "5px",
+                            border: "1px solid #f97316",
+                            backgroundColor: "#fff7ed",
+                            color: "#ea580c",
+                            cursor: "pointer",
+                            display: "inline-flex",
+                            alignItems: "center",
+                            gap: "4px"
+                          }}
+                        >
+                          <i className="fas fa-forward"></i> Bypass ({unstartedPrecedingCount})
+                        </button>
+                      )}
                       {machineData && (
                         <button
                           type="button"
@@ -1084,10 +1890,14 @@ const ScannedWoodJobCard = ({
                     machine={machineData}
                     onStart={onStartMachine}
                     onStop={onStopMachine}
+                    onPause={() => onPauseMachine && onPauseMachine(machineData)}
+                    onResume={() => onResumeMachine && onResumeMachine(machineData)}
                     actionLoading={actionLoading}
                     isPrevStarted={isPrevStarted}
                     prevMachineName={prevMachineName}
                     skipMachineIds={skipMachineIds}
+                    onOpenBypassModal={() => onOpenBypassModal && onOpenBypassModal(machineData)}
+                    unstartedPrecedingCount={unstartedPrecedingCount}
                   />
                 )}
               </>
@@ -1113,7 +1923,10 @@ const ScannedMetalJobCard = ({
   onRescan,
   skipMachineIds = "",
   onOpenSwapModal = null,
-  onOpenLogsModal = null
+  onOpenLogsModal = null,
+  onOpenBypassModal = null,
+  onPauseMachine = null,
+  onResumeMachine = null
 }) => {
   const currentIndex = machineList && machineData 
     ? machineList.findIndex(m => String(m.ID) === String(machineData.ID)) 
@@ -1123,6 +1936,11 @@ const ScannedMetalJobCard = ({
     ? (prevMachine && prevMachine.StartTime && String(prevMachine.StartTime).trim() !== "") 
     : true;
   const prevMachineName = prevMachine ? `${prevMachine.MachineName || "Unnamed Machine"} (${prevMachine.MachineNo || "N/A"})` : "";
+
+  const unstartedPreceding = (currentIndex > 0 && machineList)
+    ? machineList.slice(0, currentIndex).filter(m => !m.StartTime || String(m.StartTime).trim() === "")
+    : [];
+  const unstartedPrecedingCount = unstartedPreceding.length;
 
   const cell = (label, value, labelStyle = {}, valueStyle = {}) => (
     <div className="responsive-cell" style={{ display: "flex", borderBottom: "1px solid #e2e8f0" }}>
@@ -1230,6 +2048,29 @@ const ScannedMetalJobCard = ({
                       <i className="fas fa-desktop mr-2" style={{ color: "#1e3a8a" }}></i> ASSIGNED MACHINE
                     </label>
                     <div style={{ display: "flex", gap: "6px" }}>
+                      {unstartedPrecedingCount > 0 && machineData && (!machineData.StartTime || String(machineData.StartTime).trim() === "") && (
+                        <button
+                          type="button"
+                          onClick={() => onOpenBypassModal && onOpenBypassModal(machineData)}
+                          disabled={actionLoading}
+                          title="Bypass previous machines for rejection material"
+                          style={{
+                            padding: "3px 10px",
+                            fontSize: "11.5px",
+                            fontWeight: 600,
+                            borderRadius: "5px",
+                            border: "1px solid #f97316",
+                            backgroundColor: "#fff7ed",
+                            color: "#ea580c",
+                            cursor: "pointer",
+                            display: "inline-flex",
+                            alignItems: "center",
+                            gap: "4px"
+                          }}
+                        >
+                          <i className="fas fa-forward"></i> Bypass ({unstartedPrecedingCount})
+                        </button>
+                      )}
                       <button
                         type="button"
                         onClick={() => onOpenSwapModal && onOpenSwapModal(machineData)}
@@ -1288,10 +2129,14 @@ const ScannedMetalJobCard = ({
                     machine={machineData}
                     onStart={onStartMachine}
                     onStop={onStopMachine}
+                    onPause={() => onPauseMachine && onPauseMachine(machineData)}
+                    onResume={() => onResumeMachine && onResumeMachine(machineData)}
                     actionLoading={actionLoading}
                     isPrevStarted={isPrevStarted}
                     prevMachineName={prevMachineName}
                     skipMachineIds={skipMachineIds}
+                    onOpenBypassModal={() => onOpenBypassModal && onOpenBypassModal(machineData)}
+                    unstartedPrecedingCount={unstartedPrecedingCount}
                   />
                 </div>
               ) : (
@@ -1309,6 +2154,29 @@ const ScannedMetalJobCard = ({
                       <i className="fas fa-desktop mr-2" style={{ color: "#1e3a8a" }}></i> SELECT MACHINE FOR OPERATION
                     </label>
                     <div style={{ display: "flex", gap: "6px" }}>
+                      {unstartedPrecedingCount > 0 && machineData && (!machineData.StartTime || String(machineData.StartTime).trim() === "") && (
+                        <button
+                          type="button"
+                          onClick={() => onOpenBypassModal && onOpenBypassModal(machineData)}
+                          disabled={actionLoading}
+                          title="Bypass previous machines for rejection material"
+                          style={{
+                            padding: "3px 10px",
+                            fontSize: "11.5px",
+                            fontWeight: 600,
+                            borderRadius: "5px",
+                            border: "1px solid #f97316",
+                            backgroundColor: "#fff7ed",
+                            color: "#ea580c",
+                            cursor: "pointer",
+                            display: "inline-flex",
+                            alignItems: "center",
+                            gap: "4px"
+                          }}
+                        >
+                          <i className="fas fa-forward"></i> Bypass ({unstartedPrecedingCount})
+                        </button>
+                      )}
                       {machineData && (
                         <button
                           type="button"
@@ -1385,10 +2253,14 @@ const ScannedMetalJobCard = ({
                     machine={machineData}
                     onStart={onStartMachine}
                     onStop={onStopMachine}
+                    onPause={() => onPauseMachine && onPauseMachine(machineData)}
+                    onResume={() => onResumeMachine && onResumeMachine(machineData)}
                     actionLoading={actionLoading}
                     isPrevStarted={isPrevStarted}
                     prevMachineName={prevMachineName}
                     skipMachineIds={skipMachineIds}
+                    onOpenBypassModal={() => onOpenBypassModal && onOpenBypassModal(machineData)}
+                    unstartedPrecedingCount={unstartedPrecedingCount}
                   />
                 )}
               </>
@@ -1414,7 +2286,10 @@ const ScannedMDFJobCard = ({
   onRescan,
   skipMachineIds = "",
   onOpenSwapModal = null,
-  onOpenLogsModal = null
+  onOpenLogsModal = null,
+  onOpenBypassModal = null,
+  onPauseMachine = null,
+  onResumeMachine = null
 }) => {
   const currentIndex = machineList && machineData 
     ? machineList.findIndex(m => String(m.ID) === String(machineData.ID)) 
@@ -1424,6 +2299,11 @@ const ScannedMDFJobCard = ({
     ? (prevMachine && prevMachine.StartTime && String(prevMachine.StartTime).trim() !== "") 
     : true;
   const prevMachineName = prevMachine ? `${prevMachine.MachineName || "Unnamed Machine"} (${prevMachine.MachineNo || "N/A"})` : "";
+
+  const unstartedPreceding = (currentIndex > 0 && machineList)
+    ? machineList.slice(0, currentIndex).filter(m => !m.StartTime || String(m.StartTime).trim() === "")
+    : [];
+  const unstartedPrecedingCount = unstartedPreceding.length;
 
   const cell = (label, value, labelStyle = {}, valueStyle = {}) => (
     <div className="responsive-cell" style={{ display: "flex", borderBottom: "1px solid #e2e8f0" }}>
@@ -1531,6 +2411,29 @@ const ScannedMDFJobCard = ({
                       <i className="fas fa-desktop mr-2" style={{ color: "#c2410c" }}></i> ASSIGNED MACHINE
                     </label>
                     <div style={{ display: "flex", gap: "6px" }}>
+                      {unstartedPrecedingCount > 0 && machineData && (!machineData.StartTime || String(machineData.StartTime).trim() === "") && (
+                        <button
+                          type="button"
+                          onClick={() => onOpenBypassModal && onOpenBypassModal(machineData)}
+                          disabled={actionLoading}
+                          title="Bypass previous machines for rejection material"
+                          style={{
+                            padding: "3px 10px",
+                            fontSize: "11.5px",
+                            fontWeight: 600,
+                            borderRadius: "5px",
+                            border: "1px solid #f97316",
+                            backgroundColor: "#fff7ed",
+                            color: "#ea580c",
+                            cursor: "pointer",
+                            display: "inline-flex",
+                            alignItems: "center",
+                            gap: "4px"
+                          }}
+                        >
+                          <i className="fas fa-forward"></i> Bypass ({unstartedPrecedingCount})
+                        </button>
+                      )}
                       <button
                         type="button"
                         onClick={() => onOpenSwapModal && onOpenSwapModal(machineData)}
@@ -1589,10 +2492,14 @@ const ScannedMDFJobCard = ({
                     machine={machineData}
                     onStart={onStartMachine}
                     onStop={onStopMachine}
+                    onPause={() => onPauseMachine && onPauseMachine(machineData)}
+                    onResume={() => onResumeMachine && onResumeMachine(machineData)}
                     actionLoading={actionLoading}
                     isPrevStarted={isPrevStarted}
                     prevMachineName={prevMachineName}
                     skipMachineIds={skipMachineIds}
+                    onOpenBypassModal={() => onOpenBypassModal && onOpenBypassModal(machineData)}
+                    unstartedPrecedingCount={unstartedPrecedingCount}
                   />
                 </div>
               ) : (
@@ -1610,6 +2517,29 @@ const ScannedMDFJobCard = ({
                       <i className="fas fa-desktop mr-2" style={{ color: "#c2410c" }}></i> SELECT MACHINE FOR OPERATION
                     </label>
                     <div style={{ display: "flex", gap: "6px" }}>
+                      {unstartedPrecedingCount > 0 && machineData && (!machineData.StartTime || String(machineData.StartTime).trim() === "") && (
+                        <button
+                          type="button"
+                          onClick={() => onOpenBypassModal && onOpenBypassModal(machineData)}
+                          disabled={actionLoading}
+                          title="Bypass previous machines for rejection material"
+                          style={{
+                            padding: "3px 10px",
+                            fontSize: "11.5px",
+                            fontWeight: 600,
+                            borderRadius: "5px",
+                            border: "1px solid #f97316",
+                            backgroundColor: "#fff7ed",
+                            color: "#ea580c",
+                            cursor: "pointer",
+                            display: "inline-flex",
+                            alignItems: "center",
+                            gap: "4px"
+                          }}
+                        >
+                          <i className="fas fa-forward"></i> Bypass ({unstartedPrecedingCount})
+                        </button>
+                      )}
                       {machineData && (
                         <button
                           type="button"
@@ -1686,10 +2616,14 @@ const ScannedMDFJobCard = ({
                     machine={machineData}
                     onStart={onStartMachine}
                     onStop={onStopMachine}
+                    onPause={() => onPauseMachine && onPauseMachine(machineData)}
+                    onResume={() => onResumeMachine && onResumeMachine(machineData)}
                     actionLoading={actionLoading}
                     isPrevStarted={isPrevStarted}
                     prevMachineName={prevMachineName}
                     skipMachineIds={skipMachineIds}
+                    onOpenBypassModal={() => onOpenBypassModal && onOpenBypassModal(machineData)}
+                    unstartedPrecedingCount={unstartedPrecedingCount}
                   />
                 )}
               </>
@@ -1717,7 +2651,10 @@ const ScannedJobCardView = ({
   onMinimize = null,
   sessionCount = 0,
   onOpenSwapModal = null,
-  onOpenLogsModal = null
+  onOpenLogsModal = null,
+  onOpenBypassModal = null,
+  onPauseMachine = null,
+  onResumeMachine = null
 }) => {
   const cat = String(parsedIds?.F_CategoryMaster || jobCard?.F_CategoryMaster || "");
   
@@ -1778,6 +2715,9 @@ const ScannedJobCardView = ({
         skipMachineIds={skipMachineIds}
         onOpenSwapModal={onOpenSwapModal}
         onOpenLogsModal={onOpenLogsModal}
+        onOpenBypassModal={onOpenBypassModal}
+        onPauseMachine={onPauseMachine}
+        onResumeMachine={onResumeMachine}
       />
     );
   } else if (cat === "5") {
@@ -1796,6 +2736,9 @@ const ScannedJobCardView = ({
         skipMachineIds={skipMachineIds}
         onOpenSwapModal={onOpenSwapModal}
         onOpenLogsModal={onOpenLogsModal}
+        onOpenBypassModal={onOpenBypassModal}
+        onPauseMachine={onPauseMachine}
+        onResumeMachine={onResumeMachine}
       />
     );
   } else {
@@ -1814,6 +2757,9 @@ const ScannedJobCardView = ({
         skipMachineIds={skipMachineIds}
         onOpenSwapModal={onOpenSwapModal}
         onOpenLogsModal={onOpenLogsModal}
+        onOpenBypassModal={onOpenBypassModal}
+        onPauseMachine={onPauseMachine}
+        onResumeMachine={onResumeMachine}
       />
     );
   }
@@ -1900,6 +2846,419 @@ const QRScanner = () => {
   const [logsJobCard, setLogsJobCard] = useState(null);
   const [machineLogsList, setMachineLogsList] = useState([]);
   const [logsLoading, setLogsLoading] = useState(false);
+
+  // ── Machine Bypass State (Rejection / Pre-sized Material) ─────────────────────
+  const [isBypassModalOpen, setIsBypassModalOpen] = useState(false);
+  const [bypassTargetMachine, setBypassTargetMachine] = useState(null);
+  const [bypassSubmitLoading, setBypassSubmitLoading] = useState(false);
+
+  // ── Machine Pause State (Duty Off / Shift End / Break) ────────────────────────
+  const [isPauseModalOpen, setIsPauseModalOpen] = useState(false);
+  const [pauseTargetMachine, setPauseTargetMachine] = useState(null);
+  const [pauseSubmitLoading, setPauseSubmitLoading] = useState(false);
+  const [bulkPauseLoading, setBulkPauseLoading] = useState(false);
+
+  const bypassPrecedingMachines = useMemo(() => {
+    if (!bypassTargetMachine) return [];
+    const list = (activeSession?.machineList && activeSession.machineList.length > 0)
+      ? activeSession.machineList
+      : machineList;
+    const targetMasterId = String(bypassTargetMachine.F_MachineMaster || bypassTargetMachine.MachineMasterId || bypassTargetMachine.ID);
+    const targetIdx = list.findIndex(m => 
+      String(m.F_MachineMaster || m.MachineMasterId || m.ID) === targetMasterId ||
+      String(m.ID) === String(bypassTargetMachine.ID)
+    );
+    if (targetIdx <= 0) return [];
+    return list.slice(0, targetIdx).filter(m => !m.StartTime || String(m.StartTime).trim() === "");
+  }, [bypassTargetMachine, activeSession, machineList]);
+
+  const handleOpenBypassModal = (targetMach = null) => {
+    const mach = targetMach || machineData || activeSession?.machineData;
+    if (!mach) return;
+    setBypassTargetMachine(mach);
+    setIsBypassModalOpen(true);
+  };
+
+  const handleCloseBypassModal = () => {
+    setIsBypassModalOpen(false);
+    setBypassTargetMachine(null);
+  };
+
+  const handleSubmitMachineBypass = async (reason) => {
+    const mach = bypassTargetMachine || machineData || activeSession?.machineData;
+    if (!mach) {
+      alert("Target machine is not selected.");
+      return;
+    }
+
+    const jc = jobCardData || activeSession?.jobCardData;
+    const jcId = jc?.ID || jc?.Id || mach.F_JobCardMaster || "0";
+    const targetMachMasterId = mach.F_MachineMaster || mach.MachineMasterId || mach.ID || mach.Id;
+
+    if (!jcId || jcId === "0") {
+      alert("Job Card ID is missing.");
+      return;
+    }
+
+    setBypassSubmitLoading(true);
+    try {
+      const authUser = JSON.parse(localStorage.getItem("authUser") || "{}");
+      const userId = authUser?.id || authUser?.ID || "0";
+      const userName = authUser?.name || authUser?.username || "Operator";
+      const headers = getAuthHeaders();
+
+      const payload = {
+        JobCardMasterId: parseInt(jcId, 10),
+        TargetMachineMasterId: parseInt(targetMachMasterId, 10),
+        Reason: reason || "Rejection Material Re-use (Scrap / Offcut Wood)"
+      };
+
+      const res = await axios.post(
+        `${API_WEB_URLS.BASE}${API_WEB_URLS.BYPASS_PRECEDING_MACHINES}/${userId}/token`,
+        payload,
+        { headers }
+      );
+
+      if (res?.data?.Success || res?.data?.success || res?.status === 200) {
+        const bypassedCount = res?.data?.BypassedCount ?? (res?.data?.bypassedCount ?? 0);
+        const nowIso = new Date().toISOString();
+
+        // Target machine in current machine list
+        const currentList = (activeSession?.machineList && activeSession.machineList.length > 0)
+          ? activeSession.machineList
+          : machineList;
+
+        const targetIdx = currentList.findIndex(m => 
+          String(m.F_MachineMaster || m.MachineMasterId || m.ID) === String(targetMachMasterId) ||
+          String(m.ID) === String(mach.ID)
+        );
+
+        const updateBypassedItem = (m, idx) => {
+          if (targetIdx > 0 && idx >= 0 && idx < targetIdx && (!m.StartTime || String(m.StartTime).trim() === "")) {
+            return {
+              ...m,
+              StartTime: nowIso,
+              EndTime: nowIso,
+              IsBypassed: 1,
+              BypassReason: reason,
+              UserName: `BYPASS: ${userName}`
+            };
+          }
+          return m;
+        };
+
+        const updatedList = currentList.map(updateBypassedItem);
+
+        // Update single state
+        setMachineList(updatedList);
+        const updatedTargetMach = updatedList[targetIdx] || mach;
+        setMachineData(updatedTargetMach);
+
+        // Update active session state if multi-session active
+        if (activeSessionId) {
+          setScannedSessions(prev => prev.map(s => {
+            if (s.id === activeSessionId) {
+              const sTargetIdx = (s.machineList || []).findIndex(m => 
+                String(m.F_MachineMaster || m.MachineMasterId || m.ID) === String(targetMachMasterId) ||
+                String(m.ID) === String(mach.ID)
+              );
+              const sUpdatedList = (s.machineList || []).map((m, idx) => {
+                if (sTargetIdx > 0 && idx >= 0 && idx < sTargetIdx && (!m.StartTime || String(m.StartTime).trim() === "")) {
+                  return {
+                    ...m,
+                    StartTime: nowIso,
+                    EndTime: nowIso,
+                    IsBypassed: 1,
+                    BypassReason: reason,
+                    UserName: `BYPASS: ${userName}`
+                  };
+                }
+                return m;
+              });
+
+              return {
+                ...s,
+                machineList: sUpdatedList,
+                machineData: sUpdatedList[sTargetIdx] || s.machineData
+              };
+            }
+            return s;
+          }));
+        }
+
+        alert(`✅ Successfully bypassed ${bypassedCount} preceding machine(s) for rejection material! You can now start ${mach.MachineName || "the target machine"}.`);
+        setIsBypassModalOpen(false);
+        setBypassTargetMachine(null);
+      } else {
+        alert(res?.data?.Message || "Failed to bypass preceding machines.");
+      }
+    } catch (err) {
+      console.error("Machine bypass error:", err);
+      const errMsg = err?.response?.data?.Message || err?.response?.data?.message || err?.message || "Failed to bypass preceding machines.";
+      alert(`❌ Error: ${errMsg}`);
+    } finally {
+      setBypassSubmitLoading(false);
+    }
+  };
+
+  // ── Machine Pause Handlers (Shift End / Duty Off / Breaks) ────────────────────
+  const handleOpenPauseModal = (targetMach = null) => {
+    const mach = targetMach || machineData || activeSession?.machineData;
+    if (!mach) return;
+    setPauseTargetMachine(mach);
+    setIsPauseModalOpen(true);
+  };
+
+  const handleClosePauseModal = () => {
+    setIsPauseModalOpen(false);
+    setPauseTargetMachine(null);
+  };
+
+  const handleConfirmPauseMachine = async (reason) => {
+    const mach = pauseTargetMachine || machineData || activeSession?.machineData;
+    if (!mach) {
+      alert("No machine selected to pause.");
+      return;
+    }
+    const jc = jobCardData || activeSession?.jobCardData;
+    const jcId = jc?.ID || jc?.Id || mach.F_JobCardMaster || "0";
+    const machMasterId = mach.F_MachineMaster || mach.MachineMasterId || mach.ID || mach.Id;
+
+    if (!jcId || jcId === "0" || !machMasterId) {
+      alert("Job Card or Machine identification is missing.");
+      return;
+    }
+
+    setPauseSubmitLoading(true);
+    try {
+      const authUser = JSON.parse(localStorage.getItem("authUser") || "{}");
+      const userId = authUser?.id || authUser?.ID || "0";
+      const userName = authUser?.name || authUser?.username || "Operator";
+      const headers = getAuthHeaders();
+
+      const payload = {
+        JobCardMasterId: parseInt(jcId, 10),
+        MachineMasterId: parseInt(machMasterId, 10),
+        Reason: reason || "Shift End / Duty Off",
+        UserName: userName
+      };
+
+      const res = await axios.post(
+        `${API_WEB_URLS.BASE}${API_WEB_URLS.PAUSE_MACHINE}/${userId}/token`,
+        payload,
+        { headers }
+      );
+
+      if (res?.data?.Success || res?.data?.success || res?.status === 200) {
+        const nowIso = new Date().toISOString();
+        const updatedMach = {
+          ...mach,
+          IsPaused: 1,
+          CurrentPauseStartTime: nowIso,
+          CurrentPauseReason: reason || "Shift End / Duty Off",
+          PausedByUserName: userName
+        };
+
+        setMachineData(updatedMach);
+        setMachineList(prevList => prevList.map(m =>
+          (String(m.F_MachineMaster || m.ID) === String(machMasterId) || String(m.ID) === String(mach.ID))
+            ? { ...m, ...updatedMach }
+            : m
+        ));
+
+        if (activeSessionId) {
+          setScannedSessions(prev => prev.map(s => {
+            if (s.id === activeSessionId) {
+              return {
+                ...s,
+                machineData: updatedMach,
+                machineList: (s.machineList || []).map(m =>
+                  (String(m.F_MachineMaster || m.ID) === String(machMasterId) || String(m.ID) === String(mach.ID))
+                    ? { ...m, ...updatedMach }
+                    : m
+                )
+              };
+            }
+            return s;
+          }));
+        }
+
+        handleClosePauseModal();
+        alert("Machine operation paused successfully! It will not count as running overnight.");
+      } else {
+        alert(res?.data?.Message || "Failed to pause machine.");
+      }
+    } catch (err) {
+      console.error("Error pausing machine:", err);
+      alert(err?.response?.data?.Message || err?.message || "Failed to pause machine.");
+    } finally {
+      setPauseSubmitLoading(false);
+    }
+  };
+
+  const handleResumeMachine = async (targetMach = null) => {
+    const mach = targetMach || machineData || activeSession?.machineData;
+    if (!mach || actionLoading) return;
+
+    const jc = jobCardData || activeSession?.jobCardData;
+    const jcId = jc?.ID || jc?.Id || mach.F_JobCardMaster || "0";
+    const machMasterId = mach.F_MachineMaster || mach.MachineMasterId || mach.ID || mach.Id;
+
+    if (!jcId || jcId === "0" || !machMasterId) {
+      alert("Job Card or Machine identification is missing.");
+      return;
+    }
+
+    if (!window.confirm(`Resume work on ${mach.MachineName || "this machine"} for Job Card ${jc?.JobCardNo || ""}?`)) {
+      return;
+    }
+
+    setActionLoading(true);
+    try {
+      const authUser = JSON.parse(localStorage.getItem("authUser") || "{}");
+      const userId = authUser?.id || authUser?.ID || "0";
+      const userName = authUser?.name || authUser?.username || "Operator";
+      const headers = getAuthHeaders();
+
+      const payload = {
+        JobCardMasterId: parseInt(jcId, 10),
+        MachineMasterId: parseInt(machMasterId, 10),
+        UserName: userName
+      };
+
+      const res = await axios.post(
+        `${API_WEB_URLS.BASE}${API_WEB_URLS.RESUME_MACHINE}/${userId}/token`,
+        payload,
+        { headers }
+      );
+
+      if (res?.data?.Success || res?.data?.success || res?.status === 200) {
+        const addedMins = res?.data?.Data?.Response?.AddedPauseMinutes || 0;
+        const currentTotal = Number(mach.TotalPauseTime) || 0;
+
+        const updatedMach = {
+          ...mach,
+          IsPaused: 0,
+          CurrentPauseStartTime: null,
+          CurrentPauseReason: null,
+          TotalPauseTime: currentTotal + addedMins
+        };
+
+        setMachineData(updatedMach);
+        setMachineList(prevList => prevList.map(m =>
+          (String(m.F_MachineMaster || m.ID) === String(machMasterId) || String(m.ID) === String(mach.ID))
+            ? { ...m, ...updatedMach }
+            : m
+        ));
+
+        if (activeSessionId) {
+          setScannedSessions(prev => prev.map(s => {
+            if (s.id === activeSessionId) {
+              return {
+                ...s,
+                machineData: updatedMach,
+                machineList: (s.machineList || []).map(m =>
+                  (String(m.F_MachineMaster || m.ID) === String(machMasterId) || String(m.ID) === String(mach.ID))
+                    ? { ...m, ...updatedMach }
+                    : m
+                )
+              };
+            }
+            return s;
+          }));
+        }
+
+        alert("Machine resumed successfully! Active runtime timer restarted.");
+      } else {
+        alert(res?.data?.Message || "Failed to resume machine.");
+      }
+    } catch (err) {
+      console.error("Error resuming machine:", err);
+      alert(err?.response?.data?.Message || err?.message || "Failed to resume machine.");
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const handleBulkPauseAll = async () => {
+    const unpausedRunning = scannedSessions.filter(s => {
+      if (!s.machineData) return false;
+      const isStarted = !!(s.machineData.StartTime && String(s.machineData.StartTime).trim() !== "");
+      const isStopped = !!(s.machineData.EndTime && String(s.machineData.EndTime).trim() !== "");
+      const isPaused = !!(s.machineData.IsPaused === 1 || s.machineData.IsPaused === true || s.machineData.IsPaused === "1");
+      return isStarted && !isStopped && !isPaused;
+    });
+
+    if (unpausedRunning.length === 0) return;
+
+    if (!window.confirm(`Pause all ${unpausedRunning.length} active running machines for Shift End / Duty Off?`)) {
+      return;
+    }
+
+    setBulkPauseLoading(true);
+    try {
+      const authUser = JSON.parse(localStorage.getItem("authUser") || "{}");
+      const userId = authUser?.id || authUser?.ID || "0";
+      const userName = authUser?.name || authUser?.username || "Operator";
+      const headers = getAuthHeaders();
+      const nowIso = new Date().toISOString();
+
+      for (const s of unpausedRunning) {
+        const jcId = s.jobCardData?.ID || s.jobCardData?.Id || s.machineData?.F_JobCardMaster || "0";
+        const machMasterId = s.machineData?.F_MachineMaster || s.machineData?.MachineMasterId || s.machineData?.ID;
+        if (jcId && machMasterId) {
+          try {
+            await axios.post(
+              `${API_WEB_URLS.BASE}${API_WEB_URLS.PAUSE_MACHINE}/${userId}/token`,
+              {
+                JobCardMasterId: parseInt(jcId, 10),
+                MachineMasterId: parseInt(machMasterId, 10),
+                Reason: "Shift End / Duty Off",
+                UserName: userName
+              },
+              { headers }
+            );
+          } catch (e) {
+            console.error("Bulk pause error for session", s.id, e);
+          }
+        }
+      }
+
+      setScannedSessions(prev => prev.map(s => {
+        const isTarget = unpausedRunning.some(ur => ur.id === s.id);
+        if (isTarget && s.machineData) {
+          return {
+            ...s,
+            machineData: {
+              ...s.machineData,
+              IsPaused: 1,
+              CurrentPauseStartTime: nowIso,
+              CurrentPauseReason: "Shift End / Duty Off",
+              PausedByUserName: userName
+            }
+          };
+        }
+        return s;
+      }));
+
+      if (machineData && (!machineData.EndTime) && machineData.StartTime) {
+        setMachineData(prev => ({
+          ...prev,
+          IsPaused: 1,
+          CurrentPauseStartTime: nowIso,
+          CurrentPauseReason: "Shift End / Duty Off",
+          PausedByUserName: userName
+        }));
+      }
+
+      alert(`Successfully paused ${unpausedRunning.length} active machine(s) for Shift End!`);
+    } catch (err) {
+      console.error("Bulk pause error:", err);
+      alert("Error while pausing machines: " + (err.message || err));
+    } finally {
+      setBulkPauseLoading(false);
+    }
+  };
 
   const handleOpenSwapModal = async (machine, isBulk = false) => {
     if (!machine) return;
@@ -3265,6 +4624,15 @@ const QRScanner = () => {
     });
     const canStopAll      = scannedSessions.length > 1 && runningSessions.length > 0;
 
+    // Active unpaused running sessions eligible for Pause All at shift end
+    const activeUnpausedRunningSessions = scannedSessions.filter(s => {
+      if (!s.machineData) return false;
+      const isStarted = !!(s.machineData.StartTime && String(s.machineData.StartTime).trim() !== "");
+      const isStopped = !!(s.machineData.EndTime && String(s.machineData.EndTime).trim() !== "");
+      const isPaused  = !!(s.machineData.IsPaused === 1 || s.machineData.IsPaused === true || s.machineData.IsPaused === "1");
+      return isStarted && !isStopped && !isPaused;
+    });
+
     // Reason why Stop All button is disabled (shown as tooltip)
     let stopDisabledReason = "";
     if (scannedSessions.length <= 1) {
@@ -3301,6 +4669,7 @@ const QRScanner = () => {
 
         {scannedSessions.map((session, idx) => {
           const hasMachine = !!session.machineData;
+          const isPaused   = !!(session.machineData?.IsPaused === 1 || session.machineData?.IsPaused === true || session.machineData?.IsPaused === "1");
           const isStarted  = !!(session.machineData?.StartTime && String(session.machineData.StartTime).trim() !== "");
           const isStopped  = !!(session.machineData?.EndTime && String(session.machineData.EndTime).trim() !== "");
           const isActive   = session.id === activeSessionId;
@@ -3309,8 +4678,20 @@ const QRScanner = () => {
             <div key={session.id} style={{
               display: "flex",
               alignItems: "center",
-              background: isActive ? "#34d399" : (isStopped ? "#1e293b" : (isStarted ? "#14532d" : (hasMachine ? "#1e3a2f" : "#3b1f0a"))),
-              border: `1px solid ${isActive ? "#34d399" : (isStopped ? "#475569" : (isStarted ? "#22c55e" : (hasMachine ? "#2d5a3d" : "#c2410c")))}`,
+              background: isActive
+                ? "#34d399"
+                : (isStopped
+                  ? "#1e293b"
+                  : (isPaused
+                    ? "#7c2d12"
+                    : (isStarted ? "#14532d" : (hasMachine ? "#1e3a2f" : "#3b1f0a")))),
+              border: `1px solid ${isActive
+                ? "#34d399"
+                : (isStopped
+                  ? "#475569"
+                  : (isPaused
+                    ? "#ea580c"
+                    : (isStarted ? "#22c55e" : (hasMachine ? "#2d5a3d" : "#c2410c"))))}`,
               borderRadius: "20px",
               padding: "4px 10px 4px 12px",
               gap: "6px",
@@ -3320,7 +4701,13 @@ const QRScanner = () => {
               <span
                 onClick={() => handleExpandSession(session.id)}
                 style={{
-                  color: isActive ? "#0f172a" : (isStopped ? "#94a3b8" : (isStarted ? "#86efac" : (hasMachine ? "#34d399" : "#fb923c"))),
+                  color: isActive
+                    ? "#0f172a"
+                    : (isStopped
+                      ? "#94a3b8"
+                      : (isPaused
+                        ? "#fdba74"
+                        : (isStarted ? "#86efac" : (hasMachine ? "#34d399" : "#fb923c")))),
                   fontSize: "12px",
                   fontWeight: 700,
                   whiteSpace: "nowrap"
@@ -3331,9 +4718,11 @@ const QRScanner = () => {
                   ? " ⚠️ Select machine"
                   : isStopped
                     ? " 🛑 Done"
-                    : isStarted
-                      ? " ⚡ Running"
-                      : ` — ${session.machineData?.MachineName || "Machine"} ⏳`
+                    : isPaused
+                      ? " ⏸️ Paused"
+                      : isStarted
+                        ? " ⚡ Running"
+                        : ` — ${session.machineData?.MachineName || "Machine"} ⏳`
                 }
               </span>
               <button
@@ -3430,6 +4819,39 @@ const QRScanner = () => {
             </button>
           </div>
 
+          {/* Pause All button (Shift End / Duty Off) */}
+          {activeUnpausedRunningSessions.length > 0 && (
+            <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: "2px" }}>
+              <button
+                onClick={handleBulkPauseAll}
+                disabled={bulkPauseLoading || bulkStartLoading || bulkStopLoading}
+                title={`Pause all ${activeUnpausedRunningSessions.length} active running machine(s) for Duty Off / Shift End`}
+                style={{
+                  background: "linear-gradient(135deg, #d97706, #ea580c)",
+                  color: "#fff",
+                  border: "none",
+                  borderRadius: "20px",
+                  padding: "6px 16px",
+                  fontSize: "12px",
+                  fontWeight: 700,
+                  cursor: (bulkPauseLoading || bulkStartLoading || bulkStopLoading) ? "not-allowed" : "pointer",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "6px",
+                  whiteSpace: "nowrap",
+                  boxShadow: "0 2px 8px rgba(234,88,12,0.3)",
+                  transition: "all 0.3s"
+                }}
+              >
+                {bulkPauseLoading ? (
+                  <><span className="spinner-border spinner-border-sm" role="status"></span> Pausing...</>
+                ) : (
+                  <><i className="fas fa-pause-circle"></i> Pause All ({activeUnpausedRunningSessions.length})</>
+                )}
+              </button>
+            </div>
+          )}
+
           {/* Stop All button */}
           <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: "2px" }}>
             {!canStopAll && stopDisabledReason && (
@@ -3500,6 +4922,9 @@ const QRScanner = () => {
             sessionCount={scannedSessions.length}
             onOpenSwapModal={handleOpenSwapModal}
             onOpenLogsModal={handleOpenLogsModal}
+            onOpenBypassModal={handleOpenBypassModal}
+            onPauseMachine={handleOpenPauseModal}
+            onResumeMachine={handleResumeMachine}
           />
         </div>
 
@@ -3512,6 +4937,25 @@ const QRScanner = () => {
           loadingMachines={swapMachinesLoading}
           onSubmitSwap={handleSubmitMachineSwap}
           submitLoading={swapSubmitLoading}
+        />
+
+        <MachineBypassModal
+          isOpen={isBypassModalOpen}
+          onClose={handleCloseBypassModal}
+          targetMachine={bypassTargetMachine}
+          jobCard={jobCardData || activeSession?.jobCardData}
+          precedingMachines={bypassPrecedingMachines}
+          onSubmitBypass={handleSubmitMachineBypass}
+          submitLoading={bypassSubmitLoading}
+        />
+
+        <MachinePauseModal
+          isOpen={isPauseModalOpen}
+          onClose={handleClosePauseModal}
+          targetMachine={pauseTargetMachine}
+          jobCard={jobCardData || activeSession?.jobCardData}
+          onConfirmPause={handleConfirmPauseMachine}
+          submitLoading={pauseSubmitLoading}
         />
 
         <MachineLogsModal
@@ -3927,6 +5371,25 @@ const QRScanner = () => {
         submitLoading={swapSubmitLoading}
         isBulk={isBulkSwap}
         sessionsList={scannedSessions}
+      />
+
+      <MachineBypassModal
+        isOpen={isBypassModalOpen}
+        onClose={handleCloseBypassModal}
+        targetMachine={bypassTargetMachine}
+        jobCard={jobCardData || activeSession?.jobCardData}
+        precedingMachines={bypassPrecedingMachines}
+        onSubmitBypass={handleSubmitMachineBypass}
+        submitLoading={bypassSubmitLoading}
+      />
+
+      <MachinePauseModal
+        isOpen={isPauseModalOpen}
+        onClose={handleClosePauseModal}
+        targetMachine={pauseTargetMachine}
+        jobCard={jobCardData || activeSession?.jobCardData}
+        onConfirmPause={handleConfirmPauseMachine}
+        submitLoading={pauseSubmitLoading}
       />
 
       <MachineLogsModal

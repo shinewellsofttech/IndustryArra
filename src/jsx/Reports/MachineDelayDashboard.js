@@ -324,15 +324,21 @@ const MachineDelayDashboard = () => {
       setData((prevData) => {
         if (!prevData) return prevData;
         const lineIdToCompare = m.JobCardLineId || m.jobCardLineId;
+        const updatedRunning = prevData.runningMachines.filter(
+          (rm) => (rm.JobCardLineId || rm.jobCardLineId) !== lineIdToCompare
+        );
+        const uniqueRunning = new Set(
+          updatedRunning.map((rm) => rm.MachineMasterId || rm.machineMasterId).filter(Boolean)
+        ).size;
+        const total = prevData.machineCounts?.total || 0;
         return {
           ...prevData,
-          runningMachines: prevData.runningMachines.filter(
-            (rm) => (rm.JobCardLineId || rm.jobCardLineId) !== lineIdToCompare
-          ),
+          runningMachines: updatedRunning,
           machineCounts: {
             ...prevData.machineCounts,
-            running: Math.max(0, (prevData.machineCounts?.running || 1) - 1),
-            idle: (prevData.machineCounts?.idle || 0) + 1,
+            running: uniqueRunning,
+            idle: Math.max(0, total - uniqueRunning),
+            runningJobCards: updatedRunning.length,
           },
         };
       });
@@ -380,11 +386,51 @@ const MachineDelayDashboard = () => {
     );
   }
 
-  const counts = data?.machineCounts || { total: 0, running: 0, idle: 0, delayedTransitionsCount: 0 };
   const runningMachines = data?.runningMachines || [];
   const delayedTransitions = data?.delayedTransitions || [];
   const chartStats = data?.chartStats || [];
 
+  // Distinct running machines calculation (machines that have at least 1 running job card)
+  const uniqueRunningMachineIds = new Set(
+    runningMachines.map((m) => m.MachineMasterId || m.machineMasterId).filter(Boolean)
+  );
+  const uniqueRunningMachinesCount = uniqueRunningMachineIds.size;
+
+  const totalMachines = data?.machineCounts?.total || 0;
+  
+  // Running Machines must be distinct running machines count
+  const runningMachinesCount = (data?.machineCounts?.running !== undefined && data?.machineCounts?.running <= uniqueRunningMachinesCount)
+    ? data.machineCounts.running
+    : uniqueRunningMachinesCount;
+    
+  // Paused machines count (machines on hold for shift end, duty off, or breaks)
+  const pausedMachines = data?.pausedMachines || [];
+  const pausedMachinesCount = data?.machineCounts?.paused ?? pausedMachines.length;
+
+  // Idle machines = Total Machines - (Running Machines + Paused Machines)
+  const idleMachinesCount = Math.max(0, totalMachines - (runningMachinesCount + pausedMachinesCount));
+  
+  // Running Job Cards count
+  const runningJobCardsCount = data?.machineCounts?.runningJobCards ?? runningMachines.length;
+
+  const counts = {
+    total: totalMachines,
+    running: runningMachinesCount,
+    paused: pausedMachinesCount,
+    idle: idleMachinesCount,
+    runningJobCards: runningJobCardsCount,
+    delayedTransitionsCount: data?.machineCounts?.delayedTransitionsCount || 0
+  };
+
+  // Idle machines from machineLogs
+  const idleMachinesList = (data?.machineLogs || []).filter((log) => !log.RunningJobCardLineId);
+  const filteredIdle = idleMachinesList.filter((m) => {
+    const matchesCategory = selectedCategory === "ALL" || selectedCategory === "IDLE";
+    const matchesMachineName = !selectedMachineFilter || 
+      (m.MachineName && m.MachineName.toLowerCase().includes(selectedMachineFilter.toLowerCase())) || 
+      (m.MachineCode && m.MachineCode.toLowerCase().includes(selectedMachineFilter.toLowerCase()));
+    return matchesCategory && matchesMachineName;
+  });
 
   // Filter lists based on selected states
   const filteredRunning = runningMachines.filter((m) => {
@@ -483,8 +529,8 @@ const MachineDelayDashboard = () => {
 
 
       {/* KPI Cards */}
-      <Row className="mb-4">
-        <Col xl={3} sm={6} className="mb-4 mb-xl-0">
+      <Row className="mb-4 g-3">
+        <Col xl sm={6} className="mb-3 mb-xl-0">
           <Card 
             className={`border-left-primary h-100 ${selectedCategory === "ALL" ? "border-primary" : ""}`}
             style={{ cursor: "pointer", transition: "0.2s" }}
@@ -502,7 +548,7 @@ const MachineDelayDashboard = () => {
           </Card>
         </Col>
 
-        <Col xl={3} sm={6} className="mb-4 mb-xl-0">
+        <Col xl sm={6} className="mb-3 mb-xl-0">
           <Card 
             className={`border-left-success h-100 ${selectedCategory === "RUNNING" ? "border-success" : ""}`}
             style={{ cursor: "pointer", transition: "0.2s" }}
@@ -520,7 +566,7 @@ const MachineDelayDashboard = () => {
           </Card>
         </Col>
 
-        <Col xl={3} sm={6} className="mb-4 mb-xl-0">
+        <Col xl sm={6} className="mb-3 mb-xl-0">
           <Card 
             className={`border-left-danger h-100 ${selectedCategory === "IDLE" ? "border-danger" : ""}`}
             style={{ cursor: "pointer", transition: "0.2s" }}
@@ -538,7 +584,25 @@ const MachineDelayDashboard = () => {
           </Card>
         </Col>
 
-        <Col xl={3} sm={6}>
+        <Col xl sm={6} className="mb-3 mb-xl-0">
+          <Card 
+            className={`border-left-info h-100 ${selectedCategory === "RUNNING" ? "border-info" : ""}`}
+            style={{ cursor: "pointer", transition: "0.2s" }}
+            onClick={() => setSelectedCategory("RUNNING")}
+          >
+            <Card.Body className="d-flex align-items-center justify-content-between">
+              <div>
+                <span className="text-xs font-weight-bold text-uppercase text-info d-block mb-1">Running Job Cards</span>
+                <h3 className="mb-0 font-weight-bold">{counts.runningJobCards}</h3>
+              </div>
+              <div className="icon-shape bg-info-light p-3 rounded-circle">
+                <FaRoute className="text-info fs-4" />
+              </div>
+            </Card.Body>
+          </Card>
+        </Col>
+
+        <Col xl sm={6}>
           <Card 
             className={`border-left-warning h-100 ${selectedCategory === "DELAYED" ? "border-warning" : ""}`}
             style={{ cursor: "pointer", transition: "0.2s" }}
@@ -629,7 +693,7 @@ const MachineDelayDashboard = () => {
               <Card.Header className="bg-white py-3 border-bottom d-flex justify-content-between align-items-center">
                 <h5 className="mb-0 text-dark fw-bold">
                   <FaCircle className="text-success me-2 animate-pulse" />
-                  Currently Running Machines ({filteredRunning.length})
+                  Currently Running Job Cards ({filteredRunning.length} on {uniqueRunningMachinesCount} Machines)
                 </h5>
               </Card.Header>
               <Card.Body className="p-0">
@@ -802,6 +866,70 @@ const MachineDelayDashboard = () => {
             </Card>
           </Col>
         )}
+
+        {/* Table 3: Idle Machines */}
+        {selectedCategory === "IDLE" && (
+          <Col lg={12} className="mb-4">
+            <Card className="shadow-sm border-0 h-100">
+              <Card.Header className="bg-white py-3 border-bottom d-flex justify-content-between align-items-center">
+                <h5 className="mb-0 text-dark fw-bold text-danger">
+                  <FaPauseCircle className="me-2" />
+                  Idle Machines ({filteredIdle.length})
+                </h5>
+              </Card.Header>
+              <Card.Body className="p-0">
+                <div className="table-responsive">
+                  <Table className="align-items-center table-flush mb-0" hover>
+                    <thead className="thead-light">
+                      <tr>
+                        <th>Machine</th>
+                        <th>Code</th>
+                        <th>Last Job Card</th>
+                        <th>Last Shipment</th>
+                        <th>Last Finished At</th>
+                        <th>Idle Time</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {filteredIdle.length > 0 ? (
+                        filteredIdle.map((m) => (
+                          <tr key={m.MachineId}>
+                            <td><span className="fw-bold">{m.MachineName}</span></td>
+                            <td>{m.MachineCode}</td>
+                            <td>
+                              {m.LastJobCardNo ? (
+                                <Badge bg="light" text="primary" className="fs-12 p-2 border" style={{ cursor: "pointer" }} onClick={() => handleViewJobCardFlow(m.LastJobCardMasterId, m.LastJobCardNo)}>
+                                  {m.LastJobCardNo}
+                                </Badge>
+                              ) : (
+                                <span className="text-muted">None</span>
+                              )}
+                            </td>
+                            <td>{m.LastShipmentNo || <span className="text-muted">N/A</span>}</td>
+                            <td>{m.LastEndTime ? formatDateTime(m.LastEndTime) : <span className="text-muted">No activity</span>}</td>
+                            <td>
+                              {m.IdleHours > 0 ? (
+                                <Badge bg={m.IdleHours >= parseFloat(thresholdVal) ? "danger" : "secondary"} className="p-2 fs-11">
+                                  {formatDelayText(m.IdleHours)}
+                                </Badge>
+                              ) : (
+                                <span className="text-muted">—</span>
+                              )}
+                            </td>
+                          </tr>
+                        ))
+                      ) : (
+                        <tr>
+                          <td colSpan="6" className="text-center text-muted py-4">No idle machines found.</td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </Table>
+                </div>
+              </Card.Body>
+            </Card>
+          </Col>
+        )}
       </Row>
 
 
@@ -836,22 +964,31 @@ const MachineDelayDashboard = () => {
                     {jobCardFlow.map((step, idx) => {
                       const hasStarted = !!step.StartTime;
                       const hasEnded = !!step.EndTime;
+                      const isBypassed = !!(step.IsBypassed === 1 || step.IsBypassed === true || (step.UserName && String(step.UserName).includes("BYPASS")));
+                      const isPaused = !!(step.IsPaused === 1 || step.IsPaused === true || step.IsPaused === "1");
                       
                       let badgeBg = "secondary";
                       let statusText = "NOT STARTED";
-                      if (hasStarted && !hasEnded) {
+                      if (isBypassed) {
+                        badgeBg = "info";
+                        statusText = "BYPASSED (REJECTION)";
+                      } else if (isPaused) {
                         badgeBg = "warning";
+                        statusText = "PAUSED (SHIFT OFF)";
+                      } else if (hasStarted && !hasEnded) {
+                        badgeBg = "primary";
                         statusText = "IN PROGRESS";
                       } else if (hasStarted && hasEnded) {
                         badgeBg = "success";
                         statusText = "COMPLETED";
                       }
 
-                      // Calculate transit delay from previous step
+                      // Calculate transit delay from previous step (suppressed if bypassed)
                       let transitDelayHtml = null;
                       if (idx > 0) {
                         const prevStep = jobCardFlow[idx - 1];
-                        if (prevStep.EndTime) {
+                        const prevBypassed = !!(prevStep.IsBypassed === 1 || prevStep.IsBypassed === true || (prevStep.UserName && String(prevStep.UserName).includes("BYPASS")));
+                        if (prevStep.EndTime && !prevBypassed && !isBypassed) {
                           const currentEnd = new Date(prevStep.EndTime.replace(" ", "T"));
                           const nextStart = step.StartTime ? new Date(step.StartTime.replace(" ", "T")) : new Date();
                           const diffHours = (nextStart.getTime() - currentEnd.getTime()) / (1000 * 3600);
@@ -893,22 +1030,63 @@ const MachineDelayDashboard = () => {
                             </td>
                             <td>
                               <div className="text-xs">
-                                {step.StartTime ? (
+                                {isBypassed ? (
                                   <div>
-                                    <strong className="text-success">Start:</strong> {formatDateTime(step.StartTime)}
+                                    <div className="text-info fw-bold">
+                                      <i className="fas fa-forward me-1"></i> Bypassed (Rejection Wood)
+                                    </div>
+                                    {step.BypassReason && (
+                                      <div className="text-muted mt-1">
+                                        <em>Reason: {step.BypassReason}</em>
+                                      </div>
+                                    )}
+                                  </div>
+                                ) : isPaused ? (
+                                  <div>
+                                    <div className="text-warning fw-bold">
+                                      <i className="fas fa-pause-circle me-1"></i> Paused for Shift Off / Break
+                                    </div>
+                                    {step.CurrentPauseReason && (
+                                      <div className="text-muted mt-1">
+                                        <em>Reason: {step.CurrentPauseReason}</em>
+                                      </div>
+                                    )}
+                                    {step.CurrentPauseStartTime && (
+                                      <div className="text-muted mt-1">
+                                        <strong>Paused At:</strong> {formatDateTime(step.CurrentPauseStartTime)}
+                                      </div>
+                                    )}
+                                    {Number(step.TotalPauseTime) > 0 && (
+                                      <div className="text-muted">
+                                        <strong>Prior Pause:</strong> {Math.floor(Number(step.TotalPauseTime) / 60)}h {Math.round(Number(step.TotalPauseTime) % 60)}m
+                                      </div>
+                                    )}
                                   </div>
                                 ) : (
-                                  <div className="text-muted">Not Started Yet</div>
-                                )}
-                                {step.EndTime && (
-                                  <div className="mt-1">
-                                    <strong className="text-danger">End:</strong> {formatDateTime(step.EndTime)}
-                                  </div>
-                                )}
-                                {step.StartTime && step.EndTime && step.TotalTimeTaken > 0 && (
-                                  <div className="mt-1 text-muted">
-                                    <strong>Run Time:</strong> {formatDelayText(step.TotalTimeTaken / 60.0)}
-                                  </div>
+                                  <>
+                                    {step.StartTime ? (
+                                      <div>
+                                        <strong className="text-success">Start:</strong> {formatDateTime(step.StartTime)}
+                                      </div>
+                                    ) : (
+                                      <div className="text-muted">Not Started Yet</div>
+                                    )}
+                                    {step.EndTime && (
+                                      <div className="mt-1">
+                                        <strong className="text-danger">End:</strong> {formatDateTime(step.EndTime)}
+                                      </div>
+                                    )}
+                                    {Number(step.TotalPauseTime) > 0 && (
+                                      <div className="text-muted mt-1">
+                                        <strong>Pause Time:</strong> {Math.floor(Number(step.TotalPauseTime) / 60)}h {Math.round(Number(step.TotalPauseTime) % 60)}m
+                                      </div>
+                                    )}
+                                    {Number(step.TotalTimeTaken) > 0 && (
+                                      <div className="text-success mt-1">
+                                        <strong>Net Runtime:</strong> {Math.floor(Number(step.TotalTimeTaken) / 60)}h {Math.round(Number(step.TotalTimeTaken) % 60)}m
+                                      </div>
+                                    )}
+                                  </>
                                 )}
                               </div>
                             </td>

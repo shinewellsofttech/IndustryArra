@@ -349,11 +349,51 @@ const Home = () => {
     );
   }
 
-  const counts = data?.machineCounts || { total: 0, running: 0, idle: 0, delayedTransitionsCount: 0 };
   const runningMachines = data?.runningMachines || [];
   const delayedTransitions = data?.delayedTransitions || [];
   const chartStats = data?.chartStats || [];
 
+  // Helper to determine if a machine from MachineMaster is running
+  const isMachineRunning = (mach) => {
+    return runningMachines.some((rm) => 
+      (rm.MachineName && mach.Name && rm.MachineName.toLowerCase().trim() === mach.Name.toLowerCase().trim()) ||
+      (rm.MachineCode && mach.MachineNo && rm.MachineCode.toLowerCase().trim() === String(mach.MachineNo).toLowerCase().trim())
+    );
+  };
+
+  // Distinct running machines calculation (machines that have at least 1 running job card)
+  const uniqueRunningMachineIds = new Set(
+    runningMachines.map((m) => m.MachineMasterId || m.machineMasterId).filter(Boolean)
+  );
+  const uniqueRunningMachinesCount = uniqueRunningMachineIds.size > 0 
+    ? uniqueRunningMachineIds.size 
+    : allMachines.filter((m) => isMachineRunning(m)).length;
+
+  const totalMachines = data?.machineCounts?.total || allMachines.length || 0;
+  
+  // Running Machines must be distinct running machines count
+  const runningMachinesCount = (data?.machineCounts?.running !== undefined && data?.machineCounts?.running <= uniqueRunningMachinesCount)
+    ? data.machineCounts.running
+    : uniqueRunningMachinesCount;
+    
+  // Paused machines count (machines on hold for shift end, duty off, or breaks)
+  const pausedMachines = data?.pausedMachines || [];
+  const pausedMachinesCount = data?.machineCounts?.paused ?? pausedMachines.length;
+
+  // Idle machines = Total Machines - (Running Machines + Paused Machines)
+  const idleMachinesCount = Math.max(0, totalMachines - (runningMachinesCount + pausedMachinesCount));
+  
+  // Running Job Cards count
+  const runningJobCardsCount = data?.machineCounts?.runningJobCards ?? runningMachines.length;
+
+  const counts = {
+    total: totalMachines,
+    running: runningMachinesCount,
+    paused: pausedMachinesCount,
+    idle: idleMachinesCount,
+    runningJobCards: runningJobCardsCount,
+    delayedTransitionsCount: data?.machineCounts?.delayedTransitionsCount || 0
+  };
 
   // Filter lists based on selected states
   const filteredRunning = runningMachines.filter((m) => {
@@ -374,19 +414,19 @@ const Home = () => {
     return matchesCategory && matchesMachineName;
   });
 
-  // Helper to determine if a machine from MachineMaster is running
-  const isMachineRunning = (mach) => {
-    return runningMachines.some((rm) => 
-      (rm.MachineName && mach.Name && rm.MachineName.toLowerCase().trim() === mach.Name.toLowerCase().trim()) ||
-      (rm.MachineCode && mach.MachineNo && rm.MachineCode.toLowerCase().trim() === String(mach.MachineNo).toLowerCase().trim())
-    );
-  };
-
   // Modal filtered lists based on chart clicks / KPI clicks (using strict exact matching to avoid matching similar machines)
   const modalRunning = runningMachines.filter((m) => {
     if (!filterMachineName) return true;
     return (m.MachineName && m.MachineName.toLowerCase().trim() === filterMachineName.toLowerCase().trim()) ||
            (m.MachineCode && m.MachineCode.toLowerCase().trim() === filterMachineName.toLowerCase().trim());
+  });
+
+  const modalRunningMachines = allMachines.filter((m) => {
+    const isRunning = isMachineRunning(m);
+    if (!isRunning) return false;
+    if (!filterMachineName) return true;
+    return (m.Name && m.Name.toLowerCase().trim() === filterMachineName.toLowerCase().trim()) ||
+           (m.MachineNo && String(m.MachineNo).toLowerCase().trim() === filterMachineName.toLowerCase().trim());
   });
 
   const modalDelayed = delayedTransitions.filter((t) => {
@@ -446,7 +486,7 @@ const Home = () => {
       if (elements.length > 0) {
         const idx = elements[0].index;
         if (idx === 0) {
-          setChartDetailsType("RUNNING");
+          setChartDetailsType("RUNNING_MACHINES");
           setChartDetailsTitle("Currently Running Machines Details");
           setFilterMachineName("");
           setShowChartDetailsModal(true);
@@ -515,8 +555,8 @@ const Home = () => {
 
 
       {/* KPI Cards */}
-      <Row className="mb-4">
-        <Col xl={3} sm={6} className="mb-4 mb-xl-0">
+      <Row className="mb-4 g-3">
+        <Col xl sm={6} className="mb-3 mb-xl-0">
           <Card 
             className={`border-left-primary h-100 ${chartDetailsType === "TOTAL" && showChartDetailsModal ? "border-primary" : ""}`}
             style={{ cursor: "pointer", transition: "0.2s" }}
@@ -539,12 +579,12 @@ const Home = () => {
           </Card>
         </Col>
 
-        <Col xl={3} sm={6} className="mb-4 mb-xl-0">
+        <Col xl sm={6} className="mb-3 mb-xl-0">
           <Card 
-            className={`border-left-success h-100 ${chartDetailsType === "RUNNING" && showChartDetailsModal ? "border-success" : ""}`}
+            className={`border-left-success h-100 ${chartDetailsType === "RUNNING_MACHINES" && showChartDetailsModal ? "border-success" : ""}`}
             style={{ cursor: "pointer", transition: "0.2s" }}
             onClick={() => {
-              setChartDetailsType("RUNNING");
+              setChartDetailsType("RUNNING_MACHINES");
               setChartDetailsTitle("Currently Running Machines Details");
               setFilterMachineName("");
               setShowChartDetailsModal(true);
@@ -562,7 +602,7 @@ const Home = () => {
           </Card>
         </Col>
 
-        <Col xl={3} sm={6} className="mb-4 mb-xl-0">
+        <Col xl sm={6} className="mb-3 mb-xl-0">
           <Card 
             className={`border-left-danger h-100 ${chartDetailsType === "IDLE" && showChartDetailsModal ? "border-danger" : ""}`}
             style={{ cursor: "pointer", transition: "0.2s" }}
@@ -585,7 +625,30 @@ const Home = () => {
           </Card>
         </Col>
 
-        <Col xl={3} sm={6}>
+        <Col xl sm={6} className="mb-3 mb-xl-0">
+          <Card 
+            className={`border-left-info h-100 ${chartDetailsType === "RUNNING_JOBCARDS" && showChartDetailsModal ? "border-info" : ""}`}
+            style={{ cursor: "pointer", transition: "0.2s" }}
+            onClick={() => {
+              setChartDetailsType("RUNNING_JOBCARDS");
+              setChartDetailsTitle("Currently Running Job Cards Details");
+              setFilterMachineName("");
+              setShowChartDetailsModal(true);
+            }}
+          >
+            <Card.Body className="d-flex align-items-center justify-content-between">
+              <div>
+                <span className="text-xs font-weight-bold text-uppercase text-info d-block mb-1">Running Job Cards</span>
+                <h3 className="mb-0 font-weight-bold">{counts.runningJobCards}</h3>
+              </div>
+              <div className="icon-shape bg-info-light p-3 rounded-circle">
+                <FaRoute className="text-info fs-4" />
+              </div>
+            </Card.Body>
+          </Card>
+        </Col>
+
+        <Col xl sm={6}>
           <Card 
             className={`border-left-warning h-100 ${chartDetailsType === "DELAYED" && showChartDetailsModal ? "border-warning" : ""}`}
             style={{ cursor: "pointer", transition: "0.2s" }}
@@ -810,22 +873,31 @@ const Home = () => {
                     {jobCardFlow.map((step, idx) => {
                       const hasStarted = !!step.StartTime;
                       const hasEnded = !!step.EndTime;
+                      const isBypassed = !!(step.IsBypassed === 1 || step.IsBypassed === true || (step.UserName && String(step.UserName).includes("BYPASS")));
+                      const isPaused = !!(step.IsPaused === 1 || step.IsPaused === true || step.IsPaused === "1");
                       
                       let badgeBg = "secondary";
                       let statusText = "NOT STARTED";
-                      if (hasStarted && !hasEnded) {
+                      if (isBypassed) {
+                        badgeBg = "info";
+                        statusText = "BYPASSED (REJECTION)";
+                      } else if (isPaused) {
                         badgeBg = "warning";
+                        statusText = "PAUSED (SHIFT OFF)";
+                      } else if (hasStarted && !hasEnded) {
+                        badgeBg = "primary";
                         statusText = "IN PROGRESS";
                       } else if (hasStarted && hasEnded) {
                         badgeBg = "success";
                         statusText = "COMPLETED";
                       }
 
-                      // Calculate transit delay from previous step
+                      // Calculate transit delay from previous step (suppressed if bypassed)
                       let transitDelayHtml = null;
                       if (idx > 0) {
                         const prevStep = jobCardFlow[idx - 1];
-                        if (prevStep.EndTime) {
+                        const prevBypassed = !!(prevStep.IsBypassed === 1 || prevStep.IsBypassed === true || (prevStep.UserName && String(prevStep.UserName).includes("BYPASS")));
+                        if (prevStep.EndTime && !prevBypassed && !isBypassed) {
                           const currentEnd = new Date(prevStep.EndTime.replace(" ", "T"));
                           const nextStart = step.StartTime ? new Date(step.StartTime.replace(" ", "T")) : new Date();
                           const diffHours = (nextStart.getTime() - currentEnd.getTime()) / (1000 * 3600);
@@ -867,22 +939,63 @@ const Home = () => {
                             </td>
                             <td>
                               <div className="text-xs">
-                                {step.StartTime ? (
+                                {isBypassed ? (
                                   <div>
-                                    <strong className="text-success">Start:</strong> {formatDateTime(step.StartTime)}
+                                    <div className="text-info fw-bold">
+                                      <i className="fas fa-forward me-1"></i> Bypassed (Rejection Wood)
+                                    </div>
+                                    {step.BypassReason && (
+                                      <div className="text-muted mt-1">
+                                        <em>Reason: {step.BypassReason}</em>
+                                      </div>
+                                    )}
+                                  </div>
+                                ) : isPaused ? (
+                                  <div>
+                                    <div className="text-warning fw-bold">
+                                      <i className="fas fa-pause-circle me-1"></i> Paused for Shift Off / Break
+                                    </div>
+                                    {step.CurrentPauseReason && (
+                                      <div className="text-muted mt-1">
+                                        <em>Reason: {step.CurrentPauseReason}</em>
+                                      </div>
+                                    )}
+                                    {step.CurrentPauseStartTime && (
+                                      <div className="text-muted mt-1">
+                                        <strong>Paused At:</strong> {formatDateTime(step.CurrentPauseStartTime)}
+                                      </div>
+                                    )}
+                                    {Number(step.TotalPauseTime) > 0 && (
+                                      <div className="text-muted">
+                                        <strong>Prior Pause:</strong> {Math.floor(Number(step.TotalPauseTime) / 60)}h {Math.round(Number(step.TotalPauseTime) % 60)}m
+                                      </div>
+                                    )}
                                   </div>
                                 ) : (
-                                  <div className="text-muted">Not Started Yet</div>
-                                )}
-                                {step.EndTime && (
-                                  <div className="mt-1">
-                                    <strong className="text-danger">End:</strong> {formatDateTime(step.EndTime)}
-                                  </div>
-                                )}
-                                {step.StartTime && step.EndTime && step.TotalTimeTaken > 0 && (
-                                  <div className="mt-1 text-muted">
-                                    <strong>Run Time:</strong> {formatDelayText(step.TotalTimeTaken / 60.0)}
-                                  </div>
+                                  <>
+                                    {step.StartTime ? (
+                                      <div>
+                                        <strong className="text-success">Start:</strong> {formatDateTime(step.StartTime)}
+                                      </div>
+                                    ) : (
+                                      <div className="text-muted">Not Started Yet</div>
+                                    )}
+                                    {step.EndTime && (
+                                      <div className="mt-1">
+                                        <strong className="text-danger">End:</strong> {formatDateTime(step.EndTime)}
+                                      </div>
+                                    )}
+                                    {Number(step.TotalPauseTime) > 0 && (
+                                      <div className="text-muted mt-1">
+                                        <strong>Pause Time:</strong> {Math.floor(Number(step.TotalPauseTime) / 60)}h {Math.round(Number(step.TotalPauseTime) % 60)}m
+                                      </div>
+                                    )}
+                                    {Number(step.TotalTimeTaken) > 0 && (
+                                      <div className="text-success mt-1">
+                                        <strong>Net Runtime:</strong> {Math.floor(Number(step.TotalTimeTaken) / 60)}h {Math.round(Number(step.TotalTimeTaken) % 60)}m
+                                      </div>
+                                    )}
+                                  </>
                                 )}
                               </div>
                             </td>
@@ -949,7 +1062,62 @@ const Home = () => {
           </Modal.Title>
         </Modal.Header>
         <Modal.Body className="p-0" style={{ minHeight: "200px" }}>
-          {chartDetailsType === "RUNNING" && (
+          {chartDetailsType === "RUNNING_MACHINES" && (
+            <div className="table-responsive">
+              <Table className="align-items-center table-flush mb-0" hover>
+                <thead className="thead-light">
+                  <tr>
+                    <th>Machine Name</th>
+                    <th>Machine No</th>
+                    <th>Active Job Cards</th>
+                    <th>Status</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {modalRunningMachines.length > 0 ? (
+                    modalRunningMachines.map((m) => {
+                      const activeJobCards = runningMachines.filter((rm) =>
+                        (rm.MachineName && m.Name && rm.MachineName.toLowerCase().trim() === m.Name.toLowerCase().trim()) ||
+                        (rm.MachineCode && m.MachineNo && rm.MachineCode.toLowerCase().trim() === String(m.MachineNo).toLowerCase().trim())
+                      );
+                      return (
+                        <tr key={m.Id}>
+                          <td><span className="fw-bold">{m.Name}</span></td>
+                          <td>{m.MachineNo}</td>
+                          <td>
+                            <Badge bg="primary" className="p-2 fs-11 me-2">
+                              {activeJobCards.length} Job Card{activeJobCards.length > 1 ? "s" : ""}
+                            </Badge>
+                            {activeJobCards.map(jc => (
+                              <Badge 
+                                key={jc.JobCardLineId}
+                                bg="light" 
+                                text="primary" 
+                                className="fs-12 p-2 me-1 border" 
+                                style={{ cursor: "pointer" }} 
+                                onClick={() => { setShowChartDetailsModal(false); handleViewJobCardFlow(jc.JobCardMasterId, jc.JobCardNo); }}
+                              >
+                                {jc.JobCardNo}
+                              </Badge>
+                            ))}
+                          </td>
+                          <td>
+                            <Badge bg="success" className="p-2 fs-11">RUNNING</Badge>
+                          </td>
+                        </tr>
+                      );
+                    })
+                  ) : (
+                    <tr>
+                      <td colSpan="4" className="text-center text-muted py-4">No running machines found.</td>
+                    </tr>
+                  )}
+                </tbody>
+              </Table>
+            </div>
+          )}
+
+          {(chartDetailsType === "RUNNING" || chartDetailsType === "RUNNING_JOBCARDS") && (
             <div className="table-responsive">
               <Table className="align-items-center table-flush mb-0" hover>
                 <thead className="thead-light">
