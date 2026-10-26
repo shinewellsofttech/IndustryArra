@@ -29,7 +29,8 @@ import {
   FaEye, 
   FaExclamationCircle, 
   FaRoute,
-  FaStop
+  FaStop,
+  FaSync
 } from "react-icons/fa";
 
 // Register Chart.js elements
@@ -86,6 +87,8 @@ const formatDelayText = (hoursVal) => {
 const Home = () => {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [isLiveSyncing, setIsLiveSyncing] = useState(false);
+  const [lastSyncTime, setLastSyncTime] = useState(null);
   const [error, setError] = useState(null);
 
   // Filters state
@@ -123,10 +126,14 @@ const Home = () => {
   const userId = userData.id || userData.UserId || 0;
   const userToken = "token"; // JWT sent via Authorization header, not in URL path
 
-  // Fetch dashboard data
-  const fetchDashboardData = useCallback(async () => {
-    setLoading(true);
-    setError(null);
+  // Fetch dashboard data (isSilent: true updates background state quietly without blocking the UI)
+  const fetchDashboardData = useCallback(async (isSilent = false) => {
+    if (!isSilent) {
+      setLoading(true);
+      setError(null);
+    } else {
+      setIsLiveSyncing(true);
+    }
     try {
       const dataList = await Fn_FillListData(
         dispatch,
@@ -137,11 +144,17 @@ const Home = () => {
       if (dataList) {
         setThresholdVal(dataList.thresholdHours || 4);
       }
+      setLastSyncTime(new Date());
     } catch (err) {
       console.error("Dashboard fetch error:", err);
-      setError(err.message || "An error occurred.");
+      if (!isSilent) {
+        setError(err.message || "An error occurred.");
+      }
     } finally {
-      setLoading(false);
+      if (!isSilent) {
+        setLoading(false);
+      }
+      setIsLiveSyncing(false);
     }
   }, [dispatch, userId, userToken]);
 
@@ -159,13 +172,23 @@ const Home = () => {
   }, [dispatch]);
 
   useEffect(() => {
-    fetchDashboardData();
+    fetchDashboardData(false);
     fetchAllMachines();
   }, [fetchDashboardData, fetchAllMachines]);
 
-  // Establish SignalR connection for real-time dashboard updates
+  // Establish SignalR connection for real-time background dashboard updates
   useEffect(() => {
     let connection = null;
+    let debounceTimer = null;
+
+    const triggerSilentRefresh = () => {
+      if (debounceTimer) clearTimeout(debounceTimer);
+      // Debounce rapid floor scans so office screen doesn't fire redundant API requests
+      debounceTimer = setTimeout(() => {
+        console.log("⚡ Debounced SignalR trigger executing silent background refresh...");
+        fetchDashboardData(true);
+      }, 700);
+    };
 
     const startSignalR = async () => {
       try {
@@ -177,13 +200,26 @@ const Home = () => {
           .withAutomaticReconnect()
           .build();
 
+        // 1. Job Card scanned, machine started/stopped/bypassed
         connection.on("ReceiveUpdate", (updatedJobCardId) => {
-          console.log("⚡ SignalR Update Received on Dashboard. Refreshing dashboard data...");
-          fetchDashboardData();
+          console.log("⚡ SignalR 'ReceiveUpdate' received for JobCard:", updatedJobCardId);
+          triggerSilentRefresh();
+        });
+
+        // 2. Machine Paused broadcast
+        connection.on("MachinePaused", (payload) => {
+          console.log("⚡ SignalR 'MachinePaused' event received:", payload);
+          triggerSilentRefresh();
+        });
+
+        // 3. Machine Resumed broadcast
+        connection.on("MachineResumed", (payload) => {
+          console.log("⚡ SignalR 'MachineResumed' event received:", payload);
+          triggerSilentRefresh();
         });
 
         await connection.start();
-        console.log("✅ Dashboard SignalR Connected Successfully!");
+        console.log("✅ Dashboard SignalR Connected Successfully with background silent refresh!");
       } catch (err) {
         console.warn("❌ Dashboard SignalR Connection Failed:", err);
       }
@@ -192,6 +228,7 @@ const Home = () => {
     startSignalR();
 
     return () => {
+      if (debounceTimer) clearTimeout(debounceTimer);
       if (connection) {
         connection.stop().catch(err => console.warn("Error stopping dashboard SignalR connection:", err));
       }
@@ -553,6 +590,40 @@ const Home = () => {
   return (
     <div className="container-fluid py-4">
 
+      {/* Real-time Status Header */}
+      <div className="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+        <div>
+          <h4 className="mb-0 fw-bold text-dark">Production Operations Dashboard</h4>
+          <span className="text-muted small">Real-time floor monitoring & machine lifecycle</span>
+        </div>
+        <div className="d-flex align-items-center gap-2">
+          {isLiveSyncing ? (
+            <span className="badge bg-light text-primary border border-primary px-3 py-2 d-flex align-items-center gap-2 shadow-sm">
+              <span className="spinner-grow spinner-grow-sm text-primary" role="status" style={{ width: '0.65rem', height: '0.65rem' }}></span>
+              <strong>Syncing Floor Updates...</strong>
+            </span>
+          ) : (
+            <span className="badge bg-light text-success border border-success px-3 py-2 d-flex align-items-center gap-2 shadow-sm">
+              <span className="rounded-circle bg-success" style={{ width: '8px', height: '8px', display: 'inline-block' }}></span>
+              <span>Live Synced (SignalR)</span>
+              {lastSyncTime && (
+                <span className="text-muted fw-normal ms-1" style={{ fontSize: '0.75rem' }}>
+                  • {lastSyncTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+                </span>
+              )}
+            </span>
+          )}
+          <Button
+            variant="outline-primary"
+            size="sm"
+            className="shadow-sm"
+            onClick={() => fetchDashboardData(false)}
+            title="Manual Full Refresh"
+          >
+            <FaSync className="me-1" /> Refresh
+          </Button>
+        </div>
+      </div>
 
       {/* KPI Cards */}
       <Row className="mb-4 g-3">

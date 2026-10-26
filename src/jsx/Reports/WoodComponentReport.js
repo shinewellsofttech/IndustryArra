@@ -34,7 +34,7 @@ function WoodComponentReport() {
     const [loading, setLoading] = useState(false);
     const [editableData, setEditableData] = useState([]);
     const [columns, setColumns] = useState([]);
-    const [commonBuffer, setCommonBuffer] = useState(0);
+    const [commonBuffer, setCommonBuffer] = useState(40);
 
     useEffect(() => {
         const fetchContainerData = async () => {
@@ -52,8 +52,11 @@ function WoodComponentReport() {
         if (gridData.length > 0) {
             // Start with original gridData values
             setEditableData([...gridData]);
+            const defaultBuffer = gridData[0]?.Buffer !== undefined ? gridData[0].Buffer : 40;
+            setCommonBuffer(defaultBuffer);
         } else {
             setEditableData([]);
+            setCommonBuffer(40);
         }
     }, [gridData]);
 

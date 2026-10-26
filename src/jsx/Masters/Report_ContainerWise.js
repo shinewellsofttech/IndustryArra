@@ -101,6 +101,8 @@ export const Report_ContainerWise = () => {
   const [searchVal, setSearchVal] = useState('');
   const [gridData, setGridData] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [isLiveSyncing, setIsLiveSyncing] = useState(false);
+  const [lastSyncTime, setLastSyncTime] = useState(null);
 
   // Filter types: 'all', 'chain', 'no-chain'
   const [filterType, setFilterType] = useState('all');
@@ -123,12 +125,22 @@ export const Report_ContainerWise = () => {
 
   // Fetch all lineage records on component mount
   useEffect(() => {
-    fetchAllData();
+    fetchAllData(false);
   }, [dispatch]);
 
-  // Establish SignalR connection for real-time updates
+  // Establish SignalR connection for real-time background updates
   useEffect(() => {
     let connection = null;
+    let debounceTimer = null;
+
+    const triggerSilentRefresh = () => {
+      if (debounceTimer) clearTimeout(debounceTimer);
+      // Debounce rapid floor scans so office screen doesn't fire redundant API requests
+      debounceTimer = setTimeout(() => {
+        console.log("⚡ Debounced SignalR trigger executing silent background refresh in Report_ContainerWise...");
+        fetchAllData(true);
+      }, 700);
+    };
 
     const startSignalR = async () => {
       try {
@@ -140,13 +152,26 @@ export const Report_ContainerWise = () => {
           .withAutomaticReconnect()
           .build();
 
+        // 1. Job Card scan or lifecycle update
         connection.on("ReceiveUpdate", (updatedJobCardId) => {
-          console.log("⚡ SignalR Update Received. Refreshing container trace data...");
-          fetchAllData();
+          console.log("⚡ SignalR 'ReceiveUpdate' received in Container Trace Report for JobCard:", updatedJobCardId);
+          triggerSilentRefresh();
+        });
+
+        // 2. Machine Paused
+        connection.on("MachinePaused", (payload) => {
+          console.log("⚡ SignalR 'MachinePaused' received in Container Trace Report:", payload);
+          triggerSilentRefresh();
+        });
+
+        // 3. Machine Resumed
+        connection.on("MachineResumed", (payload) => {
+          console.log("⚡ SignalR 'MachineResumed' received in Container Trace Report:", payload);
+          triggerSilentRefresh();
         });
 
         await connection.start();
-        console.log("✅ Container Trace Report SignalR Connected Successfully!");
+        console.log("✅ Container Trace Report SignalR Connected Successfully with background silent refresh!");
       } catch (err) {
         console.warn("❌ Container Trace Report SignalR Connection Failed:", err);
       }
@@ -155,14 +180,19 @@ export const Report_ContainerWise = () => {
     startSignalR();
 
     return () => {
+      if (debounceTimer) clearTimeout(debounceTimer);
       if (connection) {
         connection.stop().catch(err => console.warn("Error stopping SignalR connection:", err));
       }
     };
   }, []);
 
-  const fetchAllData = async () => {
-    setLoading(true);
+  const fetchAllData = async (isSilent = false) => {
+    if (!isSilent) {
+      setLoading(true);
+    } else {
+      setIsLiveSyncing(true);
+    }
     try {
       let vformData = new FormData();
       vformData.append("SearchVal", ""); // Empty fetches all
@@ -175,11 +205,17 @@ export const Report_ContainerWise = () => {
         { arguList: { id: 0, formData: vformData } },
         true
       );
+      setLastSyncTime(new Date());
     } catch (error) {
       console.error("Error fetching lineage data:", error);
-      setGridData([]);
+      if (!isSilent) {
+        setGridData([]);
+      }
     } finally {
-      setLoading(false);
+      if (!isSilent) {
+        setLoading(false);
+      }
+      setIsLiveSyncing(false);
     }
   };
 
@@ -515,7 +551,18 @@ export const Report_ContainerWise = () => {
                       <option value={20}>20</option>
                       <option value={50}>50</option>
                     </select>
-                    <Button variant="outline-primary" onClick={fetchAllData} disabled={loading} size="sm">
+                    {isLiveSyncing ? (
+                      <span className="badge bg-light text-primary border border-primary px-2 py-1 d-flex align-items-center gap-1 shadow-sm">
+                        <span className="spinner-grow spinner-grow-sm text-primary" role="status" style={{ width: '0.5rem', height: '0.5rem' }}></span>
+                        <small>Syncing...</small>
+                      </span>
+                    ) : (
+                      <span className="badge bg-light text-success border border-success px-2 py-1 d-flex align-items-center gap-1 shadow-sm" title="Real-time updates active">
+                        <span className="rounded-circle bg-success" style={{ width: '6px', height: '6px', display: 'inline-block' }}></span>
+                        <small>Live</small>
+                      </span>
+                    )}
+                    <Button variant="outline-primary" onClick={() => fetchAllData(false)} disabled={loading} size="sm">
                       <FaSync className="me-1" /> Refresh
                     </Button>
                   </div>

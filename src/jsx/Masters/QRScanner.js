@@ -433,7 +433,7 @@ const MachineControlPanel = ({
               </span>
               <button
                 type="button"
-                onClick={onOpenBypassModal}
+                onClick={() => onOpenBypassModal && onOpenBypassModal(machine)}
                 style={{
                   padding: "5px 12px",
                   borderRadius: "6px",
@@ -2875,7 +2875,8 @@ const QRScanner = () => {
   }, [bypassTargetMachine, activeSession, machineList]);
 
   const handleOpenBypassModal = (targetMach = null) => {
-    const mach = targetMach || machineData || activeSession?.machineData;
+    const isEvent = targetMach && (targetMach.nativeEvent || targetMach._reactName || targetMach.target || targetMach.stopPropagation);
+    const mach = (!isEvent && targetMach) || machineData || activeSession?.machineData;
     if (!mach) return;
     setBypassTargetMachine(mach);
     setIsBypassModalOpen(true);
@@ -2895,10 +2896,17 @@ const QRScanner = () => {
 
     const jc = jobCardData || activeSession?.jobCardData;
     const jcId = jc?.ID || jc?.Id || mach.F_JobCardMaster || "0";
-    const targetMachMasterId = mach.F_MachineMaster || mach.MachineMasterId || mach.ID || mach.Id;
+    const targetMachMasterId = mach.F_MachineMaster || mach.MachineMasterId || mach.MachineId || mach.ID || mach.Id;
 
-    if (!jcId || jcId === "0") {
-      alert("Job Card ID is missing.");
+    const parsedJcId = parseInt(jcId, 10);
+    const parsedMachId = parseInt(targetMachMasterId, 10);
+
+    if (!parsedJcId || isNaN(parsedJcId) || parsedJcId <= 0) {
+      alert("❌ Error: Valid Job Card ID could not be identified.");
+      return;
+    }
+    if (!parsedMachId || isNaN(parsedMachId) || parsedMachId <= 0) {
+      alert("❌ Error: Valid Target Machine ID could not be identified.");
       return;
     }
 
@@ -2909,15 +2917,18 @@ const QRScanner = () => {
       const userName = authUser?.name || authUser?.username || "Operator";
       const headers = getAuthHeaders();
 
-      const payload = {
-        JobCardMasterId: parseInt(jcId, 10),
-        TargetMachineMasterId: parseInt(targetMachMasterId, 10),
-        Reason: reason || "Rejection Material Re-use (Scrap / Offcut Wood)"
-      };
+      const vFormData = new FormData();
+      vFormData.append("JobCardMasterId", parsedJcId);
+      vFormData.append("F_JobCardMaster", parsedJcId);
+      vFormData.append("TargetMachineMasterId", parsedMachId);
+      vFormData.append("F_MachineMaster", parsedMachId);
+      vFormData.append("MachineMasterId", parsedMachId);
+      vFormData.append("Reason", reason || "Rejection Material Re-use (Scrap / Offcut Wood)");
+      vFormData.append("UserName", userName);
 
       const res = await axios.post(
         `${API_WEB_URLS.BASE}${API_WEB_URLS.BYPASS_PRECEDING_MACHINES}/${userId}/token`,
-        payload,
+        vFormData,
         { headers }
       );
 
@@ -3005,7 +3016,8 @@ const QRScanner = () => {
 
   // ── Machine Pause Handlers (Shift End / Duty Off / Breaks) ────────────────────
   const handleOpenPauseModal = (targetMach = null) => {
-    const mach = targetMach || machineData || activeSession?.machineData;
+    const isEvent = targetMach && (targetMach.nativeEvent || targetMach._reactName || targetMach.target || targetMach.stopPropagation);
+    const mach = (!isEvent && targetMach) || machineData || activeSession?.machineData;
     if (!mach) return;
     setPauseTargetMachine(mach);
     setIsPauseModalOpen(true);
@@ -3024,10 +3036,17 @@ const QRScanner = () => {
     }
     const jc = jobCardData || activeSession?.jobCardData;
     const jcId = jc?.ID || jc?.Id || mach.F_JobCardMaster || "0";
-    const machMasterId = mach.F_MachineMaster || mach.MachineMasterId || mach.ID || mach.Id;
+    const machMasterId = mach.F_MachineMaster || mach.MachineMasterId || mach.MachineId || mach.ID || mach.Id;
 
-    if (!jcId || jcId === "0" || !machMasterId) {
-      alert("Job Card or Machine identification is missing.");
+    const parsedJcId = parseInt(jcId, 10);
+    const parsedMachId = parseInt(machMasterId, 10);
+
+    if (!parsedJcId || isNaN(parsedJcId) || parsedJcId <= 0) {
+      alert("❌ Error: Valid Job Card ID could not be identified.");
+      return;
+    }
+    if (!parsedMachId || isNaN(parsedMachId) || parsedMachId <= 0) {
+      alert("❌ Error: Valid Machine ID could not be identified.");
       return;
     }
 
@@ -3038,16 +3057,17 @@ const QRScanner = () => {
       const userName = authUser?.name || authUser?.username || "Operator";
       const headers = getAuthHeaders();
 
-      const payload = {
-        JobCardMasterId: parseInt(jcId, 10),
-        MachineMasterId: parseInt(machMasterId, 10),
-        Reason: reason || "Shift End / Duty Off",
-        UserName: userName
-      };
+      const vFormData = new FormData();
+      vFormData.append("JobCardMasterId", parsedJcId);
+      vFormData.append("F_JobCardMaster", parsedJcId);
+      vFormData.append("MachineMasterId", parsedMachId);
+      vFormData.append("F_MachineMaster", parsedMachId);
+      vFormData.append("Reason", reason || "Shift End / Duty Off");
+      vFormData.append("UserName", userName);
 
       const res = await axios.post(
         `${API_WEB_URLS.BASE}${API_WEB_URLS.PAUSE_MACHINE}/${userId}/token`,
-        payload,
+        vFormData,
         { headers }
       );
 
@@ -3088,26 +3108,35 @@ const QRScanner = () => {
         handleClosePauseModal();
         alert("Machine operation paused successfully! It will not count as running overnight.");
       } else {
-        alert(res?.data?.Message || "Failed to pause machine.");
+        alert(res?.data?.Message || res?.data?.message || "Failed to pause machine.");
       }
     } catch (err) {
       console.error("Error pausing machine:", err);
-      alert(err?.response?.data?.Message || err?.message || "Failed to pause machine.");
+      const errMsg = err?.response?.data?.Message || err?.response?.data?.message || err?.message || "Failed to pause machine.";
+      alert(`❌ Error: ${errMsg}`);
     } finally {
       setPauseSubmitLoading(false);
     }
   };
 
   const handleResumeMachine = async (targetMach = null) => {
-    const mach = targetMach || machineData || activeSession?.machineData;
+    const isEvent = targetMach && (targetMach.nativeEvent || targetMach._reactName || targetMach.target || targetMach.stopPropagation);
+    const mach = (!isEvent && targetMach) || machineData || activeSession?.machineData;
     if (!mach || actionLoading) return;
 
     const jc = jobCardData || activeSession?.jobCardData;
     const jcId = jc?.ID || jc?.Id || mach.F_JobCardMaster || "0";
-    const machMasterId = mach.F_MachineMaster || mach.MachineMasterId || mach.ID || mach.Id;
+    const machMasterId = mach.F_MachineMaster || mach.MachineMasterId || mach.MachineId || mach.ID || mach.Id;
 
-    if (!jcId || jcId === "0" || !machMasterId) {
-      alert("Job Card or Machine identification is missing.");
+    const parsedJcId = parseInt(jcId, 10);
+    const parsedMachId = parseInt(machMasterId, 10);
+
+    if (!parsedJcId || isNaN(parsedJcId) || parsedJcId <= 0) {
+      alert("❌ Error: Valid Job Card ID could not be identified.");
+      return;
+    }
+    if (!parsedMachId || isNaN(parsedMachId) || parsedMachId <= 0) {
+      alert("❌ Error: Valid Machine ID could not be identified.");
       return;
     }
 
@@ -3122,15 +3151,16 @@ const QRScanner = () => {
       const userName = authUser?.name || authUser?.username || "Operator";
       const headers = getAuthHeaders();
 
-      const payload = {
-        JobCardMasterId: parseInt(jcId, 10),
-        MachineMasterId: parseInt(machMasterId, 10),
-        UserName: userName
-      };
+      const vFormData = new FormData();
+      vFormData.append("JobCardMasterId", parsedJcId);
+      vFormData.append("F_JobCardMaster", parsedJcId);
+      vFormData.append("MachineMasterId", parsedMachId);
+      vFormData.append("F_MachineMaster", parsedMachId);
+      vFormData.append("UserName", userName);
 
       const res = await axios.post(
         `${API_WEB_URLS.BASE}${API_WEB_URLS.RESUME_MACHINE}/${userId}/token`,
-        payload,
+        vFormData,
         { headers }
       );
 
@@ -3172,11 +3202,12 @@ const QRScanner = () => {
 
         alert("Machine resumed successfully! Active runtime timer restarted.");
       } else {
-        alert(res?.data?.Message || "Failed to resume machine.");
+        alert(res?.data?.Message || res?.data?.message || "Failed to resume machine.");
       }
     } catch (err) {
       console.error("Error resuming machine:", err);
-      alert(err?.response?.data?.Message || err?.message || "Failed to resume machine.");
+      const errMsg = err?.response?.data?.Message || err?.response?.data?.message || err?.message || "Failed to resume machine.";
+      alert(`❌ Error: ${errMsg}`);
     } finally {
       setActionLoading(false);
     }
@@ -3210,14 +3241,15 @@ const QRScanner = () => {
         const machMasterId = s.machineData?.F_MachineMaster || s.machineData?.MachineMasterId || s.machineData?.ID;
         if (jcId && machMasterId) {
           try {
+            const vFormData = new FormData();
+            vFormData.append("JobCardMasterId", parseInt(jcId, 10));
+            vFormData.append("MachineMasterId", parseInt(machMasterId, 10));
+            vFormData.append("Reason", "Shift End / Duty Off");
+            vFormData.append("UserName", userName);
+
             await axios.post(
               `${API_WEB_URLS.BASE}${API_WEB_URLS.PAUSE_MACHINE}/${userId}/token`,
-              {
-                JobCardMasterId: parseInt(jcId, 10),
-                MachineMasterId: parseInt(machMasterId, 10),
-                Reason: "Shift End / Duty Off",
-                UserName: userName
-              },
+              vFormData,
               { headers }
             );
           } catch (e) {
@@ -4212,7 +4244,7 @@ const QRScanner = () => {
         setSelectedMachineId("");
       }
 
-      // ── Create / register new session ──────────────────────────────────────
+      // ── Create / register new session OR update existing in silent mode ─────
       if (matchingCard && !isSilent) {
         const newSessionId = Date.now();
         const jcNo = matchingCard.JobCardNo || matchingCard.JobCard || matchingCard.ID || "?";
@@ -4228,6 +4260,19 @@ const QRScanner = () => {
         };
         setScannedSessions(prev => [...prev, newSession]);
         setActiveSessionId(newSessionId);
+      } else if (matchingCard && isSilent) {
+        setScannedSessions(prev => prev.map(s => {
+          if (String(s.jobCardData?.ID) === String(matchingCard.ID)) {
+            return {
+              ...s,
+              jobCardData: matchingCard,
+              machineList: jobCardMachines,
+              machineData: matchingMachine || s.machineData,
+              selectedMachineId: matchingMachine ? String(matchingMachine.ID) : s.selectedMachineId
+            };
+          }
+          return s;
+        }));
       }
       // ───────────────────────────────────────────────────────────────────────
 
@@ -4307,9 +4352,21 @@ const QRScanner = () => {
     fetchGlobalOptions();
   }, []);
 
-  // Establish SignalR connection for real-time updates
+  // Establish SignalR connection for real-time background updates
   useEffect(() => {
     let connection = null;
+    let debounceTimer = null;
+
+    const triggerSilentRefresh = () => {
+      if (debounceTimer) clearTimeout(debounceTimer);
+      debounceTimer = setTimeout(() => {
+        const currentParsedIds = parsedIdsRef.current;
+        if (currentParsedIds) {
+          console.log("🔄 Syncing local scanner view silently with database...");
+          fetchJobCardData(currentParsedIds, true);
+        }
+      }, 600);
+    };
 
     const startSignalR = async () => {
       try {
@@ -4321,18 +4378,26 @@ const QRScanner = () => {
           .withAutomaticReconnect()
           .build();
 
+        // 1. Job Card scan or machine update
         connection.on("ReceiveUpdate", (updatedJobCardId) => {
-          console.log("⚡ SignalR Update Received. Broadcasting refresh...");
-          const currentParsedIds = parsedIdsRef.current;
-          
-          if (currentParsedIds) {
-            console.log("🔄 Syncing local scanner view with database...");
-            fetchJobCardData(currentParsedIds, true);
-          }
+          console.log("⚡ SignalR 'ReceiveUpdate' received in QRScanner for JobCard:", updatedJobCardId);
+          triggerSilentRefresh();
+        });
+
+        // 2. Machine Paused
+        connection.on("MachinePaused", (payload) => {
+          console.log("⚡ SignalR 'MachinePaused' received in QRScanner:", payload);
+          triggerSilentRefresh();
+        });
+
+        // 3. Machine Resumed
+        connection.on("MachineResumed", (payload) => {
+          console.log("⚡ SignalR 'MachineResumed' received in QRScanner:", payload);
+          triggerSilentRefresh();
         });
 
         await connection.start();
-        console.log("✅ SignalR Connected Successfully!");
+        console.log("✅ SignalR Connected Successfully with debounced background refresh!");
       } catch (err) {
         console.warn("❌ SignalR Connection Failed:", err);
       }
@@ -4341,6 +4406,7 @@ const QRScanner = () => {
     startSignalR();
 
     return () => {
+      if (debounceTimer) clearTimeout(debounceTimer);
       if (connection) {
         connection.stop().catch(err => console.warn("Error stopping SignalR connection:", err));
       }
