@@ -15,6 +15,7 @@ import Footer from "./layouts/Footer";
 import ScrollToTop from "./layouts/ScrollToTop";
 import { closeSidebarMobile } from "./layouts/nav/sidebarHover";
 /// Dashboard
+import DynamicDashboard from "./components/Dashboard/DynamicDashboard";
 import Home from "./components/Dashboard/Home";
 import DashboardDark from "./components/Dashboard/DashboardDark";
 import OrderPage from "./components/Dashboard/OrderPage";
@@ -163,8 +164,9 @@ const Markup = () => {
   const { menuToggle } = useContext(ThemeContext);
   const allroutes = [
     /// Dashboard
-    { url: "", component: <Home/> },
-    { url: "dashboard", component: <Home/> },
+    { url: "", component: <DynamicDashboard/> },
+    { url: "dashboard", component: <DynamicDashboard/> },
+    { url: "dashboard-legacy", component: <Home/> },
     { url: "dashboard-dark", component: <DashboardDark /> },
     { url: "order-list", component: <OrderPage/> },
     { url: "order-details", component: <OrderDetails/> },
