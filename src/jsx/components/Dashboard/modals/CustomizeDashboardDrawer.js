@@ -87,8 +87,8 @@ const CustomizeDashboardDrawer = ({
                       )}
                     </div>
 
-                    <h6 className="fw-bold text-dark mb-1">{reg.title}</h6>
-                    <p className="text-muted small mb-3" style={{ fontSize: "0.78rem" }}>
+                    <h6 className="fw-bold mb-1" style={{ color: "#1e293b" }}>{reg.title}</h6>
+                    <p className="small mb-3" style={{ fontSize: "0.78rem", color: "#64748b" }}>
                       {reg.description}
                     </p>
                   </div>
@@ -96,13 +96,13 @@ const CustomizeDashboardDrawer = ({
                   <div className="d-flex align-items-center justify-content-between pt-2 border-top">
                     {isInstalled ? (
                       <div className="d-flex align-items-center justify-content-between w-100">
-                        <span className="small text-muted fw-semibold">Show on Screen:</span>
+                        <span className="small fw-semibold" style={{ color: "#475569" }}>Show on Screen:</span>
                         <Form.Check 
                           type="switch"
                           id={`switch-${key}`}
                           checked={isVisible}
                           onChange={() => onToggleVisibility(activeItem.i)}
-                          label={isVisible ? "Active" : "Hidden"}
+                          label={<span style={{ color: isVisible ? "#15803d" : "#b45309", fontWeight: "600" }}>{isVisible ? "Active" : "Hidden"}</span>}
                           className="ms-2 fw-semibold"
                         />
                       </div>

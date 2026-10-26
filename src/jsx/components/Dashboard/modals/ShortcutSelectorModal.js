@@ -114,8 +114,8 @@ const ShortcutSelectorModal = ({ show, onHide, shortcuts = [], onSaveShortcuts }
                       <FaThLarge size={12} />
                     </span>
                     <div className="text-truncate">
-                      <div className="fw-bold text-dark small text-truncate">{item.title}</div>
-                      <div className="text-muted" style={{ fontSize: "0.7rem" }}>/{item.to}</div>
+                      <div className="fw-bold small text-truncate" style={{ color: "#1e293b" }}>{item.title}</div>
+                      <div style={{ fontSize: "0.7rem", color: "#64748b" }}>/{item.to}</div>
                     </div>
                   </div>
 

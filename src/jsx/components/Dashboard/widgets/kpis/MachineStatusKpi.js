@@ -47,24 +47,24 @@ const MachineStatusKpi = ({ counts = {}, onKpiClick }) => {
   ];
 
   return (
-    <div className="card shadow-sm border-0 h-100" style={{ borderRadius: "12px" }}>
+    <div className="card shadow-sm border-0 h-100" style={{ borderRadius: "12px", background: "#ffffff" }}>
       <div className="card-header bg-transparent border-0 pt-3 pb-2 px-4 d-flex align-items-center justify-content-between">
         <div className="d-flex align-items-center">
           <FaCogs className="text-primary me-2" size={18} />
-          <h6 className="mb-0 fw-bold text-dark">Machine Fleet Status</h6>
+          <h6 className="mb-0 fw-bold" style={{ color: "#1e293b" }}>Machine Fleet Status</h6>
         </div>
-        <span className="badge bg-light text-muted px-2 py-1" style={{ fontSize: "0.75rem" }}>
+        <span className="badge bg-light text-muted px-2 py-1" style={{ fontSize: "0.75rem", border: "1px solid #e2e8f0" }}>
           Live Fleet
         </span>
       </div>
       <div className="card-body px-4 pt-1 pb-3">
-        <div className="row g-3">
+        <div className="row g-2">
           {kpis.map((kpi, idx) => {
             const Icon = kpi.icon;
             return (
-              <div key={idx} className="col-6 col-md-3">
+              <div key={idx} className="col-6">
                 <div 
-                  className="p-3 rounded-3 h-100 position-relative"
+                  className="p-2 px-3 rounded-3 h-100 position-relative"
                   style={{ 
                     background: "#f8f9fc",
                     border: "1px solid #eaecf4",
@@ -74,20 +74,20 @@ const MachineStatusKpi = ({ counts = {}, onKpiClick }) => {
                   onClick={() => onKpiClick && onKpiClick(kpi.filterType)}
                 >
                   <div className="d-flex justify-content-between align-items-center mb-1">
-                    <span className="text-muted fw-semibold text-truncate" style={{ fontSize: "0.75rem" }}>
+                    <span className="fw-semibold text-truncate" style={{ fontSize: "0.75rem", color: "#475569" }}>
                       {kpi.title}
                     </span>
                     <span 
                       className="rounded-circle d-flex align-items-center justify-content-center p-1"
-                      style={{ background: kpi.badgeBg, color: kpi.color, width: "26px", height: "26px" }}
+                      style={{ background: kpi.badgeBg, color: kpi.color, width: "24px", height: "24px" }}
                     >
-                      <Icon size={12} />
+                      <Icon size={11} />
                     </span>
                   </div>
-                  <h3 className="mb-0 fw-bold" style={{ color: kpi.color, fontSize: "1.6rem" }}>
+                  <h3 className="mb-0 fw-bold" style={{ color: kpi.color, fontSize: "1.45rem" }}>
                     {kpi.value}
                   </h3>
-                  <div className="text-muted small mt-1" style={{ fontSize: "0.7rem" }}>
+                  <div className="small mt-1 text-truncate" style={{ fontSize: "0.68rem", color: "#64748b" }}>
                     {kpi.subtext}
                   </div>
                 </div>

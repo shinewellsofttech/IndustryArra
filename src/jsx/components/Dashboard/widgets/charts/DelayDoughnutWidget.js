@@ -59,9 +59,9 @@ const DelayDoughnutWidget = ({ counts = {}, onSliceClick }) => {
       <div className="card-header bg-transparent border-0 pt-3 pb-0 px-4 d-flex align-items-center justify-content-between">
         <div className="d-flex align-items-center">
           <FaChartPie className="text-primary me-2" size={16} />
-          <h6 className="mb-0 fw-bold text-dark">Machine Fleet Allocation</h6>
+          <h6 className="mb-0 fw-bold" style={{ color: "#1e293b" }}>Machine Fleet Allocation</h6>
         </div>
-        <span className="badge bg-light text-muted" style={{ fontSize: "0.72rem" }}>
+        <span className="badge bg-light text-muted" style={{ fontSize: "0.72rem", border: "1px solid #e2e8f0" }}>
           Live Distribution
         </span>
       </div>
@@ -78,8 +78,8 @@ const DelayDoughnutWidget = ({ counts = {}, onSliceClick }) => {
               pointerEvents: "none"
             }}
           >
-            <div className="fw-bold fs-4 text-dark">{running + paused + idle}</div>
-            <div className="text-muted" style={{ fontSize: "0.7rem", textTransform: "uppercase" }}>Fleet Total</div>
+            <div className="fw-bold fs-4" style={{ color: "#1e293b" }}>{running + paused + idle}</div>
+            <div style={{ fontSize: "0.7rem", textTransform: "uppercase", color: "#64748b" }}>Fleet Total</div>
           </div>
         </div>
       </div>

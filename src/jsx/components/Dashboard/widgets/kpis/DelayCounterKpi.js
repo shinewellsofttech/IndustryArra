@@ -15,9 +15,9 @@ const DelayCounterKpi = ({ delayedTransitions = [], thresholdHours = 4, onKpiCli
       <div className="card-header bg-transparent border-0 pt-3 pb-2 px-4 d-flex align-items-center justify-content-between">
         <div className="d-flex align-items-center">
           <FaExclamationTriangle className="text-warning me-2" size={18} />
-          <h6 className="mb-0 fw-bold text-dark">Transition Delays</h6>
+          <h6 className="mb-0 fw-bold" style={{ color: "#1e293b" }}>Transition Delays</h6>
         </div>
-        <span className="badge bg-warning-subtle text-warning-emphasis px-2 py-1" style={{ fontSize: "0.75rem", background: "rgba(246, 194, 62, 0.15)" }}>
+        <span className="badge bg-warning-subtle text-warning-emphasis px-2 py-1" style={{ fontSize: "0.75rem", background: "rgba(246, 194, 62, 0.15)", border: "1px solid #f6c23e" }}>
           &gt; {thresholdHours}h Threshold
         </span>
       </div>
@@ -34,15 +34,15 @@ const DelayCounterKpi = ({ delayedTransitions = [], thresholdHours = 4, onKpiCli
               onClick={() => onKpiClick && onKpiClick("DELAYED_COUNT")}
             >
               <div className="d-flex justify-content-between align-items-center mb-1">
-                <span className="text-dark fw-semibold" style={{ fontSize: "0.75rem" }}>
+                <span className="fw-semibold" style={{ fontSize: "0.75rem", color: "#854d0e" }}>
                   Delayed Transfers
                 </span>
                 <FaClock className="text-warning" size={14} />
               </div>
-              <h3 className="mb-0 fw-bold text-warning" style={{ fontSize: "1.6rem" }}>
+              <h3 className="mb-0 fw-bold" style={{ fontSize: "1.6rem", color: "#b45309" }}>
                 {delayedCount}
               </h3>
-              <div className="text-muted small mt-1" style={{ fontSize: "0.7rem" }}>
+              <div className="small mt-1" style={{ fontSize: "0.7rem", color: "#a16207" }}>
                 Exceeded {thresholdHours} hrs
               </div>
             </div>
@@ -59,13 +59,13 @@ const DelayCounterKpi = ({ delayedTransitions = [], thresholdHours = 4, onKpiCli
               onClick={() => onKpiClick && onKpiClick("TOTAL_DELAY_HOURS")}
             >
               <div className="d-flex justify-content-between align-items-center mb-1">
-                <span className="text-danger fw-semibold" style={{ fontSize: "0.75rem" }}>
+                <span className="fw-semibold" style={{ fontSize: "0.75rem", color: "#991b1b" }}>
                   Total Lost Time
                 </span>
                 <FaHourglassHalf className="text-danger" size={14} />
               </div>
               <h3 className="mb-0 fw-bold text-danger" style={{ fontSize: "1.6rem" }}>
-                {totalDelayHours.toFixed(1)} <span style={{ fontSize: "0.85rem", fontWeight: "normal" }}>hrs</span>
+                {totalDelayHours.toFixed(1)} <span style={{ fontSize: "0.85rem", fontWeight: "normal", color: "#991b1b" }}>hrs</span>
               </h3>
               <div className="text-muted small mt-1" style={{ fontSize: "0.7rem" }}>
                 Cumulative delay

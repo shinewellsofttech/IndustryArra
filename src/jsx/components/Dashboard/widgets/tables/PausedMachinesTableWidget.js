@@ -54,7 +54,7 @@ const PausedMachinesTableWidget = ({ pausedMachines = [], onRefresh, formatDateT
       <div className="card-header bg-transparent border-0 pt-3 pb-2 px-4 d-flex align-items-center justify-content-between">
         <div className="d-flex align-items-center">
           <FaPauseCircle className="text-danger me-2" size={18} />
-          <h6 className="mb-0 fw-bold text-dark">Machines On Hold / Paused</h6>
+          <h6 className="mb-0 fw-bold" style={{ color: "#1e293b" }}>Machines On Hold / Paused</h6>
         </div>
         <span className="badge bg-danger text-white rounded-pill px-3 py-1" style={{ fontSize: "0.75rem" }}>
           {pausedMachines.length} Paused
@@ -73,19 +73,19 @@ const PausedMachinesTableWidget = ({ pausedMachines = [], onRefresh, formatDateT
             <Table hover className="align-middle mb-0" style={{ fontSize: "0.82rem" }}>
               <thead className="table-light text-muted small" style={{ position: "sticky", top: 0, zIndex: 1 }}>
                 <tr>
-                  <th>Machine</th>
-                  <th>Job Card</th>
-                  <th>Pause Reason</th>
-                  <th>Paused At</th>
-                  <th className="text-end">Action</th>
+                  <th style={{ color: "#475569" }}>Machine</th>
+                  <th style={{ color: "#475569" }}>Job Card</th>
+                  <th style={{ color: "#475569" }}>Pause Reason</th>
+                  <th style={{ color: "#475569" }}>Paused At</th>
+                  <th className="text-end" style={{ color: "#475569" }}>Action</th>
                 </tr>
               </thead>
               <tbody>
                 {pausedMachines.map((m, idx) => (
                   <tr key={m.JobCardLineId || idx}>
                     <td>
-                      <div className="fw-bold text-dark">{m.MachineName || "Unknown Machine"}</div>
-                      <div className="text-muted small" style={{ fontSize: "0.72rem" }}>
+                      <div className="fw-bold" style={{ color: "#1e293b" }}>{m.MachineName || "Unknown Machine"}</div>
+                      <div className="small" style={{ fontSize: "0.72rem", color: "#64748b" }}>
                         {m.MachineCode || `ID: ${m.MachineMasterId}`}
                       </div>
                     </td>
@@ -100,7 +100,7 @@ const PausedMachinesTableWidget = ({ pausedMachines = [], onRefresh, formatDateT
                       </span>
                     </td>
                     <td>
-                      <span className="text-muted small">
+                      <span className="small" style={{ color: "#64748b" }}>
                         {formatDateTime ? formatDateTime(m.PauseStartTime || m.CurrentPauseStartTime) : (m.PauseStartTime || "N/A")}
                       </span>
                     </td>

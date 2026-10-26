@@ -11,7 +11,7 @@ const ActiveJobCardsKpi = ({ counts = {}, runningMachines = [] }) => {
       <div className="card-header bg-transparent border-0 pt-3 pb-2 px-4 d-flex align-items-center justify-content-between">
         <div className="d-flex align-items-center">
           <FaFileAlt className="text-info me-2" size={18} />
-          <h6 className="mb-0 fw-bold text-dark">Job Card Operations</h6>
+          <h6 className="mb-0 fw-bold" style={{ color: "#1e293b" }}>Job Card Operations</h6>
         </div>
         <button 
           className="btn btn-sm btn-link text-info text-decoration-none p-0 fw-semibold"
@@ -27,7 +27,7 @@ const ActiveJobCardsKpi = ({ counts = {}, runningMachines = [] }) => {
           style={{ background: "#f0f8ff", border: "1px solid #d0e7ff" }}
         >
           <div className="d-flex justify-content-between align-items-center mb-1">
-            <span className="text-muted fw-semibold" style={{ fontSize: "0.8rem" }}>
+            <span className="fw-semibold" style={{ fontSize: "0.8rem", color: "#334155" }}>
               Job Cards Currently In-Process
             </span>
             <span className="badge bg-info text-white rounded-pill px-2 py-1" style={{ fontSize: "0.7rem" }}>
@@ -38,11 +38,11 @@ const ActiveJobCardsKpi = ({ counts = {}, runningMachines = [] }) => {
             <h3 className="mb-0 fw-bold text-info" style={{ fontSize: "1.8rem" }}>
               {activeJobCards}
             </h3>
-            <span className="text-muted" style={{ fontSize: "0.8rem" }}>
+            <span style={{ fontSize: "0.8rem", color: "#64748b" }}>
               cards running on floor
             </span>
           </div>
-          <div className="text-muted small mt-2 d-flex align-items-center gap-1" style={{ fontSize: "0.72rem" }}>
+          <div className="small mt-2 d-flex align-items-center gap-1" style={{ fontSize: "0.72rem", color: "#64748b" }}>
             <FaSyncAlt size={10} className="text-info" /> Real-time tracking through QR Scanner & Machine checkpoints
           </div>
         </div>

@@ -69,7 +69,28 @@ const formatDateTime = (dateTimeStr) => {
 
 const DynamicDashboard = () => {
   const dispatch = useDispatch();
-  const { containerRef, width } = useContainerWidth();
+  const { width } = useContainerWidth();
+  const containerRef = React.useRef(null);
+  const [measuredWidth, setMeasuredWidth] = useState(0);
+
+  useEffect(() => {
+    const handleResize = () => {
+      if (containerRef.current) {
+        setMeasuredWidth(containerRef.current.offsetWidth);
+      }
+    };
+    handleResize();
+    let observer;
+    if (typeof ResizeObserver !== "undefined" && containerRef.current) {
+      observer = new ResizeObserver(handleResize);
+      observer.observe(containerRef.current);
+    }
+    window.addEventListener("resize", handleResize);
+    return () => {
+      if (observer) observer.disconnect();
+      window.removeEventListener("resize", handleResize);
+    };
+  }, []);
 
   // User session
   const userData = useMemo(() => JSON.parse(localStorage.getItem("authUser")) || {}, []);
@@ -385,7 +406,7 @@ const DynamicDashboard = () => {
         <div className="d-flex flex-wrap align-items-center justify-content-between gap-3">
           <div>
             <div className="d-flex align-items-center gap-2">
-              <h4 className="mb-0 fw-bold text-dark" style={{ letterSpacing: "-0.5px" }}>
+              <h4 className="mb-0 fw-bold" style={{ color: "#1e293b", letterSpacing: "-0.5px" }}>
                 Operational Production Dashboard
               </h4>
               <Badge 
@@ -406,7 +427,7 @@ const DynamicDashboard = () => {
                 </Badge>
               )}
             </div>
-            <p className="text-muted small mb-0 mt-1">
+            <p className="small mb-0 mt-1" style={{ color: "#64748b" }}>
               Real-time machine throughput, job card execution, and custom fleet monitoring.
             </p>
           </div>
@@ -516,9 +537,9 @@ const DynamicDashboard = () => {
           </Card.Body>
         </Card>
       ) : (
-        <div ref={containerRef}>
+        <div ref={containerRef} style={{ width: "100%" }}>
           <ResponsiveGridLayout
-            width={width}
+            width={measuredWidth || width || 1200}
             className="layout"
             layouts={{ lg: layoutItems }}
             breakpoints={{ lg: 1200, md: 996, sm: 768, xs: 480 }}
