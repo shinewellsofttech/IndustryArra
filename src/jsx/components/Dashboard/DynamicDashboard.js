@@ -139,9 +139,29 @@ const DynamicDashboard = () => {
   const roleId = userData.roleId || userData.F_UserRole || 1;
   const userToken = "token";
 
+  // Cache helpers
+  const getCachedShortcuts = () => {
+    try {
+      const c = localStorage.getItem("dashboard_shortcuts_cache");
+      if (c) return JSON.parse(c);
+    } catch {}
+    return DEFAULT_FALLBACK_SHORTCUTS;
+  };
+
+  const getCachedData = () => {
+    try {
+      const c = localStorage.getItem("dashboard_floor_data_cache");
+      if (c) {
+        const parsed = JSON.parse(c);
+        if (parsed && typeof parsed === "object") return parsed;
+      }
+    } catch {}
+    return { runningMachines: [], delayedTransitions: [], pausedMachines: [], chartStats: [], machineCounts: {} };
+  };
+
   // Dashboard configuration state
   const [widgets, setWidgets] = useState(DEFAULT_FALLBACK_WIDGETS);
-  const [shortcuts, setShortcuts] = useState(DEFAULT_FALLBACK_SHORTCUTS);
+  const [shortcuts, setShortcuts] = useState(getCachedShortcuts);
   const [isCustomized, setIsCustomized] = useState(false);
   const [isEditMode, setIsEditMode] = useState(false);
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
@@ -154,9 +174,16 @@ const DynamicDashboard = () => {
   const [showResetModal, setShowResetModal] = useState(false);
 
   // Operational Data state
-  const [data, setData] = useState({ runningMachines: [], delayedTransitions: [], pausedMachines: [], chartStats: [], machineCounts: {} });
+  const [data, setData] = useState(getCachedData);
+  const [hasData, setHasData] = useState(() => {
+    try {
+      return !!localStorage.getItem("dashboard_floor_data_cache");
+    } catch {
+      return false;
+    }
+  });
   const [allMachines, setAllMachines] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(() => !localStorage.getItem("dashboard_floor_data_cache"));
   const [isLiveSyncing, setIsLiveSyncing] = useState(false);
   const [error, setError] = useState(null);
 
@@ -191,6 +218,9 @@ const DynamicDashboard = () => {
             const parsedShortcuts = JSON.parse(res.data.shortcutsJson);
             if (Array.isArray(parsedShortcuts)) {
               setShortcuts(parsedShortcuts);
+              try {
+                localStorage.setItem("dashboard_shortcuts_cache", JSON.stringify(parsedShortcuts));
+              } catch {}
             }
           } catch (e) {
             console.error("Error parsing shortcutsJson:", e);
@@ -214,10 +244,22 @@ const DynamicDashboard = () => {
     try {
       const dataList = await Fn_FillListData(
         dispatch,
-        setData,
+        (fetchedData) => {
+          setData(fetchedData);
+          setHasData(true);
+          try {
+            localStorage.setItem("dashboard_floor_data_cache", JSON.stringify(fetchedData));
+          } catch {}
+        },
         "gridData",
         `MachineDelayDashboard/${userId}/${userToken}`
       );
+      if (dataList?.data) {
+        setHasData(true);
+        try {
+          localStorage.setItem("dashboard_floor_data_cache", JSON.stringify(dataList.data));
+        } catch {}
+      }
     } catch (err) {
       console.error("Dashboard fetch error:", err);
       if (!isSilent) setError(err.message || "An error occurred.");
@@ -562,11 +604,7 @@ const DynamicDashboard = () => {
 
       {/* 2. Main Responsive Widget Grid */}
       <div ref={containerCallbackRef} className="w-100" style={{ minHeight: "350px" }}>
-        {loading && !data.runningMachines.length ? (
-          <div className="d-flex justify-content-center align-items-center" style={{ height: "350px" }}>
-            <Spinner animation="border" variant="primary" role="status" style={{ width: "3rem", height: "3rem" }} />
-          </div>
-        ) : error ? (
+        {error && !hasData ? (
           <Card className="border-danger shadow-sm">
             <Card.Body className="text-center py-5">
               <FaExclamationTriangle className="text-danger fs-1 mb-3" />
@@ -625,6 +663,7 @@ const DynamicDashboard = () => {
                   {widgetItem.type === "KPI_MACHINES" && (
                     <ComponentToRender
                       counts={counts}
+                      isLoading={loading && !hasData}
                       onKpiClick={(filterType) => setDetailModalType(filterType)}
                     />
                   )}
@@ -633,6 +672,7 @@ const DynamicDashboard = () => {
                     <ComponentToRender
                       delayedTransitions={delayedTransitions}
                       thresholdHours={data?.thresholdHours || 4}
+                      isLoading={loading && !hasData}
                       onKpiClick={(filterType) => setDetailModalType(filterType)}
                     />
                   )}
@@ -641,12 +681,14 @@ const DynamicDashboard = () => {
                     <ComponentToRender
                       counts={counts}
                       runningMachines={runningMachines}
+                      isLoading={loading && !hasData}
                     />
                   )}
 
                   {widgetItem.type === "CHART_DELAY_DOUGHNUT" && (
                     <ComponentToRender
                       counts={counts}
+                      isLoading={loading && !hasData}
                       onSliceClick={(sliceType) => setDetailModalType(sliceType)}
                     />
                   )}
@@ -654,6 +696,7 @@ const DynamicDashboard = () => {
                   {widgetItem.type === "TABLE_PAUSED_MACHINES" && (
                     <ComponentToRender
                       pausedMachines={pausedMachines}
+                      isLoading={loading && !hasData}
                       onRefresh={() => fetchDashboardData(true)}
                       formatDateTime={formatDateTime}
                     />

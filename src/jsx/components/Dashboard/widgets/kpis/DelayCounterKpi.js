@@ -1,7 +1,33 @@
 import React from "react";
 import { FaClock, FaExclamationTriangle, FaHourglassHalf } from "react-icons/fa";
 
-const DelayCounterKpi = ({ delayedTransitions = [], thresholdHours = 4, onKpiClick }) => {
+const DelayCounterKpi = ({ delayedTransitions = [], thresholdHours = 4, onKpiClick, isLoading = false }) => {
+  if (isLoading) {
+    return (
+      <div className="dynamic-card card shadow-sm h-100">
+        <div className="card-header bg-transparent border-0 pt-3 pb-2 px-4 d-flex align-items-center justify-content-between">
+          <div className="d-flex align-items-center">
+            <FaExclamationTriangle className="text-warning me-2" size={18} />
+            <h6 className="mb-0 fw-bold dynamic-title">Transition Delays</h6>
+          </div>
+          <span className="spinner-border spinner-border-sm text-warning" role="status" style={{ width: "0.85rem", height: "0.85rem" }}></span>
+        </div>
+        <div className="card-body px-4 pt-1 pb-3">
+          <div className="row g-3">
+            {[1, 2].map((i) => (
+              <div key={i} className="col-6">
+                <div className="dynamic-subcard p-3 h-100 skeleton-shimmer" style={{ minHeight: "85px" }}>
+                  <div className="skeleton-line skeleton-shimmer mb-2 w-50" style={{ height: "10px" }} />
+                  <div className="skeleton-line skeleton-shimmer mb-1 w-75" style={{ height: "26px" }} />
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   const delayedCount = delayedTransitions.length;
 
   // Calculate total delay hours across all delayed transitions

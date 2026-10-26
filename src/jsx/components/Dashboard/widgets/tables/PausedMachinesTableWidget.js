@@ -5,7 +5,7 @@ import { API_WEB_URLS } from "../../../../../constants/constAPI";
 import { Fn_AddEditData } from "../../../../../store/Functions";
 import { useDispatch } from "react-redux";
 
-const PausedMachinesTableWidget = ({ pausedMachines = [], onRefresh, formatDateTime }) => {
+const PausedMachinesTableWidget = ({ pausedMachines = [], onRefresh, formatDateTime, isLoading = false }) => {
   const dispatch = useDispatch();
   const [selectedMachineToResume, setSelectedMachineToResume] = useState(null);
   const [resumeLoading, setResumeLoading] = useState(false);
@@ -48,6 +48,25 @@ const PausedMachinesTableWidget = ({ pausedMachines = [], onRefresh, formatDateT
       setResumeLoading(false);
     }
   };
+
+  if (isLoading) {
+    return (
+      <div className="dynamic-card card shadow-sm h-100">
+        <div className="card-header bg-transparent border-0 pt-3 pb-2 px-4 d-flex align-items-center justify-content-between">
+          <div className="d-flex align-items-center">
+            <FaPauseCircle className="text-danger me-2" size={18} />
+            <h6 className="mb-0 fw-bold dynamic-title">Machines On Hold / Paused</h6>
+          </div>
+          <span className="spinner-border spinner-border-sm text-danger" role="status" style={{ width: "0.85rem", height: "0.85rem" }}></span>
+        </div>
+        <div className="card-body px-4 pt-1 pb-3">
+          {[1, 2, 3, 4].map((i) => (
+            <div key={i} className="skeleton-shimmer mb-2 p-3 rounded" style={{ height: "48px" }} />
+          ))}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="dynamic-card card shadow-sm h-100">

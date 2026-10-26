@@ -2,7 +2,28 @@ import React from "react";
 import { Doughnut } from "react-chartjs-2";
 import { FaChartPie } from "react-icons/fa";
 
-const DelayDoughnutWidget = ({ counts = {}, onSliceClick }) => {
+const DelayDoughnutWidget = ({ counts = {}, onSliceClick, isLoading = false }) => {
+  if (isLoading) {
+    return (
+      <div className="dynamic-card card shadow-sm h-100">
+        <div className="card-header bg-transparent border-0 pt-3 pb-0 px-4 d-flex align-items-center justify-content-between">
+          <div className="d-flex align-items-center">
+            <FaChartPie className="text-primary me-2" size={16} />
+            <h6 className="mb-0 fw-bold dynamic-title">Machine Fleet Allocation</h6>
+          </div>
+          <span className="spinner-border spinner-border-sm text-primary" role="status" style={{ width: "0.85rem", height: "0.85rem" }}></span>
+        </div>
+        <div className="card-body px-4 pb-3 pt-2 d-flex flex-column align-items-center justify-content-center" style={{ minHeight: "240px" }}>
+          <div 
+            className="skeleton-circle skeleton-shimmer mb-3" 
+            style={{ width: "150px", height: "150px" }} 
+          />
+          <div className="skeleton-line skeleton-shimmer w-50" style={{ height: "12px" }} />
+        </div>
+      </div>
+    );
+  }
+
   const running = counts.running || 0;
   const paused = counts.paused || 0;
   const idle = counts.idle || 0;

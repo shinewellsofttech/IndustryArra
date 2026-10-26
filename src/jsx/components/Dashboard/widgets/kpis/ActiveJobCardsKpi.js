@@ -2,8 +2,29 @@ import React from "react";
 import { FaFileAlt, FaSyncAlt, FaArrowRight } from "react-icons/fa";
 import { useNavigate } from "react-router-dom";
 
-const ActiveJobCardsKpi = ({ counts = {}, runningMachines = [] }) => {
+const ActiveJobCardsKpi = ({ counts = {}, runningMachines = [], isLoading = false }) => {
   const navigate = useNavigate();
+
+  if (isLoading) {
+    return (
+      <div className="dynamic-card card shadow-sm h-100">
+        <div className="card-header bg-transparent border-0 pt-3 pb-2 px-4 d-flex align-items-center justify-content-between">
+          <div className="d-flex align-items-center">
+            <FaFileAlt className="text-info me-2" size={18} />
+            <h6 className="mb-0 fw-bold dynamic-title">Job Card Operations</h6>
+          </div>
+          <span className="spinner-border spinner-border-sm text-info" role="status" style={{ width: "0.85rem", height: "0.85rem" }}></span>
+        </div>
+        <div className="card-body px-4 pt-1 pb-3">
+          <div className="dynamic-subcard p-3 h-100 skeleton-shimmer" style={{ minHeight: "85px" }}>
+            <div className="skeleton-line skeleton-shimmer mb-2 w-50" style={{ height: "10px" }} />
+            <div className="skeleton-line skeleton-shimmer mb-1 w-75" style={{ height: "28px" }} />
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   const activeJobCards = counts.runningJobCards || runningMachines.length || 0;
 
   return (
