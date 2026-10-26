@@ -34,46 +34,46 @@ const PinnedShortcutsWidget = ({ shortcuts = [], onOpenShortcutModal, onRemoveSh
   };
 
   return (
-    <div className="dynamic-card card shadow-sm mb-4">
-      <div className="card-body py-3 px-4">
-        <div className="d-flex align-items-center justify-content-between mb-2">
+    <div className="dynamic-card card shadow-sm h-100 mb-0">
+      <div className="card-body py-2 px-3 d-flex flex-column justify-content-center">
+        <div className="d-flex align-items-center justify-content-between mb-2 flex-shrink-0">
           <div className="d-flex align-items-center">
             <span 
-              className="badge bg-primary-subtle text-primary me-2 p-2 rounded-circle d-flex align-items-center justify-content-center"
-              style={{ width: "32px", height: "32px", background: "rgba(13, 110, 253, 0.1)" }}
+              className="badge bg-primary-subtle text-primary me-2 p-1 rounded-circle d-flex align-items-center justify-content-center"
+              style={{ width: "26px", height: "26px", background: "rgba(13, 110, 253, 0.1)" }}
             >
               ⭐
             </span>
-            <h6 className="mb-0 fw-bold dynamic-title" style={{ letterSpacing: "0.3px" }}>
+            <h6 className="mb-0 fw-bold dynamic-title" style={{ letterSpacing: "0.2px", fontSize: "0.85rem" }}>
               Quick Navigation Shortcuts
             </h6>
           </div>
           {onOpenShortcutModal && (
             <button 
               type="button" 
-              className="btn btn-sm btn-outline-primary d-flex align-items-center gap-1 py-1 px-3"
-              style={{ borderRadius: "20px", fontSize: "0.8rem", fontWeight: "600" }}
+              className="btn btn-sm btn-outline-primary d-flex align-items-center gap-1 py-1 px-2"
+              style={{ borderRadius: "16px", fontSize: "0.75rem", fontWeight: "600" }}
               onClick={onOpenShortcutModal}
             >
-              <FaPlus size={10} /> Customize Shortcuts
+              <FaPlus size={9} /> Customize Shortcuts
             </button>
           )}
         </div>
 
         {shortcuts.length === 0 ? (
-          <div className="text-center py-3 text-muted" style={{ fontSize: "0.88rem" }}>
+          <div className="text-center py-2 text-muted" style={{ fontSize: "0.82rem" }}>
             <span>No shortcuts pinned yet. Click </span>
             <button 
               className="btn btn-link p-0 text-primary fw-semibold" 
               onClick={onOpenShortcutModal}
-              style={{ fontSize: "0.88rem" }}
+              style={{ fontSize: "0.82rem" }}
             >
               Customize Shortcuts
             </button>
             <span> to add quick links to your favorite forms and reports.</span>
           </div>
         ) : (
-          <div className="row g-3 pt-1">
+          <div className="row g-2 pt-1 flex-grow-1 align-items-center">
             {shortcuts.map((sc, idx) => {
               const IconComp = ICON_MAP[sc.icon] || FaThLarge;
               const bgGradient = sc.color || "#4e73df";
@@ -81,9 +81,10 @@ const PinnedShortcutsWidget = ({ shortcuts = [], onOpenShortcutModal, onRemoveSh
               return (
                 <div key={sc.id || idx} className="col-6 col-sm-4 col-md-3 col-lg-2">
                   <div 
-                    className="dynamic-shortcut-item p-3 position-relative d-flex flex-column align-items-center justify-content-center text-center h-100"
+                    className="dynamic-shortcut-item p-2 position-relative d-flex flex-column align-items-center justify-content-center text-center h-100"
                     style={{
-                      cursor: isEditMode ? "default" : "pointer"
+                      cursor: isEditMode ? "default" : "pointer",
+                      minHeight: "74px"
                     }}
                     onClick={() => handleNavigate(sc.route)}
                   >
@@ -91,37 +92,34 @@ const PinnedShortcutsWidget = ({ shortcuts = [], onOpenShortcutModal, onRemoveSh
                       <button 
                         type="button"
                         className="btn btn-sm btn-danger position-absolute top-0 end-0 m-1 p-0 rounded-circle d-flex align-items-center justify-content-center"
-                        style={{ width: "20px", height: "20px", fontSize: "10px" }}
+                        style={{ width: "18px", height: "18px", fontSize: "9px" }}
                         onClick={(e) => {
                           e.stopPropagation();
                           onRemoveShortcut(sc.id || sc.route);
                         }}
                         title="Remove shortcut"
                       >
-                        <FaTimes size={10} />
+                        <FaTimes size={9} />
                       </button>
                     )}
 
                     <div 
-                      className="rounded-3 p-2 mb-2 d-flex align-items-center justify-content-center text-white"
+                      className="rounded-3 p-1 mb-1 d-flex align-items-center justify-content-center text-white"
                       style={{ 
                         background: bgGradient, 
-                        width: "42px", 
-                        height: "42px",
-                        boxShadow: `0 4px 10px ${bgGradient}40`
+                        width: "34px", 
+                        height: "34px",
+                        boxShadow: `0 3px 8px ${bgGradient}35`
                       }}
                     >
-                      <IconComp size={20} />
+                      <IconComp size={16} />
                     </div>
                     <span 
                       className="fw-bold dynamic-title text-truncate w-100" 
-                      style={{ fontSize: "0.78rem" }}
+                      style={{ fontSize: "0.75rem" }}
                       title={sc.title}
                     >
                       {sc.title}
-                    </span>
-                    <span className="dynamic-muted small" style={{ fontSize: "0.68rem" }}>
-                      Tap to open <FaExternalLinkAlt size={8} className="ms-1" />
                     </span>
                   </div>
                 </div>

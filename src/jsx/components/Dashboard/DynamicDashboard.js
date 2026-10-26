@@ -545,6 +545,8 @@ const DynamicDashboard = () => {
             breakpoints={{ lg: 1200, md: 996, sm: 768, xs: 480 }}
             cols={{ lg: 12, md: 10, sm: 6, xs: 2 }}
             rowHeight={85}
+            margin={[12, 12]}
+            containerPadding={[0, 0]}
             isDraggable={isEditMode}
             isResizable={isEditMode}
             draggableHandle=".widget-drag-handle"

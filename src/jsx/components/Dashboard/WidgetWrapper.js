@@ -39,17 +39,18 @@ const WidgetWrapper = ({
 }) => {
   return (
     <div 
-      className={`h-100 position-relative ${isEditMode ? "edit-mode-active" : ""}`}
+      className={`h-100 position-relative d-flex flex-column ${isEditMode ? "edit-mode-active" : ""}`}
       style={{
         transition: "box-shadow 0.2s ease",
         borderRadius: "12px",
         border: isEditMode ? "2px dashed #4e73df" : "none",
-        background: isEditMode ? "rgba(78, 115, 223, 0.02)" : "transparent"
+        background: isEditMode ? "rgba(78, 115, 223, 0.02)" : "transparent",
+        overflow: "hidden"
       }}
     >
       {isEditMode && (
         <div 
-          className="widget-drag-handle dynamic-drag-handle d-flex align-items-center justify-content-between px-3 py-1 border border-primary border-bottom-0 rounded-top"
+          className="widget-drag-handle dynamic-drag-handle d-flex align-items-center justify-content-between px-3 py-1 border border-primary border-bottom-0 rounded-top flex-shrink-0"
           style={{ cursor: "move", userSelect: "none" }}
         >
           <div className="d-flex align-items-center gap-2">
@@ -91,7 +92,7 @@ const WidgetWrapper = ({
         </div>
       )}
 
-      <div className={`h-100 ${isEditMode ? "pt-1" : ""}`}>
+      <div className="flex-grow-1 position-relative" style={{ minHeight: 0, overflow: "hidden" }}>
         <WidgetErrorBoundary>
           {children}
         </WidgetErrorBoundary>
