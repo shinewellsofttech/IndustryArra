@@ -3,7 +3,7 @@ import { Row, Col, Button, Spinner, Modal, Table, Badge, Card } from "react-boot
 import { useDispatch } from "react-redux";
 import axios from "axios";
 import { HubConnectionBuilder } from "@microsoft/signalr";
-import { ResponsiveGridLayout, useContainerWidth } from "react-grid-layout";
+import { ResponsiveGridLayout } from "react-grid-layout";
 import "react-grid-layout/css/styles.css";
 import "react-resizable/css/styles.css";
 import "./DynamicDashboard.css";
@@ -68,28 +68,68 @@ const formatDateTime = (dateTimeStr) => {
   }
 };
 
+const getInitialWidth = () => {
+  if (typeof window !== "undefined") {
+    const sidebarWidth = window.innerWidth > 768 ? 120 : 20;
+    return Math.max(window.innerWidth - sidebarWidth, 1200);
+  }
+  return 1200;
+};
+
 const DynamicDashboard = () => {
   const dispatch = useDispatch();
-  const { width } = useContainerWidth();
-  const containerRef = React.useRef(null);
-  const [measuredWidth, setMeasuredWidth] = useState(0);
+  const [measuredWidth, setMeasuredWidth] = useState(getInitialWidth);
+  const containerNodeRef = React.useRef(null);
+  const resizeObserverRef = React.useRef(null);
+
+  const containerCallbackRef = useCallback((node) => {
+    if (resizeObserverRef.current) {
+      resizeObserverRef.current.disconnect();
+      resizeObserverRef.current = null;
+    }
+    containerNodeRef.current = node;
+
+    if (node) {
+      const update = () => {
+        const w = node.getBoundingClientRect().width || node.offsetWidth;
+        if (w > 0) {
+          setMeasuredWidth(Math.floor(w));
+        }
+      };
+
+      update();
+      requestAnimationFrame(update);
+      setTimeout(update, 50);
+      setTimeout(update, 200);
+
+      if (typeof ResizeObserver !== "undefined") {
+        const ro = new ResizeObserver(() => {
+          update();
+        });
+        ro.observe(node);
+        resizeObserverRef.current = ro;
+      }
+    }
+  }, []);
 
   useEffect(() => {
-    const handleResize = () => {
-      if (containerRef.current) {
-        setMeasuredWidth(containerRef.current.offsetWidth);
+    const onWindowResize = () => {
+      if (containerNodeRef.current) {
+        const w = containerNodeRef.current.getBoundingClientRect().width || containerNodeRef.current.offsetWidth;
+        if (w > 0) {
+          setMeasuredWidth(Math.floor(w));
+          return;
+        }
       }
+      setMeasuredWidth(getInitialWidth());
     };
-    handleResize();
-    let observer;
-    if (typeof ResizeObserver !== "undefined" && containerRef.current) {
-      observer = new ResizeObserver(handleResize);
-      observer.observe(containerRef.current);
-    }
-    window.addEventListener("resize", handleResize);
+
+    window.addEventListener("resize", onWindowResize);
     return () => {
-      if (observer) observer.disconnect();
-      window.removeEventListener("resize", handleResize);
+      window.removeEventListener("resize", onWindowResize);
+      if (resizeObserverRef.current) {
+        resizeObserverRef.current.disconnect();
+      }
     };
   }, []);
 
@@ -521,27 +561,32 @@ const DynamicDashboard = () => {
       </div>
 
       {/* 2. Main Responsive Widget Grid */}
-      {loading && !data.runningMachines.length ? (
-        <div className="d-flex justify-content-center align-items-center" style={{ height: "350px" }}>
-          <Spinner animation="border" variant="primary" role="status" style={{ width: "3rem", height: "3rem" }} />
-        </div>
-      ) : error ? (
-        <Card className="border-danger shadow-sm">
-          <Card.Body className="text-center py-5">
-            <FaExclamationTriangle className="text-danger fs-1 mb-3" />
-            <h5 className="text-danger fw-bold">Unable to Load Dashboard Data</h5>
-            <p className="text-muted">{error}</p>
-            <Button variant="outline-danger" size="sm" onClick={() => fetchDashboardData(false)}>
-              Retry Connection
-            </Button>
-          </Card.Body>
-        </Card>
-      ) : (
-        <div ref={containerRef} style={{ width: "100%" }}>
+      <div ref={containerCallbackRef} className="w-100" style={{ minHeight: "350px" }}>
+        {loading && !data.runningMachines.length ? (
+          <div className="d-flex justify-content-center align-items-center" style={{ height: "350px" }}>
+            <Spinner animation="border" variant="primary" role="status" style={{ width: "3rem", height: "3rem" }} />
+          </div>
+        ) : error ? (
+          <Card className="border-danger shadow-sm">
+            <Card.Body className="text-center py-5">
+              <FaExclamationTriangle className="text-danger fs-1 mb-3" />
+              <h5 className="text-danger fw-bold">Unable to Load Dashboard Data</h5>
+              <p className="text-muted">{error}</p>
+              <Button variant="outline-danger" size="sm" onClick={() => fetchDashboardData(false)}>
+                Retry Connection
+              </Button>
+            </Card.Body>
+          </Card>
+        ) : (
           <ResponsiveGridLayout
-            width={measuredWidth || width || 1200}
+            width={measuredWidth > 0 ? measuredWidth : getInitialWidth()}
             className="layout"
-            layouts={{ lg: layoutItems }}
+            layouts={{
+              lg: layoutItems,
+              md: layoutItems,
+              sm: layoutItems,
+              xs: layoutItems
+            }}
             breakpoints={{ lg: 1200, md: 996, sm: 768, xs: 480 }}
             cols={{ lg: 12, md: 10, sm: 6, xs: 2 }}
             rowHeight={85}
@@ -618,8 +663,8 @@ const DynamicDashboard = () => {
             );
           })}
           </ResponsiveGridLayout>
-        </div>
-      )}
+        )}
+      </div>
 
       {/* 3. Detail Popup Modal for KPI or Slice clicks */}
       {detailModalType && (

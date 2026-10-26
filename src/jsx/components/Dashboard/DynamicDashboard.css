@@ -222,6 +222,12 @@
    REACT GRID LAYOUT BOUNDARY & RESIZE ENFORCEMENT
    ========================================================================== */
 
+.react-grid-layout {
+  position: relative;
+  transition: height 200ms ease;
+  width: 100% !important;
+}
+
 .react-grid-item {
   box-sizing: border-box !important;
 }
