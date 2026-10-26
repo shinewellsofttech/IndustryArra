@@ -11,13 +11,13 @@ const DelayCounterKpi = ({ delayedTransitions = [], thresholdHours = 4, onKpiCli
   }, 0);
 
   return (
-    <div className="card shadow-sm border-0 h-100" style={{ borderRadius: "12px", background: "#ffffff" }}>
+    <div className="dynamic-card card shadow-sm h-100">
       <div className="card-header bg-transparent border-0 pt-3 pb-2 px-4 d-flex align-items-center justify-content-between">
         <div className="d-flex align-items-center">
           <FaExclamationTriangle className="text-warning me-2" size={18} />
-          <h6 className="mb-0 fw-bold" style={{ color: "#1e293b" }}>Transition Delays</h6>
+          <h6 className="mb-0 fw-bold dynamic-title">Transition Delays</h6>
         </div>
-        <span className="badge bg-warning-subtle text-warning-emphasis px-2 py-1" style={{ fontSize: "0.75rem", background: "rgba(246, 194, 62, 0.15)", border: "1px solid #f6c23e" }}>
+        <span className="badge bg-warning text-dark px-2 py-1" style={{ fontSize: "0.75rem" }}>
           &gt; {thresholdHours}h Threshold
         </span>
       </div>
@@ -27,22 +27,22 @@ const DelayCounterKpi = ({ delayedTransitions = [], thresholdHours = 4, onKpiCli
             <div 
               className="p-3 rounded-3 h-100"
               style={{ 
-                background: "#fff9e6", 
-                border: "1px solid #ffeeba",
+                background: "rgba(246, 194, 62, 0.12)", 
+                border: "1px solid rgba(246, 194, 62, 0.35)",
                 cursor: onKpiClick ? "pointer" : "default" 
               }}
               onClick={() => onKpiClick && onKpiClick("DELAYED_COUNT")}
             >
               <div className="d-flex justify-content-between align-items-center mb-1">
-                <span className="fw-semibold" style={{ fontSize: "0.75rem", color: "#854d0e" }}>
+                <span className="fw-semibold dynamic-title" style={{ fontSize: "0.75rem" }}>
                   Delayed Transfers
                 </span>
                 <FaClock className="text-warning" size={14} />
               </div>
-              <h3 className="mb-0 fw-bold" style={{ fontSize: "1.6rem", color: "#b45309" }}>
+              <h3 className="mb-0 fw-bold text-warning" style={{ fontSize: "1.6rem" }}>
                 {delayedCount}
               </h3>
-              <div className="small mt-1" style={{ fontSize: "0.7rem", color: "#a16207" }}>
+              <div className="small mt-1 dynamic-muted" style={{ fontSize: "0.7rem" }}>
                 Exceeded {thresholdHours} hrs
               </div>
             </div>
@@ -52,22 +52,22 @@ const DelayCounterKpi = ({ delayedTransitions = [], thresholdHours = 4, onKpiCli
             <div 
               className="p-3 rounded-3 h-100"
               style={{ 
-                background: "#fff5f5", 
-                border: "1px solid #f8d7da",
+                background: "rgba(231, 74, 59, 0.12)", 
+                border: "1px solid rgba(231, 74, 59, 0.35)",
                 cursor: onKpiClick ? "pointer" : "default" 
               }}
               onClick={() => onKpiClick && onKpiClick("TOTAL_DELAY_HOURS")}
             >
               <div className="d-flex justify-content-between align-items-center mb-1">
-                <span className="fw-semibold" style={{ fontSize: "0.75rem", color: "#991b1b" }}>
+                <span className="fw-semibold dynamic-title" style={{ fontSize: "0.75rem" }}>
                   Total Lost Time
                 </span>
                 <FaHourglassHalf className="text-danger" size={14} />
               </div>
               <h3 className="mb-0 fw-bold text-danger" style={{ fontSize: "1.6rem" }}>
-                {totalDelayHours.toFixed(1)} <span style={{ fontSize: "0.85rem", fontWeight: "normal", color: "#991b1b" }}>hrs</span>
+                {totalDelayHours.toFixed(1)} <span style={{ fontSize: "0.85rem", fontWeight: "normal" }}>hrs</span>
               </h3>
-              <div className="text-muted small mt-1" style={{ fontSize: "0.7rem" }}>
+              <div className="small mt-1 dynamic-muted" style={{ fontSize: "0.7rem" }}>
                 Cumulative delay
               </div>
             </div>

@@ -47,26 +47,26 @@ const ShortcutSelectorModal = ({ show, onHide, shortcuts = [], onSaveShortcuts }
   };
 
   return (
-    <Modal show={show} onHide={onHide} size="lg" centered>
-      <Modal.Header closeButton>
-        <Modal.Title className="h5 fw-bold d-flex align-items-center">
+    <Modal show={show} onHide={onHide} size="lg" centered contentClassName="dynamic-modal-content">
+      <Modal.Header closeButton className="dynamic-modal-header">
+        <Modal.Title className="h5 fw-bold d-flex align-items-center dynamic-title">
           <FaBookmark className="text-primary me-2" />
           Customize Quick Navigation Shortcuts
         </Modal.Title>
       </Modal.Header>
       <Modal.Body className="p-4" style={{ maxHeight: "70vh", overflowY: "auto" }}>
-        <p className="text-muted small mb-3">
+        <p className="dynamic-muted small mb-3">
           Select the pages and modules you frequently use. Selected items will be pinned as fast 1-click tiles at the top of your dashboard.
         </p>
 
         {/* Search */}
         <div className="input-group mb-3">
-          <span className="input-group-text bg-white border-end-0">
-            <FaSearch className="text-muted" />
+          <span className="input-group-text dynamic-input border-end-0">
+            <FaSearch className="dynamic-muted" />
           </span>
           <input
             type="text"
-            className="form-control border-start-0 ps-0"
+            className="form-control dynamic-input border-start-0 ps-0"
             placeholder="Search pages (e.g., Job Card, Wood, Machine, QR)..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
@@ -74,7 +74,7 @@ const ShortcutSelectorModal = ({ show, onHide, shortcuts = [], onSaveShortcuts }
         </div>
 
         <div className="d-flex align-items-center justify-content-between mb-2">
-          <span className="small text-muted">
+          <span className="small dynamic-muted">
             Selected: <strong className="text-primary">{selectedRoutes.length}</strong> pages pinned
           </span>
           {selectedRoutes.length > 0 && (
@@ -93,10 +93,9 @@ const ShortcutSelectorModal = ({ show, onHide, shortcuts = [], onSaveShortcuts }
             return (
               <div key={item.to} className="col-12 col-sm-6">
                 <div
-                  className="p-3 rounded-3 d-flex align-items-center justify-content-between border"
+                  className="dynamic-subcard p-3 d-flex align-items-center justify-content-between"
                   style={{
-                    background: isSelected ? "#eef3ff" : "#ffffff",
-                    borderColor: isSelected ? "#4e73df" : "#e9ecef",
+                    borderColor: isSelected ? "#4e73df" : undefined,
                     cursor: "pointer",
                     transition: "all 0.15s ease"
                   }}
@@ -106,7 +105,7 @@ const ShortcutSelectorModal = ({ show, onHide, shortcuts = [], onSaveShortcuts }
                     <span 
                       className="p-2 rounded-circle text-white d-flex align-items-center justify-content-center"
                       style={{ 
-                        background: isSelected ? "#4e73df" : "#adb5bd", 
+                        background: isSelected ? "#4e73df" : "#6c757d", 
                         width: "28px", 
                         height: "28px" 
                       }}
@@ -114,8 +113,8 @@ const ShortcutSelectorModal = ({ show, onHide, shortcuts = [], onSaveShortcuts }
                       <FaThLarge size={12} />
                     </span>
                     <div className="text-truncate">
-                      <div className="fw-bold small text-truncate" style={{ color: "#1e293b" }}>{item.title}</div>
-                      <div style={{ fontSize: "0.7rem", color: "#64748b" }}>/{item.to}</div>
+                      <div className="fw-bold small text-truncate dynamic-title">{item.title}</div>
+                      <div className="dynamic-muted" style={{ fontSize: "0.7rem" }}>/{item.to}</div>
                     </div>
                   </div>
 
@@ -131,7 +130,7 @@ const ShortcutSelectorModal = ({ show, onHide, shortcuts = [], onSaveShortcuts }
           })}
         </div>
       </Modal.Body>
-      <Modal.Footer>
+      <Modal.Footer className="dynamic-modal-footer">
         <Button variant="secondary" size="sm" onClick={onHide}>
           Cancel
         </Button>

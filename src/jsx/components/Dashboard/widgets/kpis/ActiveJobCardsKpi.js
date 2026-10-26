@@ -7,11 +7,11 @@ const ActiveJobCardsKpi = ({ counts = {}, runningMachines = [] }) => {
   const activeJobCards = counts.runningJobCards || runningMachines.length || 0;
 
   return (
-    <div className="card shadow-sm border-0 h-100" style={{ borderRadius: "12px", background: "#ffffff" }}>
+    <div className="dynamic-card card shadow-sm h-100">
       <div className="card-header bg-transparent border-0 pt-3 pb-2 px-4 d-flex align-items-center justify-content-between">
         <div className="d-flex align-items-center">
           <FaFileAlt className="text-info me-2" size={18} />
-          <h6 className="mb-0 fw-bold" style={{ color: "#1e293b" }}>Job Card Operations</h6>
+          <h6 className="mb-0 fw-bold dynamic-title">Job Card Operations</h6>
         </div>
         <button 
           className="btn btn-sm btn-link text-info text-decoration-none p-0 fw-semibold"
@@ -24,10 +24,10 @@ const ActiveJobCardsKpi = ({ counts = {}, runningMachines = [] }) => {
       <div className="card-body px-4 pt-1 pb-3">
         <div 
           className="p-3 rounded-3"
-          style={{ background: "#f0f8ff", border: "1px solid #d0e7ff" }}
+          style={{ background: "rgba(13, 202, 240, 0.12)", border: "1px solid rgba(13, 202, 240, 0.35)" }}
         >
           <div className="d-flex justify-content-between align-items-center mb-1">
-            <span className="fw-semibold" style={{ fontSize: "0.8rem", color: "#334155" }}>
+            <span className="fw-semibold dynamic-title" style={{ fontSize: "0.8rem" }}>
               Job Cards Currently In-Process
             </span>
             <span className="badge bg-info text-white rounded-pill px-2 py-1" style={{ fontSize: "0.7rem" }}>
@@ -38,11 +38,11 @@ const ActiveJobCardsKpi = ({ counts = {}, runningMachines = [] }) => {
             <h3 className="mb-0 fw-bold text-info" style={{ fontSize: "1.8rem" }}>
               {activeJobCards}
             </h3>
-            <span style={{ fontSize: "0.8rem", color: "#64748b" }}>
+            <span className="dynamic-muted" style={{ fontSize: "0.8rem" }}>
               cards running on floor
             </span>
           </div>
-          <div className="small mt-2 d-flex align-items-center gap-1" style={{ fontSize: "0.72rem", color: "#64748b" }}>
+          <div className="small mt-2 d-flex align-items-center gap-1 dynamic-muted" style={{ fontSize: "0.72rem" }}>
             <FaSyncAlt size={10} className="text-info" /> Real-time tracking through QR Scanner & Machine checkpoints
           </div>
         </div>

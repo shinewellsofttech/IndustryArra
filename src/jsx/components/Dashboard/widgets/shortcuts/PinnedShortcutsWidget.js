@@ -34,7 +34,7 @@ const PinnedShortcutsWidget = ({ shortcuts = [], onOpenShortcutModal, onRemoveSh
   };
 
   return (
-    <div className="card shadow-sm border-0 mb-4" style={{ borderRadius: "12px", background: "#ffffff" }}>
+    <div className="dynamic-card card shadow-sm mb-4">
       <div className="card-body py-3 px-4">
         <div className="d-flex align-items-center justify-content-between mb-2">
           <div className="d-flex align-items-center">
@@ -44,7 +44,7 @@ const PinnedShortcutsWidget = ({ shortcuts = [], onOpenShortcutModal, onRemoveSh
             >
               ⭐
             </span>
-            <h6 className="mb-0 fw-bold text-dark" style={{ letterSpacing: "0.3px" }}>
+            <h6 className="mb-0 fw-bold dynamic-title" style={{ letterSpacing: "0.3px" }}>
               Quick Navigation Shortcuts
             </h6>
           </div>
@@ -81,27 +81,9 @@ const PinnedShortcutsWidget = ({ shortcuts = [], onOpenShortcutModal, onRemoveSh
               return (
                 <div key={sc.id || idx} className="col-6 col-sm-4 col-md-3 col-lg-2">
                   <div 
-                    className="p-3 position-relative d-flex flex-column align-items-center justify-content-center text-center h-100"
+                    className="dynamic-shortcut-item p-3 position-relative d-flex flex-column align-items-center justify-content-center text-center h-100"
                     style={{
-                      background: "#f8f9fa",
-                      border: "1px solid #e9ecef",
-                      borderRadius: "10px",
-                      cursor: isEditMode ? "default" : "pointer",
-                      transition: "all 0.2s ease-in-out"
-                    }}
-                    onMouseEnter={(e) => {
-                      if (!isEditMode) {
-                        e.currentTarget.style.transform = "translateY(-3px)";
-                        e.currentTarget.style.boxShadow = "0 6px 14px rgba(0,0,0,0.08)";
-                        e.currentTarget.style.borderColor = bgGradient;
-                      }
-                    }}
-                    onMouseLeave={(e) => {
-                      if (!isEditMode) {
-                        e.currentTarget.style.transform = "translateY(0)";
-                        e.currentTarget.style.boxShadow = "none";
-                        e.currentTarget.style.borderColor = "#e9ecef";
-                      }
+                      cursor: isEditMode ? "default" : "pointer"
                     }}
                     onClick={() => handleNavigate(sc.route)}
                   >
@@ -132,13 +114,13 @@ const PinnedShortcutsWidget = ({ shortcuts = [], onOpenShortcutModal, onRemoveSh
                       <IconComp size={20} />
                     </div>
                     <span 
-                      className="fw-bold text-dark text-truncate w-100" 
+                      className="fw-bold dynamic-title text-truncate w-100" 
                       style={{ fontSize: "0.78rem" }}
                       title={sc.title}
                     >
                       {sc.title}
                     </span>
-                    <span className="text-muted small" style={{ fontSize: "0.68rem" }}>
+                    <span className="dynamic-muted small" style={{ fontSize: "0.68rem" }}>
                       Tap to open <FaExternalLinkAlt size={8} className="ms-1" />
                     </span>
                   </div>

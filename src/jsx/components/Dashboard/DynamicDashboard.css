@@ -1,0 +1,192 @@
+/* ==========================================================================
+   DYNAMIC DASHBOARD THEME-AWARE DESIGN SYSTEM
+   Supports both Light Mode ([data-theme-version="light"]) & Dark Mode ([data-theme-version="dark"])
+   ========================================================================== */
+
+:root,
+[data-theme-version="light"] {
+  --dd-card-bg: #ffffff;
+  --dd-card-border: #e2e8f0;
+  --dd-text-title: #1e293b;
+  --dd-text-body: #475569;
+  --dd-text-muted: #64748b;
+  --dd-subcard-bg: #f8fafc;
+  --dd-subcard-border: #e2e8f0;
+  --dd-table-header-bg: #f8fafc;
+  --dd-table-border: #edf2f7;
+  --dd-table-row-hover: #f1f5f9;
+  --dd-modal-bg: #ffffff;
+  --dd-modal-header-border: #e2e8f0;
+  --dd-drag-handle-bg: #f8fafc;
+  --dd-drag-handle-border: #4e73df;
+  --dd-shortcut-card-bg: #f8fafc;
+  --dd-shortcut-card-border: #e2e8f0;
+  --dd-shortcut-card-hover: #edf2f7;
+  --dd-input-bg: #ffffff;
+  --dd-input-border: #cbd5e1;
+}
+
+[data-theme-version="dark"] {
+  --dd-card-bg: #151F37;
+  --dd-card-border: #222f54;
+  --dd-text-title: #ffffff;
+  --dd-text-body: #cbd5e1;
+  --dd-text-muted: #94a3b8;
+  --dd-subcard-bg: #111829;
+  --dd-subcard-border: #222f54;
+  --dd-table-header-bg: #111829;
+  --dd-table-border: #222f54;
+  --dd-table-row-hover: #1a2744;
+  --dd-modal-bg: #151F37;
+  --dd-modal-header-border: #222f54;
+  --dd-drag-handle-bg: #111829;
+  --dd-drag-handle-border: #4e73df;
+  --dd-shortcut-card-bg: #111829;
+  --dd-shortcut-card-border: #222f54;
+  --dd-shortcut-card-hover: #1e2c4f;
+  --dd-input-bg: #111829;
+  --dd-input-border: #222f54;
+}
+
+/* ==========================================================================
+   CARD & SUBCARD CONTAINERS
+   ========================================================================== */
+
+.dynamic-dashboard-wrapper {
+  color: var(--dd-text-body);
+}
+
+.dynamic-card {
+  background-color: var(--dd-card-bg) !important;
+  border: 1px solid var(--dd-card-border) !important;
+  border-radius: 12px !important;
+  transition: background-color 0.25s ease, border-color 0.25s ease;
+}
+
+.dynamic-subcard {
+  background-color: var(--dd-subcard-bg) !important;
+  border: 1px solid var(--dd-subcard-border) !important;
+  border-radius: 8px !important;
+  transition: background-color 0.25s ease, border-color 0.25s ease;
+}
+
+/* ==========================================================================
+   TYPOGRAPHY
+   ========================================================================== */
+
+.dynamic-title {
+  color: var(--dd-text-title) !important;
+  font-weight: 600;
+}
+
+.dynamic-body {
+  color: var(--dd-text-body) !important;
+}
+
+.dynamic-muted {
+  color: var(--dd-text-muted) !important;
+}
+
+/* Override global headings inside dynamic cards to respect card theme */
+.dynamic-card h1,
+.dynamic-card h2,
+.dynamic-card h3,
+.dynamic-card h4,
+.dynamic-card h5,
+.dynamic-card h6 {
+  color: var(--dd-text-title) !important;
+}
+
+/* ==========================================================================
+   SHORTCUT TILES
+   ========================================================================== */
+
+.dynamic-shortcut-item {
+  background-color: var(--dd-shortcut-card-bg) !important;
+  border: 1px solid var(--dd-shortcut-card-border) !important;
+  color: var(--dd-text-title) !important;
+  border-radius: 8px;
+  transition: all 0.2s ease;
+}
+
+.dynamic-shortcut-item:hover {
+  background-color: var(--dd-shortcut-card-hover) !important;
+  border-color: #4e73df !important;
+  transform: translateY(-2px);
+}
+
+.dynamic-shortcut-item span {
+  color: var(--dd-text-title) !important;
+}
+
+/* ==========================================================================
+   TABLES
+   ========================================================================== */
+
+.dynamic-table {
+  color: var(--dd-text-body) !important;
+  border-color: var(--dd-table-border) !important;
+}
+
+.dynamic-table th {
+  background-color: var(--dd-table-header-bg) !important;
+  color: var(--dd-text-title) !important;
+  border-color: var(--dd-table-border) !important;
+  font-weight: 600;
+}
+
+.dynamic-table td {
+  background-color: var(--dd-card-bg) !important;
+  color: var(--dd-text-body) !important;
+  border-color: var(--dd-table-border) !important;
+}
+
+.dynamic-table tr:hover td {
+  background-color: var(--dd-table-row-hover) !important;
+}
+
+/* ==========================================================================
+   MODALS
+   ========================================================================== */
+
+.dynamic-modal-content {
+  background-color: var(--dd-modal-bg) !important;
+  color: var(--dd-text-body) !important;
+  border: 1px solid var(--dd-card-border) !important;
+  border-radius: 12px;
+}
+
+.dynamic-modal-header {
+  border-bottom: 1px solid var(--dd-modal-header-border) !important;
+}
+
+.dynamic-modal-footer {
+  border-top: 1px solid var(--dd-modal-header-border) !important;
+}
+
+.dynamic-input {
+  background-color: var(--dd-input-bg) !important;
+  border: 1px solid var(--dd-input-border) !important;
+  color: var(--dd-text-title) !important;
+}
+
+.dynamic-input:focus {
+  background-color: var(--dd-input-bg) !important;
+  color: var(--dd-text-title) !important;
+  border-color: #4e73df !important;
+  box-shadow: 0 0 0 0.2rem rgba(78, 115, 223, 0.25) !important;
+}
+
+.dynamic-input::placeholder {
+  color: var(--dd-text-muted) !important;
+}
+
+/* ==========================================================================
+   DRAG HANDLE IN EDIT MODE
+   ========================================================================== */
+
+.dynamic-drag-handle {
+  background-color: var(--dd-drag-handle-bg) !important;
+  border: 1px solid var(--dd-drag-handle-border) !important;
+  border-bottom: 0 !important;
+}

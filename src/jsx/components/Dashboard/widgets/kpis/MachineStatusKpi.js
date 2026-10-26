@@ -47,13 +47,13 @@ const MachineStatusKpi = ({ counts = {}, onKpiClick }) => {
   ];
 
   return (
-    <div className="card shadow-sm border-0 h-100" style={{ borderRadius: "12px", background: "#ffffff" }}>
+    <div className="dynamic-card card shadow-sm h-100">
       <div className="card-header bg-transparent border-0 pt-3 pb-2 px-4 d-flex align-items-center justify-content-between">
         <div className="d-flex align-items-center">
           <FaCogs className="text-primary me-2" size={18} />
-          <h6 className="mb-0 fw-bold" style={{ color: "#1e293b" }}>Machine Fleet Status</h6>
+          <h6 className="mb-0 fw-bold dynamic-title">Machine Fleet Status</h6>
         </div>
-        <span className="badge bg-light text-muted px-2 py-1" style={{ fontSize: "0.75rem", border: "1px solid #e2e8f0" }}>
+        <span className="badge bg-secondary text-white px-2 py-1" style={{ fontSize: "0.75rem" }}>
           Live Fleet
         </span>
       </div>
@@ -64,17 +64,15 @@ const MachineStatusKpi = ({ counts = {}, onKpiClick }) => {
             return (
               <div key={idx} className="col-6">
                 <div 
-                  className="p-2 px-3 rounded-3 h-100 position-relative"
+                  className="dynamic-subcard p-2 px-3 h-100 position-relative"
                   style={{ 
-                    background: "#f8f9fc",
-                    border: "1px solid #eaecf4",
                     cursor: onKpiClick ? "pointer" : "default",
                     transition: "transform 0.15s ease-in-out"
                   }}
                   onClick={() => onKpiClick && onKpiClick(kpi.filterType)}
                 >
                   <div className="d-flex justify-content-between align-items-center mb-1">
-                    <span className="fw-semibold text-truncate" style={{ fontSize: "0.75rem", color: "#475569" }}>
+                    <span className="fw-semibold dynamic-title text-truncate" style={{ fontSize: "0.75rem" }}>
                       {kpi.title}
                     </span>
                     <span 
@@ -87,7 +85,7 @@ const MachineStatusKpi = ({ counts = {}, onKpiClick }) => {
                   <h3 className="mb-0 fw-bold" style={{ color: kpi.color, fontSize: "1.45rem" }}>
                     {kpi.value}
                   </h3>
-                  <div className="small mt-1 text-truncate" style={{ fontSize: "0.68rem", color: "#64748b" }}>
+                  <div className="small mt-1 text-truncate dynamic-muted" style={{ fontSize: "0.68rem" }}>
                     {kpi.subtext}
                   </div>
                 </div>

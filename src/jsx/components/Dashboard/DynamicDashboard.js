@@ -6,6 +6,7 @@ import { HubConnectionBuilder } from "@microsoft/signalr";
 import { ResponsiveGridLayout, useContainerWidth } from "react-grid-layout";
 import "react-grid-layout/css/styles.css";
 import "react-resizable/css/styles.css";
+import "./DynamicDashboard.css";
 
 import { API_WEB_URLS } from "../../../constants/constAPI";
 import { Fn_FillListData } from "../../../store/Functions";
@@ -400,13 +401,12 @@ const DynamicDashboard = () => {
     <div className="dynamic-dashboard-wrapper pb-5">
       {/* 1. Header & Controls Toolbar */}
       <div 
-        className="card shadow-sm border-0 mb-4 px-4 py-3"
-        style={{ borderRadius: "14px", background: "#ffffff" }}
+        className="dynamic-card card shadow-sm mb-4 px-4 py-3"
       >
         <div className="d-flex flex-wrap align-items-center justify-content-between gap-3">
           <div>
             <div className="d-flex align-items-center gap-2">
-              <h4 className="mb-0 fw-bold" style={{ color: "#1e293b", letterSpacing: "-0.5px" }}>
+              <h4 className="mb-0 fw-bold dynamic-title" style={{ letterSpacing: "-0.5px" }}>
                 Operational Production Dashboard
               </h4>
               <Badge 
@@ -422,12 +422,12 @@ const DynamicDashboard = () => {
                   Customized by You
                 </Badge>
               ) : (
-                <Badge bg="light" className="text-muted py-1 px-2 border" style={{ fontSize: "0.68rem" }}>
+                <Badge bg="secondary" className="py-1 px-2 border" style={{ fontSize: "0.68rem" }}>
                   Role Default Template
                 </Badge>
               )}
             </div>
-            <p className="small mb-0 mt-1" style={{ color: "#64748b" }}>
+            <p className="small mb-0 mt-1 dynamic-muted">
               Real-time machine throughput, job card execution, and custom fleet monitoring.
             </p>
           </div>

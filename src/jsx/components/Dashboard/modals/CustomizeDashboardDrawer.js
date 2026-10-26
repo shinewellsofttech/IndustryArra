@@ -24,27 +24,27 @@ const CustomizeDashboardDrawer = ({
   });
 
   return (
-    <Modal show={show} onHide={onHide} size="lg" centered>
-      <Modal.Header closeButton className="border-bottom">
-        <Modal.Title className="h5 fw-bold d-flex align-items-center">
+    <Modal show={show} onHide={onHide} size="lg" centered contentClassName="dynamic-modal-content">
+      <Modal.Header closeButton className="dynamic-modal-header">
+        <Modal.Title className="h5 fw-bold d-flex align-items-center dynamic-title">
           <FaSlidersH className="text-primary me-2" />
           Customize Dashboard Widgets
         </Modal.Title>
       </Modal.Header>
 
       <Modal.Body className="p-4" style={{ maxHeight: "70vh", overflowY: "auto" }}>
-        <p className="text-muted small mb-3">
+        <p className="dynamic-muted small mb-3">
           Configure which widgets to display on your personal dashboard. Toggle visibility or add new cards.
         </p>
 
         {/* Search Bar */}
         <div className="input-group mb-4">
-          <span className="input-group-text bg-white border-end-0">
-            <FaSearch className="text-muted" />
+          <span className="input-group-text dynamic-input border-end-0">
+            <FaSearch className="dynamic-muted" />
           </span>
           <input
             type="text"
-            className="form-control border-start-0 ps-0"
+            className="form-control dynamic-input border-start-0 ps-0"
             placeholder="Search widgets by name or category..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
@@ -61,15 +61,11 @@ const CustomizeDashboardDrawer = ({
             return (
               <div key={key} className="col-12 col-md-6">
                 <div 
-                  className="p-3 rounded-3 h-100 d-flex flex-column justify-content-between border"
-                  style={{
-                    background: isVisible ? "#f8f9ff" : "#fdfdfe",
-                    borderColor: isVisible ? "#4e73df40" : "#e9ecef"
-                  }}
+                  className="dynamic-subcard p-3 h-100 d-flex flex-column justify-content-between"
                 >
                   <div>
                     <div className="d-flex align-items-center justify-content-between mb-1">
-                      <span className="badge bg-secondary-subtle text-secondary small px-2 py-1" style={{ fontSize: "0.68rem" }}>
+                      <span className="badge bg-secondary small px-2 py-1" style={{ fontSize: "0.68rem" }}>
                         {reg.category}
                       </span>
                       {isVisible ? (
@@ -81,14 +77,14 @@ const CustomizeDashboardDrawer = ({
                           <FaEyeSlash className="me-1" size={9} /> Hidden
                         </Badge>
                       ) : (
-                        <Badge bg="light" text="muted" className="px-2 py-1 small">
+                        <Badge bg="secondary" className="px-2 py-1 small">
                           Not Added
                         </Badge>
                       )}
                     </div>
 
-                    <h6 className="fw-bold mb-1" style={{ color: "#1e293b" }}>{reg.title}</h6>
-                    <p className="small mb-3" style={{ fontSize: "0.78rem", color: "#64748b" }}>
+                    <h6 className="fw-bold mb-1 dynamic-title">{reg.title}</h6>
+                    <p className="small mb-3 dynamic-muted" style={{ fontSize: "0.78rem" }}>
                       {reg.description}
                     </p>
                   </div>
@@ -96,13 +92,13 @@ const CustomizeDashboardDrawer = ({
                   <div className="d-flex align-items-center justify-content-between pt-2 border-top">
                     {isInstalled ? (
                       <div className="d-flex align-items-center justify-content-between w-100">
-                        <span className="small fw-semibold" style={{ color: "#475569" }}>Show on Screen:</span>
+                        <span className="small fw-semibold dynamic-title">Show on Screen:</span>
                         <Form.Check 
                           type="switch"
                           id={`switch-${key}`}
                           checked={isVisible}
                           onChange={() => onToggleVisibility(activeItem.i)}
-                          label={<span style={{ color: isVisible ? "#15803d" : "#b45309", fontWeight: "600" }}>{isVisible ? "Active" : "Hidden"}</span>}
+                          label={<span style={{ color: isVisible ? "#22c55e" : "#f59e0b", fontWeight: "600" }}>{isVisible ? "Active" : "Hidden"}</span>}
                           className="ms-2 fw-semibold"
                         />
                       </div>
@@ -127,7 +123,7 @@ const CustomizeDashboardDrawer = ({
         </div>
       </Modal.Body>
 
-      <Modal.Footer className="border-top">
+      <Modal.Footer className="dynamic-modal-footer">
         <Button variant="primary" size="sm" onClick={onHide} className="px-4">
           Done
         </Button>

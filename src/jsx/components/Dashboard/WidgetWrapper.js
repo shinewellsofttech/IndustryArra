@@ -49,7 +49,7 @@ const WidgetWrapper = ({
     >
       {isEditMode && (
         <div 
-          className="widget-drag-handle d-flex align-items-center justify-content-between px-3 py-1 bg-white border border-primary border-bottom-0 rounded-top"
+          className="widget-drag-handle dynamic-drag-handle d-flex align-items-center justify-content-between px-3 py-1 border border-primary border-bottom-0 rounded-top"
           style={{ cursor: "move", userSelect: "none" }}
         >
           <div className="d-flex align-items-center gap-2">

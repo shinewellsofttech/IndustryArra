@@ -50,11 +50,11 @@ const PausedMachinesTableWidget = ({ pausedMachines = [], onRefresh, formatDateT
   };
 
   return (
-    <div className="card shadow-sm border-0 h-100" style={{ borderRadius: "12px", background: "#ffffff" }}>
+    <div className="dynamic-card card shadow-sm h-100">
       <div className="card-header bg-transparent border-0 pt-3 pb-2 px-4 d-flex align-items-center justify-content-between">
         <div className="d-flex align-items-center">
           <FaPauseCircle className="text-danger me-2" size={18} />
-          <h6 className="mb-0 fw-bold" style={{ color: "#1e293b" }}>Machines On Hold / Paused</h6>
+          <h6 className="mb-0 fw-bold dynamic-title">Machines On Hold / Paused</h6>
         </div>
         <span className="badge bg-danger text-white rounded-pill px-3 py-1" style={{ fontSize: "0.75rem" }}>
           {pausedMachines.length} Paused
@@ -63,29 +63,29 @@ const PausedMachinesTableWidget = ({ pausedMachines = [], onRefresh, formatDateT
 
       <div className="card-body px-4 pt-1 pb-3">
         {pausedMachines.length === 0 ? (
-          <div className="text-center py-4 text-muted" style={{ fontSize: "0.88rem" }}>
+          <div className="text-center py-4 dynamic-muted" style={{ fontSize: "0.88rem" }}>
             <FaClock size={28} className="text-success mb-2 d-block mx-auto" />
-            <span className="fw-semibold text-dark">No machines are currently on hold.</span>
-            <div className="small text-muted">All active machines are running smoothly!</div>
+            <span className="fw-semibold dynamic-title">No machines are currently on hold.</span>
+            <div className="small dynamic-muted">All active machines are running smoothly!</div>
           </div>
         ) : (
           <div className="table-responsive" style={{ maxHeight: "280px", overflowY: "auto" }}>
-            <Table hover className="align-middle mb-0" style={{ fontSize: "0.82rem" }}>
-              <thead className="table-light text-muted small" style={{ position: "sticky", top: 0, zIndex: 1 }}>
+            <Table hover className="align-middle mb-0 dynamic-table" style={{ fontSize: "0.82rem" }}>
+              <thead style={{ position: "sticky", top: 0, zIndex: 1 }}>
                 <tr>
-                  <th style={{ color: "#475569" }}>Machine</th>
-                  <th style={{ color: "#475569" }}>Job Card</th>
-                  <th style={{ color: "#475569" }}>Pause Reason</th>
-                  <th style={{ color: "#475569" }}>Paused At</th>
-                  <th className="text-end" style={{ color: "#475569" }}>Action</th>
+                  <th>Machine</th>
+                  <th>Job Card</th>
+                  <th>Pause Reason</th>
+                  <th>Paused At</th>
+                  <th className="text-end">Action</th>
                 </tr>
               </thead>
               <tbody>
                 {pausedMachines.map((m, idx) => (
                   <tr key={m.JobCardLineId || idx}>
                     <td>
-                      <div className="fw-bold" style={{ color: "#1e293b" }}>{m.MachineName || "Unknown Machine"}</div>
-                      <div className="small" style={{ fontSize: "0.72rem", color: "#64748b" }}>
+                      <div className="fw-bold dynamic-title">{m.MachineName || "Unknown Machine"}</div>
+                      <div className="small dynamic-muted" style={{ fontSize: "0.72rem" }}>
                         {m.MachineCode || `ID: ${m.MachineMasterId}`}
                       </div>
                     </td>
@@ -100,7 +100,7 @@ const PausedMachinesTableWidget = ({ pausedMachines = [], onRefresh, formatDateT
                       </span>
                     </td>
                     <td>
-                      <span className="small" style={{ color: "#64748b" }}>
+                      <span className="small dynamic-muted">
                         {formatDateTime ? formatDateTime(m.PauseStartTime || m.CurrentPauseStartTime) : (m.PauseStartTime || "N/A")}
                       </span>
                     </td>
@@ -125,28 +125,28 @@ const PausedMachinesTableWidget = ({ pausedMachines = [], onRefresh, formatDateT
 
       {/* Resume Confirmation Modal */}
       {selectedMachineToResume && (
-        <Modal show={true} onHide={() => setSelectedMachineToResume(null)} centered>
-          <Modal.Header closeButton>
-            <Modal.Title className="h6 fw-bold">
+        <Modal show={true} onHide={() => setSelectedMachineToResume(null)} centered contentClassName="dynamic-modal-content">
+          <Modal.Header closeButton className="dynamic-modal-header">
+            <Modal.Title className="h6 fw-bold dynamic-title">
               <FaPlay className="text-success me-2" /> Resume Machine Operation
             </Modal.Title>
           </Modal.Header>
           <Modal.Body>
-            <p className="mb-2">
+            <p className="mb-2 dynamic-body">
               Are you sure you want to resume machine:
             </p>
-            <div className="p-3 bg-light rounded-3 mb-3">
-              <div className="fw-bold text-dark">{selectedMachineToResume.MachineName}</div>
-              <div className="small text-muted">Job Card: {selectedMachineToResume.JobCardNo || selectedMachineToResume.JobCardMasterId}</div>
+            <div className="p-3 dynamic-subcard rounded-3 mb-3">
+              <div className="fw-bold dynamic-title">{selectedMachineToResume.MachineName}</div>
+              <div className="small dynamic-muted">Job Card: {selectedMachineToResume.JobCardNo || selectedMachineToResume.JobCardMasterId}</div>
               <div className="small text-danger mt-1">
                 <strong>Pause Reason:</strong> {selectedMachineToResume.Reason || selectedMachineToResume.CurrentPauseReason || "Break / Duty Off"}
               </div>
             </div>
-            <p className="small text-muted mb-0">
+            <p className="small dynamic-muted mb-0">
               This will record the resumption time and mark the machine status as running.
             </p>
           </Modal.Body>
-          <Modal.Footer>
+          <Modal.Footer className="dynamic-modal-footer">
             <Button variant="secondary" size="sm" onClick={() => setSelectedMachineToResume(null)} disabled={resumeLoading}>
               Cancel
             </Button>
