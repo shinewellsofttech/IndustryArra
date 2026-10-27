@@ -37,6 +37,9 @@ import {
   FaArrowRight,
   FaPlus
 } from "react-icons/fa";
+import * as XLSX from "xlsx";
+import jsPDF from "jspdf";
+import autoTable from "jspdf-autotable";
 import { reportBuilderService } from "../../services/reportBuilderService";
 import FormulaBuilderModal from "./FormulaBuilderModal";
 import "./ReportBuilderStudio.css";
@@ -756,6 +759,131 @@ const ReportBuilderStudio = () => {
     }
   };
 
+  // -------------------------------------------------------------------------
+  // High-Fidelity Client-Side Export to Excel (.xlsx)
+  // -------------------------------------------------------------------------
+  const handleExportExcel = () => {
+    if (!previewData || previewData.length === 0) {
+      alert("No report data available to export. Please generate the report first.");
+      return;
+    }
+
+    try {
+      const dataToExport = tableSearch && displayedPreviewData.length > 0 ? displayedPreviewData : previewData;
+
+      const excelRows = dataToExport.map((row, idx) => {
+        const rowObj = { "S.No": idx + 1 };
+        columnHeaders.forEach((col) => {
+          rowObj[col] = row[col] !== null && row[col] !== undefined ? row[col] : "";
+        });
+        return rowObj;
+      });
+
+      const worksheet = XLSX.utils.json_to_sheet(excelRows);
+
+      // Auto-fit column widths
+      const colWidths = [{ wch: 6 }];
+      columnHeaders.forEach((col) => {
+        const maxLen = Math.max(
+          col.length,
+          ...dataToExport.slice(0, 100).map((r) => String(r[col] || "").length)
+        );
+        colWidths.push({ wch: Math.min(Math.max(maxLen + 3, 12), 40) });
+      });
+      worksheet["!cols"] = colWidths;
+
+      const workbook = XLSX.utils.book_new();
+      const safeSheetName = (reportTitle || "ERP Report").replace(/[\/\\?*[\]]/g, "").slice(0, 31);
+      XLSX.utils.book_append_sheet(workbook, worksheet, safeSheetName);
+
+      const cleanFileName = `${(reportTitle || "Report").replace(/[\s\/:*?"<>|]+/g, "_")}_${new Date().toISOString().slice(0, 10)}.xlsx`;
+      XLSX.writeFile(workbook, cleanFileName);
+    } catch (err) {
+      console.error("Excel Export Error:", err);
+      alert("Failed to export Excel file: " + err.message);
+    }
+  };
+
+  // -------------------------------------------------------------------------
+  // High-Fidelity Client-Side Export to PDF (.pdf)
+  // -------------------------------------------------------------------------
+  const handleExportPDF = () => {
+    if (!previewData || previewData.length === 0) {
+      alert("No report data available to export. Please generate the report first.");
+      return;
+    }
+
+    try {
+      const dataToExport = tableSearch && displayedPreviewData.length > 0 ? displayedPreviewData : previewData;
+
+      // Landscape orientation if > 5 columns for maximum readability
+      const isLandscape = columnHeaders.length > 5;
+      const pdf = new jsPDF(isLandscape ? "landscape" : "portrait", "mm", "a4");
+
+      const pageWidth = pdf.internal.pageSize.getWidth();
+      const pageHeight = pdf.internal.pageSize.getHeight();
+
+      // Premium Header Banner
+      pdf.setFillColor(15, 23, 42); // Navy Slate #0f172a
+      pdf.rect(0, 0, pageWidth, 22, "F");
+
+      // Title & ERP Metadata
+      pdf.setTextColor(255, 255, 255);
+      pdf.setFontSize(13);
+      pdf.setFont("helvetica", "bold");
+      pdf.text(reportTitle || "Custom ERP Report", 12, 10);
+
+      pdf.setFontSize(8);
+      pdf.setFont("helvetica", "normal");
+      pdf.setTextColor(203, 213, 225); // Slate 300
+      const nowStr = new Date().toLocaleString();
+      pdf.text(`Generated: ${nowStr}  |  Category: ${category || "General"}  |  Total Records: ${dataToExport.length}`, 12, 17);
+
+      // AutoTable
+      const head = [["#", ...columnHeaders]];
+      const body = dataToExport.map((row, idx) => [
+        idx + 1,
+        ...columnHeaders.map((col) => (row[col] !== null && row[col] !== undefined ? String(row[col]) : "-"))
+      ]);
+
+      autoTable(pdf, {
+        head: head,
+        body: body,
+        startY: 26,
+        theme: "striped",
+        headStyles: {
+          fillColor: [37, 99, 235], // Blue #2563eb
+          textColor: 255,
+          fontSize: 8,
+          fontStyle: "bold",
+          halign: "left"
+        },
+        bodyStyles: {
+          fontSize: 7.5,
+          textColor: [30, 41, 59],
+          cellPadding: 2.5
+        },
+        alternateRowStyles: {
+          fillColor: [248, 250, 252] // Light slate
+        },
+        margin: { left: 10, right: 10, top: 26, bottom: 14 },
+        didDrawPage: (data) => {
+          pdf.setFontSize(8);
+          pdf.setTextColor(148, 163, 184);
+          const pageStr = `Page ${data.pageNumber} of ${pdf.internal.getNumberOfPages()}`;
+          pdf.text(pageStr, pageWidth - 32, pageHeight - 7);
+          pdf.text("AARA Software ERP - Confidential Report", 10, pageHeight - 7);
+        }
+      });
+
+      const cleanFileName = `${(reportTitle || "Report").replace(/[\s\/:*?"<>|]+/g, "_")}_${new Date().toISOString().slice(0, 10)}.pdf`;
+      pdf.save(cleanFileName);
+    } catch (err) {
+      console.error("PDF Export Error:", err);
+      alert("Failed to export PDF file: " + err.message);
+    }
+  };
+
   // Filter fields in Step 2 by search query
   const filteredFields = useMemo(() => {
     if (!fieldSearch.trim()) return fields;
@@ -862,36 +990,20 @@ const ReportBuilderStudio = () => {
             <FaSave /> {savedReportId ? "Update Report" : "Save Report"}
           </button>
           <button
-            className="rb-btn rb-btn-outline"
-            onClick={() =>
-              reportBuilderService.exportCSV({
-                reportTitle,
-                primaryEntity: selectedEntity?.physicalTableName,
-                selectedColumns,
-                filters,
-                joinPath
-              })
-            }
+            className="rb-btn rb-btn-success-export"
+            onClick={handleExportExcel}
             disabled={previewData.length === 0}
-            title="Download report data to Excel (.csv)"
+            title="Download formatted Excel spreadsheet (.xlsx)"
           >
-            <FaFileExcel color="#10b981" /> Export Excel
+            <FaFileExcel /> Export Excel
           </button>
           <button
-            className="rb-btn rb-btn-outline"
-            onClick={() =>
-              reportBuilderService.exportPDF({
-                reportTitle,
-                primaryEntity: selectedEntity?.physicalTableName,
-                selectedColumns,
-                filters,
-                joinPath
-              })
-            }
+            className="rb-btn rb-btn-danger-export"
+            onClick={handleExportPDF}
             disabled={previewData.length === 0}
-            title="Print or export report to PDF"
+            title="Download printable PDF report (.pdf)"
           >
-            <FaFilePdf color="#ef4444" /> Export PDF
+            <FaFilePdf /> Export PDF
           </button>
           <button
             className="rb-btn rb-btn-danger-outline"
@@ -1131,6 +1243,23 @@ const ReportBuilderStudio = () => {
               </div>
 
               <div className="d-flex align-items-center gap-2">
+                <button
+                  className="rb-btn-export-pill excel"
+                  onClick={handleExportExcel}
+                  disabled={previewData.length === 0}
+                  title="Export live table to Excel (.xlsx)"
+                >
+                  <FaFileExcel /> Export Excel
+                </button>
+                <button
+                  className="rb-btn-export-pill pdf"
+                  onClick={handleExportPDF}
+                  disabled={previewData.length === 0}
+                  title="Export live table to PDF (.pdf)"
+                >
+                  <FaFilePdf /> Export PDF
+                </button>
+
                 <div className="rb-table-search-box">
                   <FaSearch className="rb-table-search-icon" />
                   <input
@@ -1607,6 +1736,23 @@ const ReportBuilderStudio = () => {
                   </div>
 
                   <div className="d-flex align-items-center gap-2" onClick={(e) => e.stopPropagation()}>
+                    <button
+                      className="rb-btn-export-pill excel"
+                      onClick={handleExportExcel}
+                      disabled={previewData.length === 0}
+                      title="Export live table to Excel (.xlsx)"
+                    >
+                      <FaFileExcel /> Excel
+                    </button>
+                    <button
+                      className="rb-btn-export-pill pdf"
+                      onClick={handleExportPDF}
+                      disabled={previewData.length === 0}
+                      title="Export live table to PDF (.pdf)"
+                    >
+                      <FaFilePdf /> PDF
+                    </button>
+
                     <div className="rb-table-search-box">
                       <FaSearch className="rb-table-search-icon" />
                       <input

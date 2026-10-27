@@ -1081,3 +1081,90 @@
   word-break: break-all;
 }
 
+/* --------------------------------------------------------------------------
+   Export to Excel & PDF Action Buttons
+   -------------------------------------------------------------------------- */
+.rb-btn-success-export {
+  background: #10b981 !important;
+  color: #ffffff !important;
+  border: 1px solid #059669 !important;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 600;
+  border-radius: 7px;
+  padding: 6px 14px;
+  font-size: 0.8rem;
+  transition: all 0.15s ease-in-out;
+}
+.rb-btn-success-export:hover:not(:disabled) {
+  background: #059669 !important;
+  color: #ffffff !important;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 10px rgba(16, 185, 129, 0.3);
+}
+
+.rb-btn-danger-export {
+  background: #ef4444 !important;
+  color: #ffffff !important;
+  border: 1px solid #dc2626 !important;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 600;
+  border-radius: 7px;
+  padding: 6px 14px;
+  font-size: 0.8rem;
+  transition: all 0.15s ease-in-out;
+}
+.rb-btn-danger-export:hover:not(:disabled) {
+  background: #dc2626 !important;
+  color: #ffffff !important;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 10px rgba(239, 68, 68, 0.3);
+}
+
+.rb-btn-export-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 0.74rem;
+  font-weight: 600;
+  padding: 5px 12px;
+  border-radius: 6px;
+  cursor: pointer;
+  border: 1px solid transparent;
+  transition: all 0.15s ease-in-out;
+}
+.rb-btn-export-pill.excel {
+  background: #ecfdf5;
+  color: #047857;
+  border-color: #a7f3d0;
+}
+.rb-btn-export-pill.excel:hover:not(:disabled) {
+  background: #10b981;
+  color: #ffffff;
+  border-color: #059669;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 6px rgba(16, 185, 129, 0.25);
+}
+.rb-btn-export-pill.pdf {
+  background: #fef2f2;
+  color: #b91c1c;
+  border-color: #fecaca;
+}
+.rb-btn-export-pill.pdf:hover:not(:disabled) {
+  background: #ef4444;
+  color: #ffffff;
+  border-color: #dc2626;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 6px rgba(239, 68, 68, 0.25);
+}
+.rb-btn-export-pill:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+
