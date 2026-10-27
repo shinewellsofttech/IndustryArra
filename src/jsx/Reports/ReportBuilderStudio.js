@@ -38,7 +38,10 @@ import {
   FaLayerGroup,
   FaSitemap,
   FaArrowRight,
-  FaPlus
+  FaPlus,
+  FaFolderOpen,
+  FaLock,
+  FaUser
 } from "react-icons/fa";
 import * as XLSX from "xlsx";
 import jsPDF from "jspdf";
@@ -237,6 +240,86 @@ const ReportBuilderStudio = () => {
   const [pinToDashboard, setPinToDashboard] = useState(false);
   const [saveSuccessMsg, setSaveSuccessMsg] = useState("");
   const [savedReportId, setSavedReportId] = useState(editReportId ? parseInt(editReportId) : null);
+  const [savedReportsList, setSavedReportsList] = useState([]);
+  const [showReportsListModal, setShowReportsListModal] = useState(false);
+  const [loadingSavedReports, setLoadingSavedReports] = useState(false);
+  const [reportsListSearch, setReportsListSearch] = useState("");
+
+  const currentAuthUser = useMemo(() => {
+    try {
+      return JSON.parse(localStorage.getItem("authUser")) || {};
+    } catch {
+      return {};
+    }
+  }, []);
+  const currentUserId = currentAuthUser.id || currentAuthUser.UserId || 1;
+
+  const fetchUserSavedReports = useCallback(async () => {
+    try {
+      setLoadingSavedReports(true);
+      const res = await reportBuilderService.getSavedReports();
+      if (res && res.success && res.data) {
+        setSavedReportsList(res.data);
+      }
+    } catch (err) {
+      console.error("Error fetching user saved reports:", err);
+    } finally {
+      setLoadingSavedReports(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchUserSavedReports();
+  }, [fetchUserSavedReports]);
+
+  const handleLoadSavedReport = async (reportHeader) => {
+    try {
+      setLoadingMetadata(true);
+      const res = await reportBuilderService.getReportConfig(reportHeader.reportId);
+      if (res.success && res.data) {
+        const report = res.data;
+        setReportTitle(report.reportTitle);
+        setDescription(report.description || "");
+        setCategory(report.category || "General");
+        setSavedReportId(report.reportId);
+
+        const cfg = report.parsedConfig || JSON.parse(report.configJson);
+        if (cfg) {
+          if (cfg.selectedColumns) setSelectedColumns(cfg.selectedColumns);
+          if (cfg.customFormulas) setCustomFormulas(cfg.customFormulas);
+          if (cfg.filters) setFilters(cfg.filters);
+          if (cfg.orderBy) setOrderBy(cfg.orderBy);
+          if (cfg.joinPath) setJoinPath(cfg.joinPath);
+        }
+        setShowReportsListModal(false);
+      } else {
+        alert(res.message || "Failed to load report");
+      }
+    } catch (err) {
+      alert("Error loading report: " + (err.response?.data?.message || err.message));
+    } finally {
+      setLoadingMetadata(false);
+    }
+  };
+
+  const handleDeleteSavedReport = async (reportId, e) => {
+    if (e) e.stopPropagation();
+    if (!window.confirm("Are you sure you want to delete this custom report?")) return;
+    try {
+      const res = await reportBuilderService.deleteReport(reportId);
+      if (res.success) {
+        if (savedReportId === reportId) {
+          setSavedReportId(null);
+          setReportTitle("New Custom ERP Report");
+        }
+        fetchUserSavedReports();
+      } else {
+        alert(res.message || "Failed to delete report");
+      }
+    } catch (err) {
+      alert("Failed to delete report: " + (err.response?.data?.message || err.message));
+    }
+  };
 
   // -------------------------------------------------------------------------
   // Initial Load: Fetch Entities
@@ -763,6 +846,7 @@ const ReportBuilderStudio = () => {
         const res = await reportBuilderService.updateReport(savedReportId, configDto);
         if (res.success) {
           setSaveSuccessMsg("Report updated successfully and version snapshot created!");
+          fetchUserSavedReports();
           setTimeout(() => setShowSaveModal(false), 1200);
         }
       } else {
@@ -770,6 +854,7 @@ const ReportBuilderStudio = () => {
         if (res.success) {
           setSavedReportId(res.reportId);
           setSaveSuccessMsg("Report saved successfully! View generated.");
+          fetchUserSavedReports();
           setTimeout(() => setShowSaveModal(false), 1200);
         }
       }
@@ -959,6 +1044,18 @@ const ReportBuilderStudio = () => {
     return Array.from(new Set(selectedColumns.map((c) => c.physicalTable)));
   }, [selectedColumns]);
 
+  // Filter saved reports by title/category
+  const filteredSavedReports = useMemo(() => {
+    if (!reportsListSearch.trim()) return savedReportsList;
+    const q = reportsListSearch.toLowerCase();
+    return savedReportsList.filter(
+      (r) =>
+        r.reportTitle?.toLowerCase().includes(q) ||
+        r.category?.toLowerCase().includes(q) ||
+        r.createdByName?.toLowerCase().includes(q)
+    );
+  }, [savedReportsList, reportsListSearch]);
+
   // -------------------------------------------------------------------------
   // Pagination Calculations & Helper
   // -------------------------------------------------------------------------
@@ -1110,6 +1207,16 @@ const ReportBuilderStudio = () => {
         <div className="rb-topbar-actions">
           <button className="rb-btn rb-btn-outline" onClick={runLiveQuery} disabled={loadingQuery}>
             <FaPlay color="#2563eb" /> {loadingQuery ? "Running..." : "Run Report"}
+          </button>
+          <button
+            className="rb-btn rb-btn-outline"
+            onClick={() => {
+              fetchUserSavedReports();
+              setShowReportsListModal(true);
+            }}
+            title="Browse your saved reports"
+          >
+            <FaFolderOpen color="#2563eb" /> My Reports ({savedReportsList.filter((r) => r.createdByUserId === currentUserId).length})
           </button>
           <button className="rb-btn rb-btn-primary" onClick={() => setShowSaveModal(true)}>
             <FaSave /> {savedReportId ? "Update Report" : "Save Report"}
@@ -2131,6 +2238,13 @@ const ReportBuilderStudio = () => {
             </div>
           ) : (
             <Form>
+              <div className="alert alert-info py-2 px-3 d-flex align-items-center gap-2 mb-3" style={{ fontSize: "0.82rem" }}>
+                <FaLock color="#0284c7" />
+                <span>
+                  <strong>User Privacy:</strong> Yeh report aapke account (User #{currentUserId}) ke under save hogi aur sirf aapko hi dikhegi.
+                </span>
+              </div>
+
               <Form.Group className="mb-3">
                 <Form.Label className="fw-bold" style={{ fontSize: "0.85rem" }}>
                   Report Title *
@@ -2198,6 +2312,148 @@ const ReportBuilderStudio = () => {
           </Button>
           <Button variant="primary" size="sm" onClick={handleSaveReport} style={{ background: "#2563eb" }}>
             {savedReportId ? "Save Changes" : "Save as New Report"}
+          </Button>
+        </Modal.Footer>
+      </Modal>
+
+      {/* --------------------------------------------------------------------
+          MY SAVED REPORTS MODAL
+          -------------------------------------------------------------------- */}
+      <Modal show={showReportsListModal} onHide={() => setShowReportsListModal(false)} size="lg" centered>
+        <Modal.Header closeButton style={{ background: "#0f172a", color: "#ffffff" }}>
+          <div className="d-flex align-items-center gap-2">
+            <FaFolderOpen color="#38bdf8" size={18} />
+            <div>
+              <Modal.Title style={{ fontSize: "1.05rem", fontWeight: 700, margin: 0 }}>
+                My Saved Reports
+              </Modal.Title>
+              <div style={{ fontSize: "0.75rem", color: "#94a3b8" }}>
+                Reports created by you or standard system templates (Logged in: User #{currentUserId})
+              </div>
+            </div>
+          </div>
+        </Modal.Header>
+        <Modal.Body style={{ padding: "20px" }}>
+          {/* Search bar & filter pills */}
+          <div className="d-flex justify-content-between align-items-center gap-2 mb-3">
+            <div className="rb-field-search-bar mb-0 flex-grow-1">
+              <FaSearch className="rb-field-search-icon" />
+              <input
+                type="text"
+                placeholder="Search saved reports by name or category..."
+                value={reportsListSearch}
+                onChange={(e) => setReportsListSearch(e.target.value)}
+              />
+            </div>
+            <button
+              className="rb-btn rb-btn-outline"
+              style={{ fontSize: "0.78rem", padding: "6px 12px" }}
+              onClick={fetchUserSavedReports}
+              disabled={loadingSavedReports}
+            >
+              {loadingSavedReports ? "Refreshing..." : "↻ Refresh"}
+            </button>
+          </div>
+
+          {loadingSavedReports ? (
+            <div className="text-center py-4 text-muted">
+              <Spinner animation="border" size="sm" /> Loading reports...
+            </div>
+          ) : filteredSavedReports.length === 0 ? (
+            <div className="text-center py-5 text-muted">
+              <FaFolderOpen size={36} color="#cbd5e1" className="mb-2" />
+              <p className="mb-1 fw-bold">No saved reports found.</p>
+              <small>Click "Save Report" in the top bar to save your customized report!</small>
+            </div>
+          ) : (
+            <div className="table-responsive" style={{ maxHeight: "400px", overflowY: "auto" }}>
+              <Table hover className="align-middle mb-0" style={{ fontSize: "0.85rem" }}>
+                <thead style={{ background: "#f8fafc", position: "sticky", top: 0, zIndex: 1 }}>
+                  <tr>
+                    <th>Report Title</th>
+                    <th>Category</th>
+                    <th>Access / Author</th>
+                    <th>Last Updated</th>
+                    <th className="text-end">Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredSavedReports.map((r) => {
+                    const isOwnReport = r.createdByUserId === currentUserId;
+                    const isSystem = r.createdByUserId === 0;
+
+                    return (
+                      <tr key={r.reportId} style={savedReportId === r.reportId ? { background: "#eff6ff" } : {}}>
+                        <td>
+                          <div className="fw-bold text-dark">{r.reportTitle}</div>
+                          {r.description && (
+                            <small className="text-muted text-truncate d-block" style={{ maxWidth: "260px" }}>
+                              {r.description}
+                            </small>
+                          )}
+                        </td>
+                        <td>
+                          <Badge bg="secondary" style={{ fontSize: "0.7rem" }}>
+                            {r.category || "General"}
+                          </Badge>
+                        </td>
+                        <td>
+                          {isOwnReport ? (
+                            <Badge bg="success" style={{ fontSize: "0.7rem" }}>
+                              <FaUser /> My Report
+                            </Badge>
+                          ) : isSystem ? (
+                            <Badge bg="info" style={{ fontSize: "0.7rem" }}>
+                              🏢 System Template
+                            </Badge>
+                          ) : (
+                            <Badge bg="secondary" style={{ fontSize: "0.7rem" }}>
+                              {r.createdByName || `User #${r.createdByUserId}`}
+                            </Badge>
+                          )}
+                        </td>
+                        <td className="text-muted" style={{ fontSize: "0.78rem" }}>
+                          {r.lastUpdatedOn ? new Date(r.lastUpdatedOn).toLocaleDateString() : "-"}
+                        </td>
+                        <td className="text-end">
+                          <div className="d-flex justify-content-end align-items-center gap-1">
+                            <button
+                              className="rb-btn-xs"
+                              style={{ background: "#2563eb", color: "#fff" }}
+                              onClick={() => handleLoadSavedReport(r)}
+                              title="Load and edit in Report Builder"
+                            >
+                              Load
+                            </button>
+                            <button
+                              className="rb-btn-xs"
+                              onClick={() => window.open(`/CustomReport/${r.reportId}`, "_blank")}
+                              title="Open live report view"
+                            >
+                              View
+                            </button>
+                            {isOwnReport && (
+                              <button
+                                className="rb-btn-xs text-danger"
+                                onClick={(e) => handleDeleteSavedReport(r.reportId, e)}
+                                title="Delete this report"
+                              >
+                                <FaTrash size={10} />
+                              </button>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </Table>
+            </div>
+          )}
+        </Modal.Body>
+        <Modal.Footer>
+          <Button variant="secondary" size="sm" onClick={() => setShowReportsListModal(false)}>
+            Close
           </Button>
         </Modal.Footer>
       </Modal>

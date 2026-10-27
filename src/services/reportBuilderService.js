@@ -102,25 +102,33 @@ export const reportBuilderService = {
 
   // 10. Delete report
   deleteReport: async (reportId) => {
-    const res = await requestApi("delete", `${API_WEB_URLS.REPORT_BUILDER_DELETE}/${reportId}`);
+    const userData = JSON.parse(localStorage.getItem("authUser")) || {};
+    const userId = userData.id || userData.UserId || 1;
+    const res = await requestApi("delete", `${API_WEB_URLS.REPORT_BUILDER_DELETE}/${reportId}/${userId}/token`);
     return res.data;
   },
 
-  // 11. Get all saved reports
+  // 11. Get all saved reports accessible to current user
   getSavedReports: async () => {
-    const res = await requestApi("get", API_WEB_URLS.REPORT_BUILDER_SAVED_REPORTS);
+    const userData = JSON.parse(localStorage.getItem("authUser")) || {};
+    const userId = userData.id || userData.UserId || 1;
+    const res = await requestApi("get", `${API_WEB_URLS.REPORT_BUILDER_SAVED_REPORTS}/${userId}/token`);
     return res.data;
   },
 
   // 12. Get single report configuration
   getReportConfig: async (reportId) => {
-    const res = await requestApi("get", `${API_WEB_URLS.REPORT_BUILDER_GET_CONFIG}/${reportId}`);
+    const userData = JSON.parse(localStorage.getItem("authUser")) || {};
+    const userId = userData.id || userData.UserId || 1;
+    const res = await requestApi("get", `${API_WEB_URLS.REPORT_BUILDER_GET_CONFIG}/${reportId}/${userId}/token`);
     return res.data;
   },
 
-  // 13. Get menu reports for sidebar
+  // 13. Get menu reports for sidebar (filtered by current user)
   getMenuReports: async () => {
-    const res = await requestApi("get", API_WEB_URLS.REPORT_BUILDER_MENU_REPORTS);
+    const userData = JSON.parse(localStorage.getItem("authUser")) || {};
+    const userId = userData.id || userData.UserId || 1;
+    const res = await requestApi("get", `${API_WEB_URLS.REPORT_BUILDER_MENU_REPORTS}/${userId}/token`);
     return res.data;
   },
 
