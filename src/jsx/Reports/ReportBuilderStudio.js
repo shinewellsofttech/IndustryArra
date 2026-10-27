@@ -90,7 +90,7 @@ const PRESET_TEMPLATES = [
     badge: "Transfer",
     description: "Movement tracking across factory departments & stages",
     entityId: 24,
-    defaultColumns: ["DateOfCreation", "Actual", "IsActive"]
+    defaultColumns: ["DateOfCreation", "Actual"]
   }
 ];
 
@@ -141,7 +141,7 @@ const BUSINESS_MODULES = [
     color: "#059669",
     badge: "Movement",
     subtitle: "Department handovers, stage completions & transfer logs",
-    recommendedCols: ["DateOfCreation", "Actual", "IsActive"]
+    recommendedCols: ["DateOfCreation", "Actual"]
   },
   {
     id: 30,
@@ -150,7 +150,7 @@ const BUSINESS_MODULES = [
     color: "#9333ea",
     badge: "Inspection",
     subtitle: "QC inspection logs, batch approvals & defect rates",
-    recommendedCols: ["DateOfCreation", "JobCardNo", "DepartmentName", "Quantity"]
+    recommendedCols: ["DateOfCreation", "ContractNo", "ReportQty", "Quantity", "StartDate", "EndDate"]
   }
 ];
 
