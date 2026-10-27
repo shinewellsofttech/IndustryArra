@@ -1,8 +1,8 @@
 export const API_WEB_URLS = {
 
-  // BASE: "https://apiarra.shinewellsofttech.co.in/api/V1/",
+  BASE: "https://apiarra.shinewellsofttech.co.in/api/V1/",
   // BASE: "http://192.168.31.70:7037/api/V1/",
-  BASE: "https://localhost:44379/api/V1/" ,
+  // BASE: "http://localhost:56810/api/V1/" ,
 
   LOGIN: "Authentication/Login",
   // IMAGEURL: "https://localhost:44379/MemberImages/",
@@ -44,9 +44,13 @@ export const API_WEB_URLS = {
   USER_DASHBOARD_GET: "UserDashboard/GetConfig",
   USER_DASHBOARD_SAVE: "UserDashboard/SaveConfig",
   USER_DASHBOARD_RESET: "UserDashboard/ResetConfig",
+  MACHINE_RUNNING_STATUS_REPORT: "MachineRunningStatusReport",
+  ITEM_MACHINING_TIME_REPORT: "ItemMachiningTimeReport",
   DEPARTMENT_MASTER: "DepartmentMaster",
   DEPARTMENT_MASTER_ACTIVE: "DepartmentMaster/Active",
   DEPARTMENT_MASTER_REORDER: "DepartmentMaster/Reorder",
+  SHIFT_MASTER: "ShiftMaster",
+  SHIFT_MASTER_ACTIVE: "ShiftMaster/Active",
   FirmMaster: "FirmMaster",
   BranchMaster: "BranchMaster",
   UserMaster: "UserMaster",

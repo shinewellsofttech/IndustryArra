@@ -691,9 +691,10 @@ const MachineSwapModal = ({
                   const mId = m.ID ?? m.Id ?? m.F_MachineMaster;
                   const isCurrent = String(mId) === String(currentMachId);
                   const isBusy = !!(m.EngagedJobCardNo && String(m.EngagedJobCardNo).trim() !== "");
+                  const isInactive = m.IsActive === false || m.IsActive === 0 || m.IsActive === "0";
                   return (
-                    <option key={mId} value={mId} disabled={isCurrent}>
-                      {isCurrent ? `[CURRENT] ` : isBusy ? `⚠️ [BUSY on JC: ${m.EngagedJobCardNo}] ` : `✅ `}
+                    <option key={mId} value={mId} disabled={isCurrent || isInactive}>
+                      {isInactive ? `⛔ [BAND / INACTIVE] ` : isCurrent ? `[CURRENT] ` : isBusy ? `⚠️ [BUSY on JC: ${m.EngagedJobCardNo}] ` : `✅ `}
                       {m.Name || m.MachineName || `Machine #${mId}`} {m.MachineNo ? `(${m.MachineNo})` : ""}
                     </option>
                   );

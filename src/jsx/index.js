@@ -150,7 +150,10 @@ import PageList_DepartmentMaster from "./Masters/PageList_DepartmentMaster";
 import TotalItemSummary from "./Masters/TotalItemSummary";
 import ReportingEntrySystem from "./NewReportingSystem/ReportingEntrySystem";
 import QRScanner from "./Masters/QRScanner";
+import WoodIssueScanner from "./Masters/WoodIssueScanner";
 import MachineDelayDashboard from "./Reports/MachineDelayDashboard";
+import MachineRunningStatusReport from "./Reports/MachineRunningStatusReport";
+import ItemMachiningTimeReport from "./Reports/ItemMachiningTimeReport";
 import AddEdit_ModuleMaster from "./Masters/AddEdit_ModuleMaster";
 import PageList_ModuleMaster from "./Masters/PageList_ModuleMaster";
 import AddEdit_UserRole from "./Masters/AddEdit_UserRole";
@@ -159,6 +162,7 @@ import AddEdit_UserMasterCrud from "./Masters/AddEdit_UserMasterCrud";
 import PageList_UserMasterCrud from "./Masters/PageList_UserMasterCrud";
 import PermissionMetrixs from "./Masters/PermisstionMetrixs";
 import GlobalOptions from "./Masters/GlobalOptions";
+import PageList_ShiftMaster from "./Masters/PageList_ShiftMaster";
 
 const Markup = () => {
   const { menuToggle } = useContext(ThemeContext);
@@ -311,8 +315,12 @@ const Markup = () => {
     { url: "ContainerMasterReport", component: <ContainerMasterReport/> },
     { url: "ReportingEntrySystem", component: <ReportingEntrySystem/> },
     { url: "QRScanner", component: <QRScanner/> },
+    { url: "WoodIssueScanner", component: <WoodIssueScanner/> },
     { url: "MachineDelayDashboard", component: <MachineDelayDashboard/> },
+    { url: "MachineRunningStatusReport", component: <MachineRunningStatusReport/> },
+    { url: "ItemMachiningTimeReport", component: <ItemMachiningTimeReport/> },
     { url: "GlobalOptions", component: <GlobalOptions/> },
+    { url: "ShiftMaster", component: <PageList_ShiftMaster/> },
 
   ];
   let path = window.location.pathname;
@@ -342,6 +350,7 @@ const Markup = () => {
 
   const filteredRoutes = allroutes.filter(route => {
     if (!permissions || permissions.length === 0) return true;
+    if (userData?.role === 1 || userData?.roleId === 1 || userData?.Role === 1 || userData?.userType === 1 || userData?.UserType === 1 || userData?.userName?.toLowerCase() === 'admin' || userData?.username?.toLowerCase() === 'admin' || userData?.Name?.toLowerCase() === 'admin') return true;
 
     const publicPages = [
       'dashboard', 'todo', 'widget-basic', 'ecom-product-grid', 'ecom-product-list', 
@@ -352,8 +361,8 @@ const Markup = () => {
     ];
     if (publicPages.includes(route.url)) return true;
 
-    const checkPath = getParentPath(route.url);
-    const perm = permissions.find(p => (p.ModulePath || p.Path)?.toLowerCase() === checkPath.toLowerCase());
+    const checkPath = getParentPath(route.url).toLowerCase().replace(/^\//, '');
+    const perm = permissions.find(p => (p.ModulePath || p.Path)?.toLowerCase().replace(/^\//, '') === checkPath);
 
     if (perm) {
       if (route.url.startsWith('Add')) {
@@ -372,10 +381,11 @@ const Markup = () => {
       "ModuleMaster", "ReportingEntrySystem", "PermissionMatrix", "ContainerEntrySystem", 
       "ContainerMaster", "ContainerMasterReport", "ContainerEntryReport", 
       "UserMasterCrud", "UserRole", "WoodComponentReport", "AddWoodIssue", "QRScanner",
-      "GlobalOptions", "Report_ContainerWise"
+      "WoodIssueScanner", "GlobalOptions", "Report_ContainerWise",
+      "MachineDelayDashboard", "MachineRunningStatusReport", "ItemMachiningTimeReport", "ShiftMaster"
     ];
 
-    if (allModulesList.some(m => m.toLowerCase() === checkPath.toLowerCase())) {
+    if (allModulesList.some(m => m.toLowerCase().replace(/^\//, '') === checkPath)) {
       return false;
     }
 
@@ -392,7 +402,6 @@ const Markup = () => {
           <Route path='page-error-404' element={<Error404/>} />
           <Route path='page-error-500' element={<Error500/>} />
           <Route path='page-error-503' element={<Error503/>} />
-          <Route path='/*' element={<Error404/>} />
           <Route  element={<MainLayout />} > 
               {filteredRoutes.map((data, i) => (
                 <Route
@@ -403,6 +412,7 @@ const Markup = () => {
                 />
               ))}
           </Route>
+          <Route path='*' element={<Error404/>} />
         </Routes>
         <Setting />
         <ScrollToTop />

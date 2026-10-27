@@ -265,9 +265,14 @@ const AddEdit_UserMasterCrud = () => {
                               value={values.F_MachineMaster || 0}
                             >
                               <option value={0}>-- Select Machine --</option>
-                              {state.machines && state.machines.map(m => (
-                                <option key={m.Id} value={m.Id}>{m.Name}</option>
-                              ))}
+                              {state.machines && state.machines.map(m => {
+                                const isMachActive = m.IsActive !== false && m.IsActive !== 0 && m.IsActive !== "0";
+                                return (
+                                  <option key={m.Id} value={m.Id} disabled={!isMachActive}>
+                                    {m.Name} {!isMachActive ? " (Band / Inactive)" : ""}
+                                  </option>
+                                );
+                              })}
                             </select>
                           </div>
                         )}

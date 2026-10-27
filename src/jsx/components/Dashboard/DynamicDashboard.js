@@ -43,6 +43,7 @@ const DEFAULT_FALLBACK_WIDGETS = [
 const DEFAULT_FALLBACK_SHORTCUTS = [
   { id: "JobCardForm", title: "JOB CARD", route: "JobCardForm", icon: "FaFileAlt", color: "#4e73df" },
   { id: "QRScanner", title: "QR SCANNER", route: "QRScanner", icon: "FaQrcode", color: "#1cc88a" },
+  { id: "WoodIssueScanner", title: "WOOD SCANNER", route: "WoodIssueScanner", icon: "FaQrcode", color: "#e74a3b" },
   { id: "AddWoodIssue", title: "WOOD ISSUE", route: "AddWoodIssue", icon: "FaBoxes", color: "#f6c23e" },
   { id: "MachineMaster", title: "MACHINE MASTER", route: "MachineMaster", icon: "FaCogs", color: "#36b9cc" }
 ];

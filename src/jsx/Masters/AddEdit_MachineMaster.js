@@ -18,6 +18,7 @@ const AddEdit_MachineMaster = () => {
     formData: {
       Name: "",
       F_MachineTypeMaster: "",
+      IsActive: true,
     },
     FillArray: [],
   });
@@ -51,6 +52,7 @@ const AddEdit_MachineMaster = () => {
       const formData = new FormData();
       formData.append("Name", values.Name);
       formData.append("F_MachineTypeMaster", values.F_MachineTypeMaster);
+      formData.append("IsActive", (values.IsActive !== false && values.IsActive !== 0 && values.IsActive !== "0") ? "true" : "false");
 
       Fn_AddEditData(
         dispatch,
@@ -147,6 +149,44 @@ const AddEdit_MachineMaster = () => {
                           </div>
                         </div>
                       </div>
+
+                      <div className="row mb-4">
+                        <div className="col-md-6">
+                          <div className="form-group">
+                            <label className="text-label d-block fw-bold">Machine Status</label>
+                            <div className="form-check form-switch mt-2">
+                              <input
+                                type="checkbox"
+                                className="form-check-input"
+                                id="isActiveSwitch"
+                                name="IsActive"
+                                role="switch"
+                                style={{ width: '2.5rem', height: '1.3rem', cursor: 'pointer' }}
+                                checked={values.IsActive !== false && values.IsActive !== 0 && values.IsActive !== "0"}
+                                onChange={(e) => {
+                                  handleChange({
+                                    target: {
+                                      name: "IsActive",
+                                      value: e.target.checked
+                                    }
+                                  });
+                                }}
+                              />
+                              <label className="form-check-label fw-bold ms-3" htmlFor="isActiveSwitch" style={{ cursor: 'pointer', fontSize: '1rem' }}>
+                                {values.IsActive !== false && values.IsActive !== 0 && values.IsActive !== "0" ? (
+                                  <span className="text-success"><i className="fas fa-check-circle me-1"></i> Active (Operational)</span>
+                                ) : (
+                                  <span className="text-danger"><i className="fas fa-ban me-1"></i> Inactive (Band / Closed)</span>
+                                )}
+                              </label>
+                            </div>
+                            <small className="text-muted d-block mt-2">
+                              Band ya repair par chal rahi machine ko Inactive mark karein taki reporting aur assignments me alag show ho.
+                            </small>
+                          </div>
+                        </div>
+                      </div>
+
                       <button
                         type="submit"
                         className="btn me-2 btn-primary"

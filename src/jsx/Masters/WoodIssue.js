@@ -8,6 +8,7 @@ import { Fn_FillListData } from '../../store/Functions';
 import { useDispatch } from 'react-redux';
 import { API_WEB_URLS } from '../../constants/constAPI';
 import { ThemeContext } from '../../context/ThemeContext';
+import { generateQRCodeSVG } from './BarcodeHelper';
 
 function WoodIssue({woodIssueData = {}, components = [], woodSummary = []}) {
   const woodIssueRef = useRef(null);
@@ -138,58 +139,9 @@ function WoodIssue({woodIssueData = {}, components = [], woodSummary = []}) {
     }, 100);
   };
   
-  // Method 3: using html2canvas + jsPDF for Print
+  // Native A4 print handler
   const printPDFWithCanvas = () => {
-    setPdfFontSize(true);
-    setTimeout(() => {
-      const input = woodIssueRef.current;
-  
-      // Hide FINAL CFT columns before PDF generation
-      const finalCftElements = input.querySelectorAll('.final-cft-column');
-      finalCftElements.forEach(el => {
-        el.style.display = 'none';
-      });
-  
-      html2canvas(input, {
-        scale: 2,
-        logging: false,
-        useCORS: true,
-      }).then(canvas => {
-        const imgData = canvas.toDataURL('image/png');
-        // Use portrait orientation
-        const pdf = new jsPDF('p', 'mm', 'a4');
-        const pdfWidth = pdf.internal.pageSize.getWidth();
-        const pdfHeight = pdf.internal.pageSize.getHeight();
-        const imgWidth = canvas.width;
-        const imgHeight = canvas.height;
-
-        // Calculate ratio to fit perfectly on page with no margins
-        const marginX = 0; // No margin on left and right
-        const marginY = 0; // No margin on top and bottom
-        const availableWidth = pdfWidth - (2 * marginX);
-        const availableHeight = pdfHeight - (2 * marginY);
-        
-        const ratio = Math.min(availableWidth / imgWidth, availableHeight / imgHeight);
-        const scaledWidth = imgWidth * ratio;
-        const scaledHeight = imgHeight * ratio;
-        
-        // Center the image if there's any remaining space
-        const imgX = marginX + (availableWidth - scaledWidth) / 2;
-        const imgY = marginY + (availableHeight - scaledHeight) / 2;
-
-        pdf.addImage(imgData, 'PNG', imgX, imgY, scaledWidth, scaledHeight);
-  
-        // Open print dialog
-        window.open(pdf.output('bloburl'), '_blank').print();
-  
-        // Show FINAL CFT columns again after PDF is generated
-        finalCftElements.forEach(el => {
-          el.style.display = '';
-        });
-  
-        setPdfFontSize(false);
-      });
-    }, 100);
+    handlePrintA4();
   };
   
   // Export to Excel
@@ -370,10 +322,14 @@ function WoodIssue({woodIssueData = {}, components = [], woodSummary = []}) {
   const formatDate = (dateString) => {
     if (!dateString) return '';
     try {
-        return new Date(dateString).toLocaleDateString();
+      const d = new Date(dateString);
+      if (isNaN(d.getTime())) {
+        return dateString;
+      }
+      return d.toLocaleDateString();
     } 
     catch (error) {
-      return '';
+      return dateString || '';
     }
   };
 
@@ -389,108 +345,454 @@ function WoodIssue({woodIssueData = {}, components = [], woodSummary = []}) {
     return formatted.replace(/\.0+$/, '');
   };
 
+  // Generate clean, resolution-independent A4 print HTML covering 100% of printable A4 width (198mm)
+  const generateWoodIssuePrintHTML = () => {
+    const allNonJComponents = Object.entries(groupedComponents)
+      .filter(([category]) => category !== 'J')
+      .flatMap(([category, comps]) => comps)
+      .sort((a, b) => (Number(a?.SNo) || 0) - (Number(b?.SNo) || 0));
+
+    const jComponents = groupedComponents['J'] || [];
+
+    const qrSvg = woodIssueData?.Id 
+      ? generateQRCodeSVG(`WI-${woodIssueData.Id}-${woodIssueData.F_ContainerMasterL || ''}-${woodIssueData.F_ItemMaster || ''}`)
+      : '';
+
+    const totalSummaryCft = (woodSummary || []).reduce((sum, item) => sum + Number(item?.Cft || 0), 0);
+
+    return `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <title>Wood Issue - ${woodIssueData?.ItemCode || 'Report'}</title>
+        <meta charset="utf-8" />
+        <style>
+          @page {
+            size: A4 portrait;
+            margin: 6mm;
+          }
+          * {
+            box-sizing: border-box;
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+          }
+          html, body {
+            margin: 0;
+            padding: 0;
+            font-family: Arial, Helvetica, sans-serif;
+            background: #ffffff;
+            color: #000000;
+          }
+          .wood-issue-container {
+            width: 198mm !important;
+            max-width: 198mm !important;
+            margin: 0 auto;
+          }
+          table {
+            width: 100% !important;
+            border-collapse: collapse !important;
+          }
+          th, td {
+            border: 1px solid #000000 !important;
+            padding: 2.5px 3.5px !important;
+            font-size: 9.5px !important;
+            line-height: 1.25 !important;
+            color: #000000 !important;
+          }
+          th {
+            background-color: #f0f0f0 !important;
+            font-weight: bold !important;
+          }
+          thead {
+            display: table-header-group !important;
+          }
+          tr {
+            page-break-inside: avoid !important;
+          }
+          .header-table td {
+            font-size: 10px !important;
+            padding: 3.5px 5px !important;
+          }
+          .header-label {
+            font-weight: bold !important;
+            font-size: 10px !important;
+            background-color: #fafafa !important;
+          }
+          .title-bar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            min-height: 64px;
+            padding: 2px 6px;
+          }
+          .title-text {
+            font-size: 15px;
+            font-weight: bold;
+            letter-spacing: 0.5px;
+            text-align: center;
+          }
+          .qr-box {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            background: #fff;
+            padding: 2px 4px;
+            border: 1px solid #000000;
+            border-radius: 3px;
+          }
+          .qr-label {
+            font-size: 8.5px;
+            font-weight: bold;
+            margin-top: 1px;
+            line-height: 1;
+            letter-spacing: 0.3px;
+          }
+          .flex-row {
+            display: flex;
+            width: 100%;
+          }
+          .summary-box {
+            display: flex;
+            width: 100%;
+            page-break-inside: avoid !important;
+          }
+          .stock-box {
+            width: 140px;
+            border-left: 1px solid #000;
+            border-top: 1px solid #000;
+            border-bottom: 1px solid #000;
+            display: flex;
+            flex-direction: column;
+          }
+          .stock-box-header {
+            padding: 4px;
+            text-align: center;
+            font-weight: bold;
+            background-color: #f0f0f0;
+            border-bottom: 1px solid #000;
+            font-size: 9.5px;
+          }
+          .stock-box-content {
+            flex: 1;
+            min-height: 50px;
+            padding: 4px;
+            font-size: 9.5px;
+          }
+        </style>
+      </head>
+      <body>
+        <div class="wood-issue-container">
+          <!-- Top Metadata Table -->
+          <table class="header-table" style="margin-bottom: 0;">
+            <tbody>
+              <tr>
+                <td colspan="4" style="background-color: #f0f0f0; padding: 3px 8px;">
+                  <div class="title-bar">
+                    <div style="width: 80px; visibility: hidden;"></div>
+                    <div class="title-text">WOOD ISSUE BILL OF MATERIAL</div>
+                    <div style="width: 80px; display: flex; justify-content: flex-end;">
+                      ${woodIssueData?.Id ? `
+                        <div class="qr-box">
+                          ${qrSvg}
+                          <span class="qr-label">WI-${woodIssueData.Id}</span>
+                        </div>
+                      ` : ''}
+                    </div>
+                  </div>
+                </td>
+              </tr>
+              <tr>
+                <td style="width: 15%;" class="header-label">PRODUCT NAME</td>
+                <td style="width: 35%;">${woodIssueData?.ProductName || ''}</td>
+                <td style="width: 15%;" class="header-label">PRODUCT CODE</td>
+                <td style="width: 35%;">${woodIssueData?.ItemCode || ''}</td>
+              </tr>
+              <tr>
+                <td class="header-label">SHIPMENT NO</td>
+                <td>${woodIssueData?.ContainerNumber || ''}</td>
+                <td class="header-label">INSPECTION DATE</td>
+                <td>${formatDate(woodIssueData?.InspectionDate)}</td>
+              </tr>
+              <tr>
+                <td class="header-label">BATCH NO</td>
+                <td>${batchNo || woodIssueData?.BatchNo || ''}</td>
+                <td class="header-label">QUANTITY</td>
+                <td>${formatNumber(woodIssueData?.Quantity)}</td>
+              </tr>
+              <tr>
+                <td class="header-label">DIMENSIONS (Cm)</td>
+                <td style="padding: 1px 4px;">
+                  <table style="width: 100%; border: none;">
+                    <tr>
+                      <th style="width: 33.3%; text-align: center; font-size: 8.5px; border: none; border-right: 1px solid #000;">W</th>
+                      <th style="width: 33.3%; text-align: center; font-size: 8.5px; border: none; border-right: 1px solid #000;">D</th>
+                      <th style="width: 33.3%; text-align: center; font-size: 8.5px; border: none;">H</th>
+                    </tr>
+                    <tr>
+                      <td style="text-align: center; font-size: 9.5px; border: none; border-top: 1px solid #000; border-right: 1px solid #000;">${formatNumber(woodIssueData?.W)}</td>
+                      <td style="text-align: center; font-size: 9.5px; border: none; border-top: 1px solid #000; border-right: 1px solid #000;">${formatNumber(woodIssueData?.D)}</td>
+                      <td style="text-align: center; font-size: 9.5px; border: none; border-top: 1px solid #000;">${formatNumber(woodIssueData?.H)}</td>
+                    </tr>
+                  </table>
+                </td>
+                <td class="header-label">WOOD CFT (Issue)</td>
+                <td>${formatNumber(woodIssueData?.TotalIssueCFT)}</td>
+              </tr>
+              <tr>
+                <td class="header-label">JobCard Code</td>
+                <td>${woodIssueData?.JobCardInitial || ''}</td>
+                <td class="header-label">WOOD CFT (Final)</td>
+                <td>${formatNumber(woodIssueData?.TotalFinalCFT)}</td>
+              </tr>
+            </tbody>
+          </table>
+
+          <!-- Component BOM Table (198mm exact width) -->
+          <table style="border-top: none;">
+            <thead>
+              <tr>
+                <th rowspan="2" style="width: 10mm; text-align: center; border-top: none;">S. No.</th>
+                <th rowspan="2" style="width: 48mm; text-align: center; border-top: none;">Descriptions</th>
+                <th colspan="3" style="width: 36mm; text-align: center; border-top: none;">FINAL SIZE IN CENTIMETERS</th>
+                <th rowspan="2" style="width: 15mm; text-align: center; border-top: none;">Batch Qty.</th>
+                <th rowspan="2" style="width: 16mm; text-align: center; border-top: none;">FINAL CFT</th>
+                <th colspan="3" style="width: 39mm; text-align: center; border-top: none;">ISSUE SIZE IN INCH</th>
+                <th rowspan="2" style="width: 16mm; text-align: center; border-top: none;">Batch Qty.</th>
+                <th rowspan="2" style="width: 18mm; text-align: center; border-top: none;">Issue cft</th>
+              </tr>
+              <tr>
+                <th style="width: 12mm; text-align: center;">L</th>
+                <th style="width: 12mm; text-align: center;">W</th>
+                <th style="width: 12mm; text-align: center;">T</th>
+                <th style="width: 13mm; text-align: center;">L</th>
+                <th style="width: 13mm; text-align: center;">W</th>
+                <th style="width: 13mm; text-align: center;">T</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${allNonJComponents.map((comp) => `
+                <tr>
+                  <td style="text-align: center;">${comp?.SNo || ''}</td>
+                  <td>${comp?.Description || ''}</td>
+                  <td style="text-align: center;">${formatNumber(comp?.L1)}</td>
+                  <td style="text-align: center;">${formatNumber(comp?.W1)}</td>
+                  <td style="text-align: center;">${formatNumber(comp?.T1)}</td>
+                  <td style="text-align: center;">${formatNumber(comp?.BatchQty)}</td>
+                  <td style="text-align: center;">${formatNumber(comp?.FinalCFT)}</td>
+                  <td style="text-align: center;">${formatNumber(comp?.L2)}</td>
+                  <td style="text-align: center;">${formatNumber(comp?.W2)}</td>
+                  <td style="text-align: center;">${formatNumber(comp?.T2)}</td>
+                  <td style="text-align: center;">${formatNumber(comp?.BatchQtyIssue || comp?.BatchQty)}</td>
+                  <td style="text-align: center;">${formatNumber(comp?.IssueCFT)}</td>
+                </tr>
+                ${hasIssue3(comp) ? `
+                  <tr>
+                    <td style="text-align: center;">${comp?.SNo != null ? comp.SNo + '.1' : ''}</td>
+                    <td>${comp?.Description || ''}</td>
+                    <td style="text-align: center;"></td>
+                    <td style="text-align: center;"></td>
+                    <td style="text-align: center;"></td>
+                    <td style="text-align: center;"></td>
+                    <td style="text-align: center;"></td>
+                    <td style="text-align: center;">${formatNumber(comp?.L3)}</td>
+                    <td style="text-align: center;">${formatNumber(comp?.W3)}</td>
+                    <td style="text-align: center;">${formatNumber(comp?.T3)}</td>
+                    <td style="text-align: center;">${formatNumber(comp?.BatchQtyIssue3)}</td>
+                    <td style="text-align: center;">${formatNumber(comp?.IssueCFT3)}</td>
+                  </tr>
+                ` : ''}
+              `).join('')}
+
+              ${jComponents.length > 0 ? `
+                <tr>
+                  <td colspan="12" style="text-align: center; font-weight: bold; background-color: #f0f0f0; padding: 4px;">
+                    JOINTING
+                  </td>
+                </tr>
+                ${jComponents.map((comp, idx) => `
+                  <tr>
+                    <td style="text-align: center;">${idx + 1}</td>
+                    <td>${comp?.Description || ''}</td>
+                    <td style="text-align: center;">${formatNumber(comp?.L1)}</td>
+                    <td style="text-align: center;">${formatNumber(comp?.W1)}</td>
+                    <td style="text-align: center;">${formatNumber(comp?.T1)}</td>
+                    <td style="text-align: center;">${formatNumber(comp?.BatchQty)}</td>
+                    <td style="text-align: center;">${formatNumber(comp?.FinalCFT)}</td>
+                    <td style="text-align: center;">${formatNumber(comp?.L2)}</td>
+                    <td style="text-align: center;">${formatNumber(comp?.W2)}</td>
+                    <td style="text-align: center;">${formatNumber(comp?.T2)}</td>
+                    <td style="text-align: center;">${formatNumber(comp?.BatchQtyIssue || comp?.BatchQty)}</td>
+                    <td style="text-align: center;">${formatNumber(comp?.IssueCFT)}</td>
+                  </tr>
+                  ${hasIssue3(comp) ? `
+                    <tr>
+                      <td style="text-align: center;">${(idx + 1) + '.1'}</td>
+                      <td>${comp?.Description || ''}</td>
+                      <td style="text-align: center;"></td>
+                      <td style="text-align: center;"></td>
+                      <td style="text-align: center;"></td>
+                      <td style="text-align: center;"></td>
+                      <td style="text-align: center;"></td>
+                      <td style="text-align: center;">${formatNumber(comp?.L3)}</td>
+                      <td style="text-align: center;">${formatNumber(comp?.W3)}</td>
+                      <td style="text-align: center;">${formatNumber(comp?.T3)}</td>
+                      <td style="text-align: center;">${formatNumber(comp?.BatchQtyIssue3)}</td>
+                      <td style="text-align: center;">${formatNumber(comp?.IssueCFT3)}</td>
+                    </tr>
+                  ` : ''}
+                `).join('')}
+              ` : ''}
+
+              <!-- Grand Total Row -->
+              <tr style="font-weight: bold; background-color: #f0f0f0;">
+                <td style="text-align: center;"></td>
+                <td style="font-weight: bold;">TOTAL cft</td>
+                <td colspan="4"></td>
+                <td style="text-align: center; font-weight: bold;">${formatNumber(grandTotals.finalCft)}</td>
+                <td colspan="4"></td>
+                <td style="text-align: center; font-weight: bold;">${formatNumber(grandTotals.issueCft)}</td>
+              </tr>
+            </tbody>
+          </table>
+
+          <!-- Wood Issue Summary Section & Side Boxes -->
+          <div class="summary-box" style="margin-top: 0;">
+            <div style="flex: 1;">
+              <table style="border-top: none;">
+                <thead>
+                  <tr>
+                    <th colspan="3" style="text-align: center; font-size: 10px; padding: 3px; border-top: none;">
+                      WOOD ISSUE SUMMARY
+                    </th>
+                  </tr>
+                  <tr>
+                    <th style="width: 33.3%; text-align: center;">L (in)</th>
+                    <th style="width: 33.3%; text-align: center;">THK (in)</th>
+                    <th style="width: 33.4%; text-align: center;">CFT</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  ${(woodSummary || []).map((item) => `
+                    <tr>
+                      <td style="text-align: center;">${formatNumber(item?.Length)}</td>
+                      <td style="text-align: center;">${formatNumber(item?.Thk)}</td>
+                      <td style="text-align: center;">${formatNumber(item?.Cft)}</td>
+                    </tr>
+                  `).join('')}
+                  <tr style="font-weight: bold; background-color: #f9f9f9;">
+                    <td colspan="2" style="text-align: center;">TOTAL</td>
+                    <td style="text-align: center;">${formatNumber(totalSummaryCft)}</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            <!-- Issued Stock -->
+            <div class="stock-box">
+              <div class="stock-box-header">ISSUED STOCK</div>
+              <div class="stock-box-content"></div>
+            </div>
+
+            <!-- Re-Issued Stock -->
+            <div class="stock-box">
+              <div class="stock-box-header">RE-ISSUED STOCK</div>
+              <div class="stock-box-content"></div>
+            </div>
+
+            <!-- Remarks -->
+            <div class="stock-box" style="border-right: 1px solid #000;">
+              <div class="stock-box-header">REMARKS</div>
+              <div class="stock-box-content" style="white-space: pre-wrap;">${commonRemarks || ''}</div>
+            </div>
+          </div>
+        </div>
+      </body>
+      </html>
+    `;
+  };
+
+  // Dedicated A4 Print Function: opens clean window with exact 198mm layout and triggers print
+  const handlePrintA4 = () => {
+    const printWindow = window.open('', '_blank');
+    if (!printWindow) {
+      alert('Please allow popups to print this document.');
+      return;
+    }
+    const htmlContent = generateWoodIssuePrintHTML();
+    printWindow.document.open();
+    printWindow.document.write(htmlContent);
+    printWindow.document.close();
+
+    const triggerPrint = () => {
+      try {
+        printWindow.focus();
+        printWindow.print();
+        printWindow.onafterprint = () => {
+          printWindow.close();
+        };
+      } catch (err) {
+        console.error('Error triggering print:', err);
+      }
+    };
+
+    if (printWindow.document.readyState === 'complete') {
+      setTimeout(triggerPrint, 250);
+    } else {
+      printWindow.onload = () => {
+        setTimeout(triggerPrint, 250);
+      };
+    }
+  };
+
   return (
     <>
       <style>
         {`
           @media print {
             @page {
-              margin: 0mm !important;
-              padding: 0mm !important;
               size: A4 portrait;
-            }
-            * {
-              margin-left: 0 !important;
-              margin-right: 0 !important;
-              padding-left: 0 !important;
-              padding-right: 0 !important;
-            }
-            html, body {
-              margin: 0 !important;
-              padding: 0 !important;
-              width: 100% !important;
-              max-width: 100% !important;
-              overflow: visible !important;
+              margin: 6mm;
             }
             body {
+              margin: 0 !important;
+              padding: 0 !important;
+              background: #ffffff !important;
+              color: #000000 !important;
               -webkit-print-color-adjust: exact !important;
               print-color-adjust: exact !important;
             }
-            body * {
-              margin: 0 !important;
-            }
-            body > *:first-child {
-              margin-top: 0 !important;
-              padding-top: 0 !important;
-            }
-            .container, .container-fluid, .row, .col {
-              margin: 0 !important;
-              padding: 0 !important;
-            }
-            .print-safe-page {
-              margin: 0 !important;
-              padding: 0 !important;
-              display: block !important;
-              width: 100% !important;
-              max-width: 100% !important;
-            }
-            .wood-issue-container {
-              margin: 0 !important;
-              padding: 0 !important;
-              border: 1px solid #000000 !important;
-              width: 100% !important;
-              max-width: 100% !important;
-              box-sizing: border-box !important;
-            }
-            .wood-issue-container > div {
-              margin: 0 !important;
-              padding: 0 !important;
-              width: 100% !important;
-            }
-            .no-print {
+            .nav-header, .deznav, .header, .footer, .btn, button, .no-print {
               display: none !important;
             }
+            .wood-issue-container {
+              width: 198mm !important;
+              max-width: 198mm !important;
+              margin: 0 auto !important;
+              border: 1px solid #000000 !important;
+              background-color: #ffffff !important;
+              color: #000000 !important;
+            }
             table {
-              margin: 0 !important;
-              padding: 0 !important;
-              page-break-inside: avoid;
               width: 100% !important;
-              max-width: 100% !important;
-              table-layout: auto !important;
+              border-collapse: collapse !important;
             }
-            table:first-child {
-              margin-top: 0 !important;
+            th, td {
+              border: 1px solid #000000 !important;
+              padding: 2.5px 4px !important;
+              font-size: 9.5px !important;
+              color: #000000 !important;
+              background-color: transparent !important;
             }
-            table tr:first-child td:first-child,
-            table tr:first-child th:first-child {
-              padding-top: 0 !important;
+            th {
+              background-color: #f0f0f0 !important;
+              font-weight: bold !important;
             }
-            td, th {
-              padding-top: 0 !important;
+            thead {
+              display: table-header-group !important;
             }
-            .mb-0, .mb-1, .mb-2, .mb-3, .mb-4, .mb-5 {
-              margin-bottom: 0 !important;
-            }
-            .mt-0, .mt-1, .mt-2, .mt-3, .mt-4, .mt-5 {
-              margin-top: 0 !important;
-            }
-            .flex-container {
-              width: 100% !important;
-              max-width: 100% !important;
-              margin: 0 !important;
-              padding: 0 !important;
-            }
-            .flex-container > div:first-child {
-              flex: 1 !important;
-              min-width: 0 !important;
-              margin: 0 !important;
-              padding: 0 !important;
-            }
-            .flex-container table {
-              width: 100% !important;
-              max-width: 100% !important;
-              margin: 0 !important;
-              padding: 0 !important;
+            tr {
+              page-break-inside: avoid !important;
             }
           }
           .dimensions-table {
@@ -600,9 +902,10 @@ function WoodIssue({woodIssueData = {}, components = [], woodSummary = []}) {
         </Button> */}
         <Button 
           variant="info" 
-          onClick={printPDFWithCanvas}
+          onClick={handlePrintA4}
+          style={{ fontWeight: 'bold' }}
         >
-          Print PDF
+          <i className="fa fa-print me-2"></i> Print Sheet (A4)
         </Button>
         {isEditing && (
           <Button 
@@ -641,8 +944,65 @@ function WoodIssue({woodIssueData = {}, components = [], woodSummary = []}) {
           <tbody>
 
             <tr>
-              <td colSpan="4" className="text-center" style={{ padding: '8px', backgroundColor: headerBgColor, border: `1px solid ${borderColor}`, color: textColor }}>
-                <h5 style={{ margin: 0, color: textColor, fontWeight: 'bold', fontSize: '16px' }}>WOOD ISSUE BILL OF MATERIAL </h5>
+              <td colSpan="4" style={{ 
+                padding: '6px 14px', 
+                backgroundColor: headerBgColor, 
+                border: `1px solid ${borderColor}`, 
+                color: textColor 
+              }}>
+                <div style={{ 
+                  display: 'flex', 
+                  alignItems: 'center', 
+                  justifyContent: 'space-between',
+                  minHeight: '74px'
+                }}>
+                  {/* Left spacer for perfect centering */}
+                  <div style={{ width: '85px', visibility: 'hidden' }} />
+
+                  {/* Center Title */}
+                  <div style={{ textAlign: 'center' }}>
+                    <h5 style={{ 
+                      margin: 0, 
+                      color: textColor, 
+                      fontWeight: 'bold', 
+                      fontSize: '17px', 
+                      letterSpacing: '0.5px' 
+                    }}>
+                      WOOD ISSUE BILL OF MATERIAL
+                    </h5>
+                  </div>
+
+                  {/* Top-Right QR Code Box */}
+                  <div style={{ width: '85px', display: 'flex', justifyContent: 'flex-end' }}>
+                    {woodIssueData?.Id && (
+                      <div 
+                        style={{ 
+                          backgroundColor: '#ffffff', 
+                          padding: '3px 4px', 
+                          border: '1px solid #333333', 
+                          borderRadius: '4px', 
+                          display: 'flex', 
+                          flexDirection: 'column', 
+                          alignItems: 'center',
+                          boxShadow: '0 1px 3px rgba(0,0,0,0.1)'
+                        }}
+                        title={`Wood Issue QR: WI-${woodIssueData.Id}`}
+                      >
+                        <div dangerouslySetInnerHTML={{ __html: generateQRCodeSVG(`WI-${woodIssueData.Id}-${woodIssueData.F_ContainerMasterL || ''}-${woodIssueData.F_ItemMaster || ''}`) }} />
+                        <span style={{ 
+                          fontSize: '9px', 
+                          fontWeight: 'bold', 
+                          color: '#000000', 
+                          marginTop: '2px', 
+                          letterSpacing: '0.3px', 
+                          lineHeight: 1 
+                        }}>
+                          WI-{woodIssueData.Id}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                </div>
               </td>
             </tr>
 

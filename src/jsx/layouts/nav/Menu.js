@@ -56,6 +56,10 @@ const allDocumentationItems = [
         to: 'DepartmentMaster',
     },
     {
+        title: 'SHIFT MASTER',
+        to: 'ShiftMaster',
+    },
+    {
         title: 'CREATE AL SLIP',
         to: 'AddALSlip',
     },
@@ -82,6 +86,22 @@ const allReportingItems = [
     {
         title: 'SCANNER REPORTING',
         to: 'QRScanner',
+    },
+    {
+        title: 'WOOD ISSUE SCANNER',
+        to: 'WoodIssueScanner',
+    },
+    {
+        title: 'MACHINE DELAY DASHBOARD',
+        to: 'MachineDelayDashboard',
+    },
+    {
+        title: 'MACHINE RUNNING STATUS',
+        to: 'MachineRunningStatusReport',
+    },
+    {
+        title: 'ITEM MACHINING TIME',
+        to: 'ItemMachiningTimeReport',
     },
     {
         title: 'CONTAINER TRACK REPORT',
@@ -143,10 +163,10 @@ const filterByPermissions = (menuList, permissions) => {
         return menuList;
     }
     return menuList.filter(item => {
-        if (item.to === 'dashboard' || 
-            item.to === 'MachineDelayDashboard') return true;
-        const perm = permissions.find(p => (p.ModulePath || p.Path)?.toLowerCase() === item.to?.toLowerCase());
-        return perm ? perm.IsView : false;
+        if (item.to === 'dashboard') return true;
+        const itemPath = (item.to || '').toLowerCase().replace(/^\//, '');
+        const perm = permissions.find(p => (p.ModulePath || p.Path)?.toLowerCase().replace(/^\//, '') === itemPath);
+        return perm ? !!perm.IsView : false;
     });
 };
 

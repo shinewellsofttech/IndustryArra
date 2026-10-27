@@ -954,11 +954,14 @@ export const PageList_ComponentMaster = ({ filterItemCode, filterIsActive, isMod
 											}}
 										>
 											<option value="">Select Machine</option>
-											{State.MachineMaster && State.MachineMaster.map((machine) => (
-												<option key={machine.Id} value={machine.Id}>
-													{machine.Name}
-												</option>
-											))}
+											{State.MachineMaster && State.MachineMaster.map((machine) => {
+												const isMachActive = machine.IsActive !== false && machine.IsActive !== 0 && machine.IsActive !== "0";
+												return (
+													<option key={machine.Id} value={machine.Id} disabled={!isMachActive}>
+														{machine.Name} {!isMachActive ? " (Band / Inactive)" : ""}
+													</option>
+												);
+											})}
 										</FormControl>
 										<div className="ms-3 d-flex gap-2">
 											<Button

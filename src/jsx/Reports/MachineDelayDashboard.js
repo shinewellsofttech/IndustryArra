@@ -443,14 +443,19 @@ const MachineDelayDashboard = () => {
   const pausedMachines = data?.pausedMachines || [];
   const pausedMachinesCount = data?.machineCounts?.paused ?? pausedMachines.length;
 
-  // Idle machines = Total Machines - (Running Machines + Paused Machines)
-  const idleMachinesCount = Math.max(0, totalMachines - (runningMachinesCount + pausedMachinesCount));
+  const activeMachines = data?.machineCounts?.active ?? (totalMachines - (data?.machineCounts?.inactive || 0));
+  const inactiveMachines = data?.machineCounts?.inactive ?? 0;
+
+  // Idle machines = Active Machines - (Running Machines + Paused Machines)
+  const idleMachinesCount = Math.max(0, activeMachines - (runningMachinesCount + pausedMachinesCount));
   
   // Running Job Cards count
   const runningJobCardsCount = data?.machineCounts?.runningJobCards ?? runningMachines.length;
 
   const counts = {
     total: totalMachines,
+    active: activeMachines,
+    inactive: inactiveMachines,
     running: runningMachinesCount,
     paused: pausedMachinesCount,
     idle: idleMachinesCount,
@@ -458,8 +463,22 @@ const MachineDelayDashboard = () => {
     delayedTransitionsCount: data?.machineCounts?.delayedTransitionsCount || 0
   };
 
-  // Idle machines from machineLogs
-  const idleMachinesList = (data?.machineLogs || []).filter((log) => !log.RunningJobCardLineId);
+  // Inactive / Band machines from machineLogs
+  const inactiveMachinesList = (data?.machineLogs || []).filter((log) => 
+    log.IsActive === false || log.IsActive === 0 || log.IsActive === "0"
+  );
+  const filteredInactive = inactiveMachinesList.filter((m) => {
+    const matchesCategory = selectedCategory === "ALL" || selectedCategory === "INACTIVE";
+    const matchesMachineName = !selectedMachineFilter || 
+      (m.MachineName && m.MachineName.toLowerCase().includes(selectedMachineFilter.toLowerCase())) || 
+      (m.MachineCode && m.MachineCode.toLowerCase().includes(selectedMachineFilter.toLowerCase()));
+    return matchesCategory && matchesMachineName;
+  });
+
+  // Idle machines from machineLogs (must be active and not running)
+  const idleMachinesList = (data?.machineLogs || []).filter(
+    (log) => !log.RunningJobCardLineId && (log.IsActive !== false && log.IsActive !== 0 && log.IsActive !== "0")
+  );
   const filteredIdle = idleMachinesList.filter((m) => {
     const matchesCategory = selectedCategory === "ALL" || selectedCategory === "IDLE";
     const matchesMachineName = !selectedMachineFilter || 
@@ -485,14 +504,14 @@ const MachineDelayDashboard = () => {
     return matchesCategory && matchesMachineName;
   });
 
-  // Doughnut Chart: Running vs Idle
+  // Doughnut Chart: Running vs Idle vs Inactive
   const donutData = {
-    labels: ["Running Machines", "Idle Machines"],
+    labels: ["Running Machines", "Idle (Operational)", "Band / Inactive"],
     datasets: [
       {
-        data: [counts.running, counts.idle],
-        backgroundColor: ["#2dce89", "#f5365c"],
-        hoverBackgroundColor: ["#2dce89cc", "#f5365ccc"],
+        data: [counts.running, counts.idle, counts.inactive],
+        backgroundColor: ["#2dce89", "#f5365c", "#6c757d"],
+        hoverBackgroundColor: ["#2dce89cc", "#f5365ccc", "#6c757dcc"],
         borderWidth: 1,
       },
     ],
@@ -510,7 +529,9 @@ const MachineDelayDashboard = () => {
     onClick: (evt, elements) => {
       if (elements.length > 0) {
         const idx = elements[0].index;
-        setSelectedCategory(idx === 0 ? "RUNNING" : "IDLE");
+        if (idx === 0) setSelectedCategory("RUNNING");
+        else if (idx === 1) setSelectedCategory("IDLE");
+        else if (idx === 2) setSelectedCategory("INACTIVE");
       }
     },
   };
@@ -598,6 +619,35 @@ const MachineDelayDashboard = () => {
         </div>
       </div>
 
+      {/* Factory Shift Status Banner */}
+      {data?.isPlantOffShift ? (
+        <div className="alert alert-warning border-0 shadow-sm d-flex align-items-center justify-content-between py-2 px-3 mb-3">
+          <div className="d-flex align-items-center gap-2">
+            <span className="badge bg-warning text-dark p-2" style={{ fontSize: "0.85rem" }}>🏭 PLANT OFF-SHIFT</span>
+            <span className="fw-bold text-dark">
+              Plant is currently in Non-Working Shift Hours.
+            </span>
+            <span className="text-muted small">
+              Outside operating shifts, machines naturally remain off/idle. Delay tracking does not penalize non-shift hours.
+            </span>
+          </div>
+          {data?.serverTime && <span className="badge bg-dark">Server Time: {data.serverTime}</span>}
+        </div>
+      ) : data?.currentShift ? (
+        <div className="alert alert-success border-0 shadow-sm d-flex align-items-center justify-content-between py-2 px-3 mb-3">
+          <div className="d-flex align-items-center gap-2">
+            <span className="badge bg-success p-2" style={{ fontSize: "0.85rem" }}>⚡ ACTIVE SHIFT: {data.currentShift.Name}</span>
+            <span className="fw-bold text-success">
+              ({data.currentShift.StartTime} - {data.currentShift.EndTime})
+            </span>
+            <span className="text-muted small">
+              • Working Hours Target: {data.currentShift.NetWorkingHours} hrs/shift
+            </span>
+          </div>
+          {data?.serverTime && <span className="badge bg-dark">Server Time: {data.serverTime}</span>}
+        </div>
+      ) : null}
+
       {/* KPI Cards */}
       <Row className="mb-4 g-3">
         <Col xl sm={6} className="mb-3 mb-xl-0">
@@ -638,7 +688,7 @@ const MachineDelayDashboard = () => {
 
         <Col xl sm={6} className="mb-3 mb-xl-0">
           <Card 
-            className={`border-left-danger h-100 ${selectedCategory === "IDLE" ? "border-danger" : ""}`}
+            className={`border-left-danger h-100 ${selectedCategory === "IDLE" ? "border-danger shadow" : ""}`}
             style={{ cursor: "pointer", transition: "0.2s" }}
             onClick={() => setSelectedCategory("IDLE")}
           >
@@ -649,6 +699,24 @@ const MachineDelayDashboard = () => {
               </div>
               <div className="icon-shape bg-danger-light p-3 rounded-circle">
                 <FaPauseCircle className="text-danger fs-4" />
+              </div>
+            </Card.Body>
+          </Card>
+        </Col>
+
+        <Col xl sm={6} className="mb-3 mb-xl-0">
+          <Card 
+            className={`border-left-secondary h-100 ${selectedCategory === "INACTIVE" ? "border-secondary shadow" : ""}`}
+            style={{ cursor: "pointer", transition: "0.2s" }}
+            onClick={() => setSelectedCategory("INACTIVE")}
+          >
+            <Card.Body className="d-flex align-items-center justify-content-between">
+              <div>
+                <span className="text-xs font-weight-bold text-uppercase text-secondary d-block mb-1">Band / Inactive</span>
+                <h3 className="mb-0 font-weight-bold text-dark">{counts.inactive}</h3>
+              </div>
+              <div className="icon-shape p-3 rounded-circle" style={{ backgroundColor: '#f1f2f4' }}>
+                <FaStopCircle className="text-secondary fs-4" />
               </div>
             </Card.Body>
           </Card>
@@ -991,6 +1059,69 @@ const MachineDelayDashboard = () => {
                       ) : (
                         <tr>
                           <td colSpan="6" className="text-center text-muted py-4">No idle machines found.</td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </Table>
+                </div>
+              </Card.Body>
+            </Card>
+          </Col>
+        )}
+
+        {/* Table 4: Band / Inactive Machines */}
+        {selectedCategory === "INACTIVE" && (
+          <Col lg={12} className="mb-4">
+            <Card className="shadow-sm border-0 h-100">
+              <Card.Header className="bg-white py-3 border-bottom d-flex justify-content-between align-items-center">
+                <h5 className="mb-0 text-dark fw-bold text-secondary">
+                  <FaStopCircle className="me-2 text-danger" />
+                  Band / Inactive Machines ({filteredInactive.length})
+                </h5>
+                <Badge bg="danger" className="px-3 py-2">Machines Marked Closed / Out of Order</Badge>
+              </Card.Header>
+              <Card.Body className="p-0">
+                <div className="table-responsive">
+                  <Table className="align-items-center table-flush mb-0" hover>
+                    <thead className="thead-light">
+                      <tr>
+                        <th>Machine</th>
+                        <th>Code</th>
+                        <th>Status</th>
+                        <th>Last Processed Job Card</th>
+                        <th>Last Shipment</th>
+                        <th>Last Finished At</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {filteredInactive.length > 0 ? (
+                        filteredInactive.map((m) => (
+                          <tr key={m.MachineId} className="bg-light-subtle">
+                            <td>
+                              <span className="fw-bold text-dark">{m.MachineName}</span>
+                            </td>
+                            <td>{m.MachineCode || '—'}</td>
+                            <td>
+                              <Badge bg="danger" className="px-3 py-1">
+                                <i className="fas fa-ban me-1"></i> BAND / INACTIVE
+                              </Badge>
+                            </td>
+                            <td>
+                              {m.LastJobCardNo ? (
+                                <Badge bg="light" text="primary" className="fs-12 p-2 border" style={{ cursor: "pointer" }} onClick={() => handleViewJobCardFlow(m.LastJobCardMasterId, m.LastJobCardNo)}>
+                                  {m.LastJobCardNo}
+                                </Badge>
+                              ) : (
+                                <span className="text-muted">None</span>
+                              )}
+                            </td>
+                            <td>{m.LastShipmentNo || <span className="text-muted">N/A</span>}</td>
+                            <td>{m.LastEndTime ? formatDateTime(m.LastEndTime) : <span className="text-muted">No activity</span>}</td>
+                          </tr>
+                        ))
+                      ) : (
+                        <tr>
+                          <td colSpan="6" className="text-center text-muted py-4">No band / inactive machines found. All machines are active.</td>
                         </tr>
                       )}
                     </tbody>
