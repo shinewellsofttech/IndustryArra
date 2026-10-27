@@ -49,59 +49,70 @@ import "./ReportBuilderStudio.css";
 // ---------------------------------------------------------------------------
 const PRESET_TEMPLATES = [
   {
+    id: "tpl_wood",
+    title: "Daily Wood Recovery & Wastage Yield Audit",
+    icon: FaTree,
+    color: "#d97706",
+    bgColor: "#fffbeb",
+    badge: "Wood Store",
+    description: "Issued CFT volume, consumed volume, AL codes, and excess log wastage",
+    entityId: 18,
+    defaultColumns: ["DateOfCreation", "BatchNo", "ALCode", "Quantity", "TotalIssueCFT", "TotalFinalCFT", "TotalExcessCFT"]
+  },
+  {
+    id: "tpl_machine",
+    title: "Machine Breakdown & Downtime RCA Report",
+    icon: FaIndustry,
+    color: "#dc2626",
+    bgColor: "#fef2f2",
+    badge: "Maintenance",
+    description: "Stoppage reasons, downtime minutes, timestamps & operator logs",
+    entityId: 14,
+    defaultColumns: ["DateOfCreation", "PauseStartTime", "ResumeTime", "PauseDurationMinutes", "PauseReason", "PausedByUserName", "ResumedByUserName"]
+  },
+  {
+    id: "tpl_jobcard",
+    title: "Production Job Card WIP & Order Status Report",
+    icon: FaBoxes,
+    color: "#4f46e5",
+    bgColor: "#eef2ff",
+    badge: "Production",
+    description: "Active floor job cards, batch codes, order quantities, CFT & inspection dates",
+    entityId: 10,
+    defaultColumns: ["JobCardNo", "DateOfCreation", "OrderDate", "ProductCode", "Category", "BatchCode", "OrderQty", "ComponentQty", "CFT", "InspectionDate"]
+  },
+  {
     id: "tpl_shipment",
-    title: "Container & Shipment Dispatch",
+    title: "Container Shipment Dispatch & Fulfillment Audit",
     icon: FaTruck,
     color: "#2563eb",
     bgColor: "#eff6ff",
     badge: "Logistics",
     description: "Export contracts, batch codes, planned vs shipped quantities",
     entityId: 2,
-    defaultColumns: ["ContractNo", "BatchCode", "ItemCode", "ItemName", "Quantity", "ShipmentQty", "DateOfCreation"]
-  },
-  {
-    id: "tpl_wood",
-    title: "Daily Wood Issue & Consumption",
-    icon: FaTree,
-    color: "#d97706",
-    bgColor: "#fffbeb",
-    badge: "Wood Store",
-    description: "Issued CFT, consumed CFT volume, AL codes, and excess logs",
-    entityId: 18,
-    defaultColumns: ["DateOfCreation", "BatchNo", "ALCode", "TotalIssueCFT", "TotalFinalCFT", "TotalExcessCFT", "Quantity"]
-  },
-  {
-    id: "tpl_jobcard",
-    title: "Job Card Production Progress",
-    icon: FaBoxes,
-    color: "#4f46e5",
-    bgColor: "#eef2ff",
-    badge: "Production",
-    description: "Job card numbers, order quantities, product codes, and dates",
-    entityId: 10,
-    defaultColumns: ["JobCardNo", "DateOfCreation", "ProductCode", "Category", "OrderQty", "ComponentQty", "CFT", "BatchCode"]
-  },
-  {
-    id: "tpl_machine",
-    title: "Machine Breakdown & Delays",
-    icon: FaIndustry,
-    color: "#dc2626",
-    bgColor: "#fef2f2",
-    badge: "Maintenance",
-    description: "Breakdown reasons, delay minutes, pause timestamps & operators",
-    entityId: 14,
-    defaultColumns: ["PauseReason", "PauseStartTime", "ResumeTime", "PauseDurationMinutes", "PausedByUserName", "ResumedByUserName"]
+    defaultColumns: ["DateOfCreation", "ContractNo", "BatchCode", "ItemCode", "ItemName", "Quantity", "ShipmentQty"]
   },
   {
     id: "tpl_transfer",
-    title: "Department Material Movement",
+    title: "Inter-Department Production Transfer Audit",
     icon: FaExchangeAlt,
     color: "#059669",
     bgColor: "#ecfdf5",
-    badge: "Transfer",
-    description: "Movement tracking across factory departments & stages",
+    badge: "Floor Transfer",
+    description: "Scheduled vs actual batch movements across production stages",
     entityId: 24,
-    defaultColumns: ["DateOfCreation", "Actual"]
+    defaultColumns: ["DateOfCreation", "Total", "Actual"]
+  },
+  {
+    id: "tpl_catalog",
+    title: "Item Specifications & Dimension Master Catalog",
+    icon: FaCalculator,
+    color: "#0891b2",
+    bgColor: "#ecfeff",
+    badge: "Engineering",
+    description: "Finished article dimensions (L x W x H x D) and component complexity",
+    entityId: 3,
+    defaultColumns: ["ItemCode", "Name", "BatchCode", "Dimensions", "ItemWidth", "ItemDepth", "ItemHeight", "NoOfComponents"]
   }
 ];
 
