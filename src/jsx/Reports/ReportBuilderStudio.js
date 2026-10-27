@@ -305,7 +305,8 @@ const ReportBuilderStudio = () => {
         const loadedFields = fieldsRes.data;
         setFields(loadedFields);
 
-        if (autoSelectRecommended) {
+        // Only auto-select recommended if explicitly requested AND user hasn't selected any columns yet
+        if (autoSelectRecommended && selectedColumns.length === 0) {
           const moduleInfo = BUSINESS_MODULES.find((m) => m.id === entity.entityId);
           const recCols = moduleInfo ? moduleInfo.recommendedCols : [];
           
@@ -500,17 +501,19 @@ const ReportBuilderStudio = () => {
   };
 
   const handleSelectAllFields = () => {
-    const newCols = fields.map((f, idx) => ({
+    const toAdd = fields.filter(
+      (f) => !selectedColumns.some((c) => c.physicalTable === f.physicalTableName && c.physicalColumn === f.physicalColumnName)
+    ).map((f, idx) => ({
       fieldId: f.fieldId,
       physicalTable: f.physicalTableName,
       physicalColumn: f.physicalColumnName,
       displayLabel: f.displayName || f.physicalColumnName,
       dataType: f.dataType || "String",
       aggregation: null,
-      sortOrder: idx + 1,
+      sortOrder: selectedColumns.length + idx + 1,
       isVisible: true
     }));
-    setSelectedColumns(newCols);
+    setSelectedColumns((prev) => [...prev, ...toAdd]);
   };
 
   const handleSelectRecommendedFields = () => {
@@ -525,17 +528,19 @@ const ReportBuilderStudio = () => {
       matched = fields.slice(0, 6);
     }
 
-    const newCols = matched.map((f, idx) => ({
+    const toAdd = matched.filter(
+      (f) => !selectedColumns.some((c) => c.physicalTable === f.physicalTableName && c.physicalColumn === f.physicalColumnName)
+    ).map((f, idx) => ({
       fieldId: f.fieldId,
       physicalTable: f.physicalTableName,
       physicalColumn: f.physicalColumnName,
       displayLabel: f.displayName || f.physicalColumnName,
       dataType: f.dataType || "String",
       aggregation: null,
-      sortOrder: idx + 1,
+      sortOrder: selectedColumns.length + idx + 1,
       isVisible: true
     }));
-    setSelectedColumns(newCols);
+    setSelectedColumns((prev) => [...prev, ...toAdd]);
   };
 
   const handleRemoveColumn = (index) => {
@@ -590,7 +595,7 @@ const ReportBuilderStudio = () => {
       return;
     }
 
-    const primaryTable = selectedEntity ? selectedEntity.physicalTableName : selectedColumns[0].physicalTable;
+    const primaryTable = selectedColumns[0]?.physicalTable || (selectedEntity ? selectedEntity.physicalTableName : "ContainerMaster");
 
     const config = {
       reportTitle,
@@ -629,7 +634,7 @@ const ReportBuilderStudio = () => {
       }
     }, 600);
     return () => clearTimeout(timer);
-  }, [selectedColumns, customFormulas, filters, orderBy, pageNumber, pageSize]);
+  }, [selectedColumns, customFormulas, filters, orderBy, pageNumber, pageSize, joinPath]);
 
   // -------------------------------------------------------------------------
   // Filters Management
@@ -1197,6 +1202,9 @@ const ReportBuilderStudio = () => {
                 {BUSINESS_MODULES.map((mod) => {
                   const isSelected = selectedEntity?.entityId === mod.id;
                   const entObj = entities.find((e) => e.entityId === mod.id);
+                  const selectedCountFromMod = selectedColumns.filter(
+                    (c) => c.physicalTable?.toLowerCase() === entObj?.physicalTableName?.toLowerCase()
+                  ).length;
 
                   return (
                     <div
@@ -1204,15 +1212,22 @@ const ReportBuilderStudio = () => {
                       className={`rb-module-card ${isSelected ? "selected" : ""}`}
                       onClick={() => {
                         if (entObj) {
-                          handleSelectEntity(entObj, true);
+                          handleSelectEntity(entObj, selectedColumns.length === 0);
                           setCategory(mod.badge);
-                          setReportTitle(`${mod.name} Report`);
+                          if (selectedColumns.length === 0) {
+                            setReportTitle(`${mod.name} Report`);
+                          }
                         }
                       }}
                     >
                       <div className="d-flex justify-content-between align-items-center mb-1">
                         <span style={{ fontSize: "1.4rem" }}>{mod.icon}</span>
-                        {isSelected && <FaCheckCircle color="#2563eb" size={16} />}
+                        <div className="d-flex align-items-center gap-1">
+                          {selectedCountFromMod > 0 && (
+                            <span className="rb-mod-active-pill">{selectedCountFromMod} selected</span>
+                          )}
+                          {isSelected && <FaCheckCircle color="#2563eb" size={16} />}
+                        </div>
                       </div>
                       <div className="rb-mod-name">{mod.name}</div>
                       <div className="rb-mod-subtitle">{mod.subtitle}</div>
@@ -1248,12 +1263,102 @@ const ReportBuilderStudio = () => {
                 </div>
               </div>
 
+              {/* Module Switcher Bar inside Step 2 */}
+              <div className="rb-step2-module-switcher">
+                <span className="rb-switcher-label">
+                  <FaLayerGroup /> Choose Table/Module to add fields from:
+                </span>
+                <div className="rb-switcher-pills">
+                  {BUSINESS_MODULES.map((mod) => {
+                    const isCurrent = selectedEntity?.entityId === mod.id;
+                    const entObj = entities.find((e) => e.entityId === mod.id);
+                    const selCount = selectedColumns.filter(
+                      (c) => c.physicalTable?.toLowerCase() === entObj?.physicalTableName?.toLowerCase()
+                    ).length;
+
+                    return (
+                      <button
+                        key={mod.id}
+                        className={`rb-switcher-chip ${isCurrent ? "active" : ""}`}
+                        onClick={() => {
+                          if (entObj) handleSelectEntity(entObj, false);
+                        }}
+                        type="button"
+                      >
+                        <span>{mod.icon}</span>
+                        <span>{mod.name}</span>
+                        {selCount > 0 && <span className="rb-switcher-badge">{selCount}</span>}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Selected Columns Summary Shelf */}
+              {selectedColumns.length > 0 && (
+                <div className="rb-selected-summary-shelf">
+                  <div className="d-flex justify-content-between align-items-center mb-2">
+                    <span className="rb-selected-summary-title">
+                      Selected Columns ({selectedColumns.length}) across{" "}
+                      {Array.from(new Set(selectedColumns.map((c) => c.physicalTable))).length} Module(s):
+                    </span>
+                    <button
+                      className="btn btn-link btn-sm p-0 text-danger text-decoration-none"
+                      style={{ fontSize: "0.78rem" }}
+                      onClick={() => setSelectedColumns([])}
+                    >
+                      Clear All
+                    </button>
+                  </div>
+                  <div className="rb-selected-chips-wrap">
+                    {selectedColumns.map((col, idx) => {
+                      const mod = BUSINESS_MODULES.find(
+                        (m) =>
+                          entities.find((e) => e.entityId === m.id)?.physicalTableName?.toLowerCase() ===
+                          col.physicalTable?.toLowerCase()
+                      );
+                      return (
+                        <span key={`${col.physicalTable}_${col.physicalColumn}_${idx}`} className="rb-selected-chip">
+                          <span className="rb-chip-mod">{mod?.icon || "📄"} {col.physicalTable}</span>
+                          <span className="rb-chip-name">{col.displayLabel}</span>
+                          <button
+                            type="button"
+                            className="rb-chip-remove"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleRemoveColumn(idx);
+                            }}
+                            title="Remove"
+                          >
+                            ✕
+                          </button>
+                        </span>
+                      );
+                    })}
+                  </div>
+
+                  {/* Auto-Join Status Indicator */}
+                  {Array.from(new Set(selectedColumns.map((c) => c.physicalTable))).length > 1 && (
+                    <div className="rb-auto-join-indicator">
+                      <span className="rb-join-badge">
+                        <FaCheckCircle /> Multi-Module Auto-Linked
+                      </span>
+                      <span>
+                        {joinPath && joinPath.length > 0
+                          ? `Connected via ${joinPath.length} relation(s): ${joinPath.map((j) => `${j.fromTable} ➔ ${j.toTable}`).join(", ")}`
+                          : "Establishing shortest relation bridge between selected tables..."}
+                      </span>
+                    </div>
+                  )}
+                </div>
+              )}
+
               {/* Quick field search */}
               <div className="rb-field-search-bar mb-3">
                 <FaSearch className="rb-field-search-icon" />
                 <input
                   type="text"
-                  placeholder="Search fields (e.g. date, qty, item, code)..."
+                  placeholder={`Search fields in ${selectedEntity?.displayName || "current table"} (e.g. date, qty, item, code)...`}
                   value={fieldSearch}
                   onChange={(e) => setFieldSearch(e.target.value)}
                 />

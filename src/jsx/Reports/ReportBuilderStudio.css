@@ -1245,5 +1245,151 @@
   padding: 0 4px;
 }
 
+/* --------------------------------------------------------------------------
+   Step 2 Multi-Module Switcher & Auto-Join Mapping Banner
+   -------------------------------------------------------------------------- */
+.rb-step2-module-switcher {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 12px;
+  padding-bottom: 10px;
+  border-bottom: 1px dashed var(--rb-slate-200);
+  flex-wrap: wrap;
+}
+
+.rb-switcher-label {
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--rb-slate-600);
+}
+
+.rb-switcher-chips {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.rb-switcher-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 12px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  border-radius: 20px;
+  border: 1px solid var(--rb-slate-200);
+  background: var(--rb-slate-50);
+  color: var(--rb-slate-700);
+  cursor: pointer;
+  transition: all 0.15s ease-in-out;
+}
+
+.rb-switcher-chip:hover {
+  background: var(--rb-slate-100);
+  border-color: var(--rb-slate-300);
+  transform: translateY(-1px);
+}
+
+.rb-switcher-chip.active {
+  background: #eff6ff;
+  border-color: #2563eb;
+  color: #1d4ed8;
+  box-shadow: 0 2px 6px rgba(37, 99, 235, 0.15);
+}
+
+.rb-switcher-badge {
+  background: #2563eb;
+  color: #ffffff;
+  font-size: 0.68rem;
+  padding: 1px 6px;
+  border-radius: 10px;
+  font-weight: 700;
+}
+
+/* Selected Columns Shelf in Step 2 */
+.rb-selected-summary-shelf {
+  background: #f8fafc;
+  border: 1px solid var(--rb-slate-200);
+  border-radius: 8px;
+  padding: 10px 12px;
+  margin-bottom: 14px;
+}
+
+.rb-summary-title {
+  font-size: 0.76rem;
+  font-weight: 700;
+  color: var(--rb-slate-700);
+}
+
+.rb-auto-join-indicator {
+  font-size: 0.74rem;
+  font-weight: 600;
+  color: #059669;
+  background: #ecfdf5;
+  padding: 3px 8px;
+  border-radius: 6px;
+  border: 1px solid #a7f3d0;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.rb-selected-chips-wrap {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 6px;
+}
+
+.rb-selected-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 10px;
+  border-radius: 6px;
+  background: #ffffff;
+  border: 1px solid var(--rb-slate-300);
+  font-size: 0.74rem;
+  font-weight: 500;
+  color: var(--rb-slate-800);
+}
+
+.rb-chip-table {
+  font-size: 0.65rem;
+  font-weight: 700;
+  background: #e2e8f0;
+  color: #475569;
+  padding: 1px 5px;
+  border-radius: 4px;
+}
+
+.rb-chip-label {
+  font-weight: 600;
+}
+
+.rb-chip-remove {
+  cursor: pointer;
+  color: #94a3b8;
+  font-size: 0.7rem;
+  transition: color 0.15s;
+}
+
+.rb-chip-remove:hover {
+  color: #ef4444;
+}
+
+.rb-mod-active-pill {
+  font-size: 0.68rem;
+  font-weight: 700;
+  color: #047857;
+  background: #ecfdf5;
+  padding: 2px 7px;
+  border-radius: 10px;
+  border: 1px solid #a7f3d0;
+}
+
+
 
 

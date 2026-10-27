@@ -46,7 +46,7 @@ export const reportBuilderService = {
 
   // 4. Compute BFS join path
   getJoinPath: async (targetEntityIds) => {
-    const res = await requestApi("post", API_WEB_URLS.REPORT_BUILDER_JOIN_PATH, targetEntityIds, {
+    const res = await requestApi("post", API_WEB_URLS.REPORT_BUILDER_JOIN_PATH, { entityIds: targetEntityIds }, {
       headers: { "Content-Type": "application/json" }
     });
     return res.data;
