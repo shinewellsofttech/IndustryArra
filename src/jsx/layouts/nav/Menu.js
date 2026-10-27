@@ -80,6 +80,10 @@ const allDocumentationItems = [
 // Master list of all reporting menu items
 const allReportingItems = [
     {
+        title: '⚡ REPORT BUILDER STUDIO',
+        to: 'ReportBuilder',
+    },
+    {
         title: 'NEW REPORTING ENTRY',
         to: 'ReportingEntrySystem',
     },
@@ -163,7 +167,7 @@ const filterByPermissions = (menuList, permissions) => {
         return menuList;
     }
     return menuList.filter(item => {
-        if (item.to === 'dashboard') return true;
+        if (item.to === 'dashboard' || item.to === 'ReportBuilder') return true;
         const itemPath = (item.to || '').toLowerCase().replace(/^\//, '');
         const perm = permissions.find(p => (p.ModulePath || p.Path)?.toLowerCase().replace(/^\//, '') === itemPath);
         return perm ? !!perm.IsView : false;
@@ -186,6 +190,21 @@ export const getMenuList = () => {
     const filteredDocumentation = filterByPermissions(allDocumentationItems, permissions);
     const filteredReporting = filterByPermissions(allReportingItems, permissions);
 
+    // Dynamic Saved Reports from Local Cache or Server
+    let customReportsItems = [];
+    try {
+        const cached = localStorage.getItem('cachedMenuReports');
+        if (cached) {
+            const parsed = JSON.parse(cached);
+            if (Array.isArray(parsed) && parsed.length > 0) {
+                customReportsItems = parsed.map(r => ({
+                    title: `⭐ ${(r.reportTitle || r.ReportTitle || 'Report')}`.toUpperCase(),
+                    to: `CustomReport/${r.reportId || r.ReportId}`
+                }));
+            }
+        }
+    } catch {}
+
     return [
         ...baseMenu,
         ...(filteredDocumentation.length > 0 ? [{
@@ -201,6 +220,13 @@ export const getMenuList = () => {
             iconStyle: <FaChartBar />,
             customClass: 'section-header-menu',
             content: filteredReporting
+        }] : []),
+        ...(customReportsItems.length > 0 ? [{
+            title: '📂 CUSTOM & SAVED REPORTS',
+            classsChange: 'mm-collapse',
+            iconStyle: <FaFileAlt />,
+            customClass: 'section-header-menu',
+            content: customReportsItems
         }] : [])
     ];
 };

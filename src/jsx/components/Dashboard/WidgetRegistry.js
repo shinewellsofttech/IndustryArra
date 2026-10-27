@@ -4,6 +4,7 @@ import DelayCounterKpi from "./widgets/kpis/DelayCounterKpi";
 import ActiveJobCardsKpi from "./widgets/kpis/ActiveJobCardsKpi";
 import DelayDoughnutWidget from "./widgets/charts/DelayDoughnutWidget";
 import PausedMachinesTableWidget from "./widgets/tables/PausedMachinesTableWidget";
+import DynamicReportWidget from "./widgets/reports/DynamicReportWidget";
 
 export const WIDGET_REGISTRY = {
   SHORTCUT_BAR: {
@@ -14,6 +15,14 @@ export const WIDGET_REGISTRY = {
     defaultSize: { w: 12, h: 2, minW: 12, minH: 2 },
     isStatic: true,
     component: PinnedShortcutsWidget
+  },
+  DYNAMIC_REPORT_WIDGET: {
+    id: "DYNAMIC_REPORT_WIDGET",
+    title: "Custom Saved Report Card",
+    category: "Custom Reports",
+    description: "Live data table preview for any pinned custom report",
+    defaultSize: { w: 6, h: 5, minW: 4, minH: 3 },
+    component: DynamicReportWidget
   },
   KPI_MACHINES: {
     id: "KPI_MACHINES",

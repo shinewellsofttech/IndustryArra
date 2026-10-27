@@ -163,6 +163,8 @@ import PageList_UserMasterCrud from "./Masters/PageList_UserMasterCrud";
 import PermissionMetrixs from "./Masters/PermisstionMetrixs";
 import GlobalOptions from "./Masters/GlobalOptions";
 import PageList_ShiftMaster from "./Masters/PageList_ShiftMaster";
+import ReportBuilderStudio from "./Reports/ReportBuilderStudio";
+import DynamicCustomReportViewer from "./Reports/DynamicCustomReportViewer";
 
 const Markup = () => {
   const { menuToggle } = useContext(ThemeContext);
@@ -321,6 +323,9 @@ const Markup = () => {
     { url: "ItemMachiningTimeReport", component: <ItemMachiningTimeReport/> },
     { url: "GlobalOptions", component: <GlobalOptions/> },
     { url: "ShiftMaster", component: <PageList_ShiftMaster/> },
+    { url: "ReportBuilder", component: <ReportBuilderStudio/> },
+    { url: "ReportBuilder/:editReportId", component: <ReportBuilderStudio/> },
+    { url: "CustomReport/:reportId", component: <DynamicCustomReportViewer/> },
 
   ];
   let path = window.location.pathname;
@@ -360,6 +365,7 @@ const Markup = () => {
       'table-bootstrap-basic'
     ];
     if (publicPages.includes(route.url)) return true;
+    if (route.url.startsWith('ReportBuilder') || route.url.startsWith('CustomReport')) return true;
 
     const checkPath = getParentPath(route.url).toLowerCase().replace(/^\//, '');
     const perm = permissions.find(p => (p.ModulePath || p.Path)?.toLowerCase().replace(/^\//, '') === checkPath);
