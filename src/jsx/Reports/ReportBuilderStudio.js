@@ -31,6 +31,9 @@ import {
   FaChevronDown,
   FaChevronUp,
   FaChevronRight,
+  FaChevronLeft,
+  FaAngleDoubleLeft,
+  FaAngleDoubleRight,
   FaProjectDiagram,
   FaLayerGroup,
   FaSitemap,
@@ -951,6 +954,112 @@ const ReportBuilderStudio = () => {
     return Array.from(new Set(selectedColumns.map((c) => c.physicalTable)));
   }, [selectedColumns]);
 
+  // -------------------------------------------------------------------------
+  // Pagination Calculations & Helper
+  // -------------------------------------------------------------------------
+  const totalPages = Math.max(1, Math.ceil(totalRows / pageSize));
+  const startRecord = totalRows === 0 ? 0 : (pageNumber - 1) * pageSize + 1;
+  const endRecord = Math.min(pageNumber * pageSize, totalRows);
+
+  const handlePageSizeChange = (newSize) => {
+    setPageSize(newSize);
+    setPageNumber(1);
+  };
+
+  const renderPaginationBar = () => {
+    if (totalRows <= 0) return null;
+
+    const pages = [];
+    const maxPagesToShow = 5;
+    let startPage = Math.max(1, pageNumber - 2);
+    let endPage = Math.min(totalPages, startPage + maxPagesToShow - 1);
+    if (endPage - startPage + 1 < maxPagesToShow) {
+      startPage = Math.max(1, endPage - maxPagesToShow + 1);
+    }
+
+    for (let p = startPage; p <= endPage; p++) {
+      pages.push(p);
+    }
+
+    return (
+      <div className="rb-pagination-bar">
+        <div className="rb-pagination-summary">
+          Showing <strong>{startRecord}</strong> to <strong>{endRecord}</strong> of{" "}
+          <strong>{totalRows}</strong> records
+          <span className="text-muted ms-2">
+            (Page {pageNumber} of {totalPages})
+          </span>
+        </div>
+
+        <div className="rb-pagination-controls">
+          <button
+            className="rb-page-btn"
+            onClick={() => setPageNumber(1)}
+            disabled={pageNumber <= 1 || loadingQuery}
+            title="First Page"
+          >
+            <FaAngleDoubleLeft size={11} />
+          </button>
+          <button
+            className="rb-page-btn"
+            onClick={() => setPageNumber((p) => Math.max(1, p - 1))}
+            disabled={pageNumber <= 1 || loadingQuery}
+            title="Previous Page"
+          >
+            <FaChevronLeft size={10} /> Prev
+          </button>
+
+          {startPage > 1 && (
+            <>
+              <button className="rb-page-btn" onClick={() => setPageNumber(1)}>
+                1
+              </button>
+              {startPage > 2 && <span className="rb-page-dots">...</span>}
+            </>
+          )}
+
+          {pages.map((p) => (
+            <button
+              key={p}
+              className={`rb-page-btn ${p === pageNumber ? "active" : ""}`}
+              onClick={() => setPageNumber(p)}
+              disabled={loadingQuery}
+            >
+              {p}
+            </button>
+          ))}
+
+          {endPage < totalPages && (
+            <>
+              {endPage < totalPages - 1 && <span className="rb-page-dots">...</span>}
+              <button className="rb-page-btn" onClick={() => setPageNumber(totalPages)}>
+                {totalPages}
+              </button>
+            </>
+          )}
+
+          <button
+            className="rb-page-btn"
+            onClick={() => setPageNumber((p) => Math.min(totalPages, p + 1))}
+            disabled={pageNumber >= totalPages || loadingQuery}
+            title="Next Page"
+          >
+            Next <FaChevronRight size={10} />
+          </button>
+          <button
+            className="rb-page-btn"
+            onClick={() => setPageNumber(totalPages)}
+            disabled={pageNumber >= totalPages || loadingQuery}
+            title="Last Page"
+          >
+            <FaAngleDoubleRight size={11} />
+          </button>
+        </div>
+      </div>
+    );
+  };
+
+
   return (
     <div className="report-builder-container">
       {/* --------------------------------------------------------------------
@@ -1291,7 +1400,7 @@ const ReportBuilderStudio = () => {
                   size="sm"
                   style={{ width: "95px", fontSize: "0.75rem" }}
                   value={pageSize}
-                  onChange={(e) => setPageSize(parseInt(e.target.value))}
+                  onChange={(e) => handlePageSizeChange(parseInt(e.target.value))}
                 >
                   <option value={25}>25 Rows</option>
                   <option value={50}>50 Rows</option>
@@ -1333,6 +1442,9 @@ const ReportBuilderStudio = () => {
                 </table>
               )}
             </div>
+
+            {/* Pagination Controls */}
+            {renderPaginationBar()}
           </div>
         </div>
       )}
@@ -1795,7 +1907,7 @@ const ReportBuilderStudio = () => {
                       size="sm"
                       style={{ width: "95px", fontSize: "0.75rem" }}
                       value={pageSize}
-                      onChange={(e) => setPageSize(parseInt(e.target.value))}
+                      onChange={(e) => handlePageSizeChange(parseInt(e.target.value))}
                     >
                       <option value={25}>25 Rows</option>
                       <option value={50}>50 Rows</option>
@@ -1807,7 +1919,7 @@ const ReportBuilderStudio = () => {
 
                 {openSections.grid && (
                   <div className="rb-adv-card-body p-0">
-                    <div className="rb-grid-container" style={{ borderRadius: "0 0 10px 10px", maxHeight: "420px" }}>
+                    <div className="rb-grid-container" style={{ maxHeight: "420px" }}>
                       {viewMode === "table" ? (
                         displayedPreviewData.length === 0 ? (
                           <div className="text-center py-5 text-muted">
@@ -1862,6 +1974,9 @@ const ReportBuilderStudio = () => {
                         </div>
                       )}
                     </div>
+
+                    {/* Pagination Controls */}
+                    {renderPaginationBar()}
                   </div>
                 )}
               </div>

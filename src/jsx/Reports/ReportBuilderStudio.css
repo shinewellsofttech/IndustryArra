@@ -1167,4 +1167,83 @@
   box-shadow: none;
 }
 
+/* --------------------------------------------------------------------------
+   Interactive Pagination Bar Styling
+   -------------------------------------------------------------------------- */
+.rb-pagination-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+  padding: 10px 16px;
+  background: #ffffff;
+  border-top: 1px solid var(--rb-slate-200);
+  border-radius: 0 0 10px 10px;
+}
+
+.rb-pagination-summary {
+  font-size: 0.8rem;
+  color: var(--rb-slate-600);
+  display: flex;
+  align-items: center;
+}
+
+.rb-pagination-summary strong {
+  color: var(--rb-slate-900);
+  margin: 0 2px;
+}
+
+.rb-pagination-controls {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.rb-page-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  min-width: 32px;
+  height: 30px;
+  padding: 0 8px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--rb-slate-700);
+  background: var(--rb-slate-50);
+  border: 1px solid var(--rb-slate-200);
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.15s ease-in-out;
+  user-select: none;
+}
+
+.rb-page-btn:hover:not(:disabled) {
+  background: var(--rb-primary);
+  color: #ffffff;
+  border-color: var(--rb-primary);
+  transform: translateY(-1px);
+}
+
+.rb-page-btn.active {
+  background: var(--rb-primary);
+  color: #ffffff;
+  border-color: var(--rb-primary);
+  box-shadow: 0 2px 6px rgba(37, 99, 235, 0.3);
+}
+
+.rb-page-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.rb-page-dots {
+  font-size: 0.8rem;
+  color: var(--rb-slate-400);
+  padding: 0 4px;
+}
+
+
 
