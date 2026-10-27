@@ -27,7 +27,15 @@ import {
   FaTruck,
   FaTree,
   FaExchangeAlt,
-  FaCheckCircle
+  FaCheckCircle,
+  FaChevronDown,
+  FaChevronUp,
+  FaChevronRight,
+  FaProjectDiagram,
+  FaLayerGroup,
+  FaSitemap,
+  FaArrowRight,
+  FaPlus
 } from "react-icons/fa";
 import { reportBuilderService } from "../../services/reportBuilderService";
 import FormulaBuilderModal from "./FormulaBuilderModal";
@@ -161,6 +169,16 @@ const ReportBuilderStudio = () => {
   // Mode: "simple" (Guided 3-Step Wizard) vs "advanced" (4-Zone Workbench)
   const [uiMode, setUiMode] = useState("simple");
 
+  // Advanced Mode Accordion States
+  const [openDomains, setOpenDomains] = useState(new Set(["Shipping", "Production", "Item & Product", "Machine Floor"]));
+  const [openSections, setOpenSections] = useState({
+    columns: true,
+    mapping: true,
+    filters: true,
+    grid: true
+  });
+  const [showFieldsDrawer, setShowFieldsDrawer] = useState(true);
+
   // 1. Metadata State
   const [entities, setEntities] = useState([]);
   const [selectedEntity, setSelectedEntity] = useState(null);
@@ -213,7 +231,6 @@ const ReportBuilderStudio = () => {
         const res = await reportBuilderService.getEntities();
         if (res.success && res.data) {
           setEntities(res.data);
-          // If no entity selected, default to Shipment (Entity 2) or first entity
           const defaultEnt = res.data.find((e) => e.entityId === 2) || res.data[0];
           if (defaultEnt && !selectedEntity) {
             handleSelectEntity(defaultEnt);
@@ -266,14 +283,12 @@ const ReportBuilderStudio = () => {
   const handleSelectEntity = async (entity, autoSelectRecommended = false) => {
     setSelectedEntity(entity);
     try {
-      // 1. Fetch fields for this entity
       const fieldsRes = await reportBuilderService.getFields(entity.entityId);
       if (fieldsRes.success && fieldsRes.data) {
         const loadedFields = fieldsRes.data;
         setFields(loadedFields);
 
         if (autoSelectRecommended) {
-          // Pre-select top 6 recommended fields
           const moduleInfo = BUSINESS_MODULES.find((m) => m.id === entity.entityId);
           const recCols = moduleInfo ? moduleInfo.recommendedCols : [];
           
@@ -301,7 +316,6 @@ const ReportBuilderStudio = () => {
         }
       }
 
-      // 2. Fetch relationship distance classification
       const relRes = await reportBuilderService.getRelatedEntities(entity.entityId);
       if (relRes.success && relRes.data) {
         const directSet = new Set((relRes.data.directRelated || []).map((e) => e.entityId));
@@ -334,7 +348,6 @@ const ReportBuilderStudio = () => {
         const allFields = fieldsRes.data;
         setFields(allFields);
 
-        // Pick columns matching defaultColumns
         let matched = allFields.filter((f) =>
           tpl.defaultColumns.some((dc) => dc.toLowerCase() === f.physicalColumnName.toLowerCase())
         );
@@ -356,7 +369,6 @@ const ReportBuilderStudio = () => {
         setSelectedColumns(cols);
         setFilters([]);
 
-        // Instant execution
         const config = {
           reportTitle: tpl.title,
           primaryEntity: targetEnt.physicalTableName,
@@ -383,6 +395,66 @@ const ReportBuilderStudio = () => {
       setLoadingMetadata(false);
       setLoadingQuery(false);
     }
+  };
+
+  // -------------------------------------------------------------------------
+  // Link Related Table Handler (Zone 2 Mapping System)
+  // -------------------------------------------------------------------------
+  const handleAddRelatedTable = async (entityIdVal) => {
+    const entId = parseInt(entityIdVal);
+    if (!entId) return;
+    const target = entities.find((e) => e.entityId === entId);
+    if (!target) return;
+
+    try {
+      setLoadingMetadata(true);
+      const fieldsRes = await reportBuilderService.getFields(target.entityId);
+      if (fieldsRes.success && fieldsRes.data) {
+        const available = fieldsRes.data.slice(0, 3);
+        const newCols = available.map((f, i) => ({
+          fieldId: f.fieldId,
+          physicalTable: f.physicalTableName,
+          physicalColumn: f.physicalColumnName,
+          displayLabel: `${target.displayName} - ${f.displayName}`,
+          dataType: f.dataType || "String",
+          aggregation: null,
+          sortOrder: selectedColumns.length + i + 1,
+          isVisible: true
+        }));
+        setSelectedColumns((prev) => [...prev, ...newCols]);
+      }
+    } catch (err) {
+      console.error("Error linking related entity:", err);
+    } finally {
+      setLoadingMetadata(false);
+    }
+  };
+
+  // -------------------------------------------------------------------------
+  // Accordion Toggles
+  // -------------------------------------------------------------------------
+  const toggleDomain = (domain) => {
+    setOpenDomains((prev) => {
+      const next = new Set(prev);
+      if (next.has(domain)) next.delete(domain);
+      else next.add(domain);
+      return next;
+    });
+  };
+
+  const toggleAllDomains = (expand) => {
+    if (expand) {
+      setOpenDomains(new Set(Object.keys(groupedEntities)));
+    } else {
+      setOpenDomains(new Set());
+    }
+  };
+
+  const toggleSection = (sectionKey) => {
+    setOpenSections((prev) => ({
+      ...prev,
+      [sectionKey]: !prev[sectionKey]
+    }));
   };
 
   // -------------------------------------------------------------------------
@@ -546,20 +618,35 @@ const ReportBuilderStudio = () => {
   // Filters Management
   // -------------------------------------------------------------------------
   const handleAddFilter = () => {
-    if (selectedColumns.length === 0) return;
-    const col = selectedColumns[0];
+    const col = selectedColumns[0] || fields[0];
+    if (!col) return;
     setFilters((prev) => [
       ...prev,
       {
         fieldId: col.fieldId,
-        physicalTable: col.physicalTable,
-        physicalColumn: col.physicalColumn,
+        physicalTable: col.physicalTable || col.physicalTableName,
+        physicalColumn: col.physicalColumn || col.physicalColumnName,
         operator: "EQ",
         value1: "",
         value2: "",
-        dataType: col.dataType
+        dataType: col.dataType || "String"
       }
     ]);
+  };
+
+  const handleFilterColumnChange = (idx, combinedVal) => {
+    const [tbl, col] = combinedVal.split(".");
+    const match = availableFilterColumns.find((c) => c.physicalTable === tbl && c.physicalColumn === col);
+    if (!match) return;
+
+    setFilters((prev) => {
+      const copy = [...prev];
+      copy[idx].physicalTable = tbl;
+      copy[idx].physicalColumn = col;
+      copy[idx].fieldId = match.fieldId;
+      copy[idx].dataType = match.dataType;
+      return copy;
+    });
   };
 
   const handleUpdateFilter = (idx, field, val) => {
@@ -577,7 +664,6 @@ const ReportBuilderStudio = () => {
   // Simple Date Preset Handler
   const handleApplyDatePreset = (presetKey) => {
     setDatePreset(presetKey);
-    // Find date column in selected columns or fields
     const dateCol = selectedColumns.find((c) => c.dataType === "DateTime") || fields.find((f) => f.dataType === "DateTime");
     if (!dateCol) return;
 
@@ -679,6 +765,23 @@ const ReportBuilderStudio = () => {
     );
   }, [fields, fieldSearch]);
 
+  // Combined list of filterable columns
+  const availableFilterColumns = useMemo(() => {
+    const list = [...selectedColumns];
+    fields.forEach((f) => {
+      if (!list.some((c) => c.physicalTable === f.physicalTableName && c.physicalColumn === f.physicalColumnName)) {
+        list.push({
+          fieldId: f.fieldId,
+          physicalTable: f.physicalTableName,
+          physicalColumn: f.physicalColumnName,
+          displayLabel: `${f.displayName} (${f.physicalTableName})`,
+          dataType: f.dataType || "String"
+        });
+      }
+    });
+    return list;
+  }, [selectedColumns, fields]);
+
   // Client-side quick filter on preview rows
   const displayedPreviewData = useMemo(() => {
     if (!tableSearch.trim()) return previewData;
@@ -697,12 +800,17 @@ const ReportBuilderStudio = () => {
 
     const groups = {};
     filtered.forEach((e) => {
-      const domain = e.domainName || "Other Modules";
+      const domain = e.domainName || "General Modules";
       if (!groups[domain]) groups[domain] = [];
       groups[domain].push(e);
     });
     return groups;
   }, [entities, searchQuery]);
+
+  // Unique tables currently in use
+  const tablesInUse = useMemo(() => {
+    return Array.from(new Set(selectedColumns.map((c) => c.physicalTable)));
+  }, [selectedColumns]);
 
   return (
     <div className="report-builder-container">
@@ -843,9 +951,7 @@ const ReportBuilderStudio = () => {
 
           {/* 2. 3-Step Guided Customization Wizard */}
           <div className="rb-wizard-steps-container">
-            {/* --------------------------------------------------------------
-                STEP 1: Choose Business Topic / Module
-                -------------------------------------------------------------- */}
+            {/* STEP 1: Choose Business Topic / Module */}
             <div className="rb-wizard-card">
               <div className="rb-step-header">
                 <div className="rb-step-num">1</div>
@@ -884,9 +990,7 @@ const ReportBuilderStudio = () => {
               </div>
             </div>
 
-            {/* --------------------------------------------------------------
-                STEP 2: Choose Columns to Display (Interactive Pills)
-                -------------------------------------------------------------- */}
+            {/* STEP 2: Choose Columns to Display (Interactive Pills) */}
             <div className="rb-wizard-card">
               <div className="rb-step-header d-flex justify-content-between align-items-center">
                 <div className="d-flex align-items-center gap-3">
@@ -944,9 +1048,7 @@ const ReportBuilderStudio = () => {
               </div>
             </div>
 
-            {/* --------------------------------------------------------------
-                STEP 3: Date & Quick Filters
-                -------------------------------------------------------------- */}
+            {/* STEP 3: Date & Quick Filters */}
             <div className="rb-wizard-card">
               <div className="rb-step-header d-flex justify-content-between align-items-center">
                 <div className="d-flex align-items-center gap-3">
@@ -1096,269 +1198,512 @@ const ReportBuilderStudio = () => {
       )}
 
       {/* ====================================================================
-          MODE 2: ADVANCED STUDIO WORKBENCH (FOR POWER USERS)
+          MODE 2: ADVANCED STUDIO WORKBENCH (COLLAPSIBLE ACCORDION & MAPPING)
           ==================================================================== */}
       {uiMode === "advanced" && (
         <div className="rb-studio-body">
-          {/* ZONE 1: Entity & Field Explorer (Left Panel) */}
+          {/* ----------------------------------------------------------------
+              ZONE 1: Collapsible Data Entity Explorer (Left Panel)
+              ---------------------------------------------------------------- */}
           <div className="rb-explorer-panel">
             <div className="rb-explorer-header">
-              <span style={{ fontSize: "0.82rem", fontWeight: 700, color: "#475569" }}>DATA ENTITY EXPLORER</span>
+              <div className="d-flex justify-content-between align-items-center mb-1">
+                <span style={{ fontSize: "0.82rem", fontWeight: 700, color: "#1e293b" }}>
+                  <FaLayerGroup color="#2563eb" /> ENTITY MODULES
+                </span>
+                <div className="d-flex gap-1">
+                  <button className="rb-btn-micro" onClick={() => toggleAllDomains(true)} title="Expand all categories">
+                    Expand
+                  </button>
+                  <button className="rb-btn-micro" onClick={() => toggleAllDomains(false)} title="Collapse all categories">
+                    Collapse
+                  </button>
+                </div>
+              </div>
+
               <div className="rb-search-wrapper">
                 <FaSearch className="rb-search-icon" />
                 <input
                   type="text"
                   className="rb-search-input"
-                  placeholder="Search tables & modules..."
+                  placeholder="Filter tables..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                 />
               </div>
             </div>
 
+            {/* Accordion Domain Categories */}
             <div className="rb-entity-list">
               {loadingMetadata ? (
                 <div className="text-center py-4">
                   <Spinner animation="border" size="sm" variant="primary" />
                 </div>
               ) : (
-                Object.keys(groupedEntities).map((domain) => (
-                  <div key={domain}>
-                    <div className="rb-domain-group-title">{domain}</div>
-                    {groupedEntities[domain].map((ent) => {
-                      const isSelected = selectedEntity?.entityId === ent.entityId;
-                      const isDirect = relatedEntitiesMap.direct.has(ent.entityId);
-                      const isExtended = relatedEntitiesMap.extended.has(ent.entityId);
+                Object.keys(groupedEntities).map((domain) => {
+                  const isOpen = openDomains.has(domain);
+                  const domainEntities = groupedEntities[domain];
 
+                  return (
+                    <div key={domain} className="rb-domain-accordion-block">
+                      <div className="rb-domain-accordion-header" onClick={() => toggleDomain(domain)}>
+                        <div className="d-flex align-items-center gap-2">
+                          {isOpen ? <FaChevronDown size={10} color="#64748b" /> : <FaChevronRight size={10} color="#64748b" />}
+                          <span className="rb-domain-title-text">{domain}</span>
+                        </div>
+                        <Badge bg="light" text="dark" style={{ fontSize: "0.68rem", border: "1px solid #cbd5e1" }}>
+                          {domainEntities.length}
+                        </Badge>
+                      </div>
+
+                      {isOpen && (
+                        <div className="rb-domain-accordion-content">
+                          {domainEntities.map((ent) => {
+                            const isSelected = selectedEntity?.entityId === ent.entityId;
+                            const isDirect = relatedEntitiesMap.direct.has(ent.entityId);
+                            const isExtended = relatedEntitiesMap.extended.has(ent.entityId);
+
+                            return (
+                              <div
+                                key={ent.entityId}
+                                className={`rb-entity-item ${isSelected ? "active" : ""}`}
+                                onClick={() => handleSelectEntity(ent)}
+                              >
+                                <span style={{ fontSize: "0.8rem" }}>{ent.displayName}</span>
+                                {isDirect ? (
+                                  <span className="rb-entity-tag rb-tag-direct">🟢 Direct</span>
+                                ) : isExtended ? (
+                                  <span className="rb-entity-tag rb-tag-extended">🔗 Link</span>
+                                ) : (
+                                  <span className="rb-entity-tag rb-tag-unconnected">{ent.fieldCount} cols</span>
+                                )}
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })
+              )}
+            </div>
+
+            {/* Collapsible Active Entity Fields Drawer */}
+            {selectedEntity && (
+              <div className="rb-field-list-section">
+                <div
+                  className="d-flex justify-content-between align-items-center mb-2"
+                  style={{ cursor: "pointer" }}
+                  onClick={() => setShowFieldsDrawer((p) => !p)}
+                >
+                  <div className="d-flex align-items-center gap-2">
+                    {showFieldsDrawer ? <FaChevronDown size={10} /> : <FaChevronRight size={10} />}
+                    <strong style={{ fontSize: "0.8rem", color: "#1e293b" }}>{selectedEntity.displayName} Fields</strong>
+                  </div>
+                  <Badge bg="primary" style={{ fontSize: "0.68rem" }}>
+                    {fields.length} Active
+                  </Badge>
+                </div>
+
+                {showFieldsDrawer && (
+                  <div style={{ maxHeight: "200px", overflowY: "auto" }}>
+                    {fields.map((f) => {
+                      const isChecked = selectedColumns.some(
+                        (c) => c.physicalTable === f.physicalTableName && c.physicalColumn === f.physicalColumnName
+                      );
                       return (
-                        <div
-                          key={ent.entityId}
-                          className={`rb-entity-item ${isSelected ? "active" : ""}`}
-                          onClick={() => handleSelectEntity(ent)}
-                        >
-                          <span style={{ fontSize: "0.82rem" }}>{ent.displayName}</span>
-                          {isDirect ? (
-                            <span className="rb-entity-tag rb-tag-direct">🟢 Related</span>
-                          ) : isExtended ? (
-                            <span className="rb-entity-tag rb-tag-extended">🔗 Link</span>
-                          ) : (
-                            <span className="rb-entity-tag rb-tag-unconnected">{ent.fieldCount} cols</span>
-                          )}
+                        <div key={f.fieldId} className="rb-field-item" onClick={() => handleToggleColumn(f)}>
+                          <div className="d-flex align-items-center gap-2">
+                            <input type="checkbox" checked={isChecked} onChange={() => {}} style={{ cursor: "pointer" }} />
+                            <span>{f.displayName}</span>
+                          </div>
+                          <span className="rb-type-badge">{f.dataType}</span>
                         </div>
                       );
                     })}
                   </div>
-                ))
-              )}
-            </div>
-
-            {/* Active Entity Fields */}
-            {selectedEntity && (
-              <div className="rb-field-list-section">
-                <div className="d-flex justify-content-between align-items-center mb-2">
-                  <strong style={{ fontSize: "0.8rem", color: "#1e293b" }}>{selectedEntity.displayName} Fields</strong>
-                  <Badge bg="secondary" style={{ fontSize: "0.68rem" }}>
-                    {fields.length} Available
-                  </Badge>
-                </div>
-                <div>
-                  {fields.map((f) => {
-                    const isChecked = selectedColumns.some(
-                      (c) => c.physicalTable === f.physicalTableName && c.physicalColumn === f.physicalColumnName
-                    );
-                    return (
-                      <div key={f.fieldId} className="rb-field-item" onClick={() => handleToggleColumn(f)}>
-                        <div className="d-flex align-items-center gap-2">
-                          <input type="checkbox" checked={isChecked} onChange={() => {}} style={{ cursor: "pointer" }} />
-                          <span>{f.displayName}</span>
-                        </div>
-                        <span className="rb-type-badge">{f.dataType}</span>
-                      </div>
-                    );
-                  })}
-                </div>
+                )}
               </div>
             )}
           </div>
 
-          {/* WORKBENCH (Right Side: Zones 2, 3, 4) */}
+          {/* ----------------------------------------------------------------
+              WORKBENCH (Right Side: Collapsible Cards with Visual Mapping)
+              ---------------------------------------------------------------- */}
           <div className="rb-workbench">
-            {/* ZONE 2: Selected Columns Shelf */}
-            <div className="rb-shelf-section">
-              <div className="rb-shelf-header">
-                <span className="rb-shelf-title">Selected Columns Shelf ({selectedColumns.length} Active Columns)</span>
-                <button
-                  className="rb-btn rb-btn-outline"
-                  style={{ padding: "4px 10px" }}
-                  onClick={() => setShowFormulaModal(true)}
-                >
-                  <FaCalculator color="#2563eb" /> + Add Calculated Formula
-                </button>
-              </div>
-
-              <div className="rb-columns-row">
-                {selectedColumns.length === 0 ? (
-                  <div className="text-muted p-2" style={{ fontSize: "0.82rem" }}>
-                    👈 Click on any fields in the left explorer to add columns to your report.
+            <div className="rb-workbench-scrollable">
+              {/* ACCORDION 1: Selected Columns Shelf */}
+              <div className="rb-adv-card">
+                <div className="rb-adv-card-header" onClick={() => toggleSection("columns")}>
+                  <div className="d-flex align-items-center gap-2">
+                    {openSections.columns ? <FaChevronUp size={12} color="#64748b" /> : <FaChevronDown size={12} color="#64748b" />}
+                    <span className="rb-adv-card-title">
+                      <FaTable color="#2563eb" /> Selected Columns & Metrics
+                    </span>
+                    <Badge bg="primary" style={{ fontSize: "0.72rem" }}>
+                      {selectedColumns.length} Active
+                    </Badge>
                   </div>
-                ) : (
-                  selectedColumns.map((col, idx) => (
-                    <div key={idx} className="rb-column-card">
-                      <span className="rb-card-label" title={col.physicalTable + "." + col.physicalColumn}>
-                        {col.displayLabel}
-                      </span>
-                      <select
-                        className="rb-agg-select"
-                        value={col.aggregation || "NONE"}
-                        onChange={(e) => handleUpdateColumnAgg(idx, e.target.value)}
-                      >
-                        <option value="NONE">-</option>
-                        <option value="SUM">Sum</option>
-                        <option value="AVG">Avg</option>
-                        <option value="COUNT">Count</option>
-                        <option value="MIN">Min</option>
-                        <option value="MAX">Max</option>
-                      </select>
-                      <FaTimes className="rb-card-close" onClick={() => handleRemoveColumn(idx)} />
-                    </div>
-                  ))
+
+                  <div className="d-flex align-items-center gap-2" onClick={(e) => e.stopPropagation()}>
+                    <button className="rb-btn-xs" onClick={() => setShowFormulaModal(true)}>
+                      <FaCalculator color="#2563eb" /> + Add Formula
+                    </button>
+                    {selectedColumns.length > 0 && (
+                      <button className="rb-btn-xs text-danger" onClick={() => setSelectedColumns([])}>
+                        Clear
+                      </button>
+                    )}
+                  </div>
+                </div>
+
+                {openSections.columns && (
+                  <div className="rb-adv-card-body">
+                    {selectedColumns.length === 0 ? (
+                      <div className="text-muted p-3 text-center" style={{ fontSize: "0.82rem" }}>
+                        👈 Click any fields from the left Entity Explorer to add columns to your report.
+                      </div>
+                    ) : (
+                      <div className="rb-columns-row">
+                        {selectedColumns.map((col, idx) => (
+                          <div key={idx} className="rb-column-card">
+                            <div className="rb-col-card-top">
+                              <span className="rb-card-label" title={`${col.physicalTable}.${col.physicalColumn}`}>
+                                {col.displayLabel}
+                              </span>
+                              <FaTimes className="rb-card-close" onClick={() => handleRemoveColumn(idx)} />
+                            </div>
+                            <div className="d-flex align-items-center justify-content-between mt-1 gap-2">
+                              <small className="text-muted" style={{ fontSize: "0.68rem" }}>
+                                {col.dataType}
+                              </small>
+                              <select
+                                className="rb-agg-select"
+                                value={col.aggregation || "NONE"}
+                                onChange={(e) => handleUpdateColumnAgg(idx, e.target.value)}
+                              >
+                                <option value="NONE">- None -</option>
+                                <option value="SUM">Sum (∑)</option>
+                                <option value="AVG">Average (Avg)</option>
+                                <option value="COUNT">Count (Rows)</option>
+                                <option value="MIN">Min</option>
+                                <option value="MAX">Max</option>
+                              </select>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
                 )}
               </div>
-            </div>
 
-            {/* ZONE 3: Filters & Criteria Strip */}
-            <div className="rb-filter-strip">
-              <span style={{ fontSize: "0.78rem", fontWeight: 700, color: "#64748b", textTransform: "uppercase" }}>
-                <FaFilter /> Filters:
-              </span>
-              {filters.map((flt, idx) => (
-                <div key={idx} className="rb-filter-chip">
-                  <strong>{flt.physicalColumn}:</strong>
-                  <select value={flt.operator} onChange={(e) => handleUpdateFilter(idx, "operator", e.target.value)}>
-                    <option value="EQ">Equals (=)</option>
-                    <option value="NEQ">Not Equals (&lt;&gt;)</option>
-                    <option value="LIKE">Contains</option>
-                    <option value="GT">Greater Than (&gt;)</option>
-                    <option value="LT">Less Than (&lt;)</option>
-                    <option value="IS_NULL">Is Null</option>
-                    <option value="IS_NOT_NULL">Is Not Null</option>
-                  </select>
-                  {flt.operator !== "IS_NULL" && flt.operator !== "IS_NOT_NULL" && (
-                    <input
-                      type="text"
-                      placeholder="Value..."
-                      value={flt.value1 || ""}
-                      onChange={(e) => handleUpdateFilter(idx, "value1", e.target.value)}
-                    />
-                  )}
-                  <FaTimes style={{ cursor: "pointer", color: "#94a3b8" }} onClick={() => handleRemoveFilter(idx)} />
-                </div>
-              ))}
-              <Button
-                variant="outline-primary"
-                size="sm"
-                onClick={handleAddFilter}
-                style={{ fontSize: "0.75rem", borderRadius: "14px" }}
-              >
-                + Add Filter
-              </Button>
-            </div>
+              {/* ACCORDION 2: Visual Entity Join & Relationship Mapping */}
+              <div className="rb-adv-card">
+                <div className="rb-adv-card-header" onClick={() => toggleSection("mapping")}>
+                  <div className="d-flex align-items-center gap-2">
+                    {openSections.mapping ? <FaChevronUp size={12} color="#64748b" /> : <FaChevronDown size={12} color="#64748b" />}
+                    <span className="rb-adv-card-title">
+                      <FaProjectDiagram color="#8b5cf6" /> Entity Relationship & Auto-Join Mapping
+                    </span>
+                    <Badge bg="secondary" style={{ fontSize: "0.72rem" }}>
+                      {tablesInUse.length} Tables Connected
+                    </Badge>
+                    {joinPath.length > 0 && (
+                      <Badge bg="info" style={{ fontSize: "0.72rem" }}>
+                        {joinPath.length} BFS Links
+                      </Badge>
+                    )}
+                  </div>
 
-            {/* ZONE 4: Live Data Preview */}
-            <div className="rb-preview-section">
-              <div className="rb-preview-header">
-                <div className="rb-preview-meta">
-                  <span>
-                    <strong>Total Records:</strong> {totalRows}
-                  </span>
-                  <span>
-                    <strong>Execution Time:</strong> {executionTimeMs} ms
-                  </span>
-                  {loadingQuery && <Spinner animation="border" size="sm" variant="primary" />}
+                  <div className="d-flex align-items-center gap-2" onClick={(e) => e.stopPropagation()}>
+                    <Form.Select
+                      size="sm"
+                      style={{ fontSize: "0.75rem", width: "200px" }}
+                      onChange={(e) => {
+                        handleAddRelatedTable(e.target.value);
+                        e.target.value = "";
+                      }}
+                      defaultValue=""
+                    >
+                      <option value="" disabled>
+                        + Link Related Table...
+                      </option>
+                      <optgroup label="Direct Connected Tables (1-Hop)">
+                        {Array.from(relatedEntitiesMap.direct).map((id) => {
+                          const ent = entities.find((e) => e.entityId === id);
+                          return ent ? (
+                            <option key={ent.entityId} value={ent.entityId}>
+                              🟢 {ent.displayName}
+                            </option>
+                          ) : null;
+                        })}
+                      </optgroup>
+                      <optgroup label="Extended Graph Links">
+                        {Array.from(relatedEntitiesMap.extended).map((id) => {
+                          const ent = entities.find((e) => e.entityId === id);
+                          return ent ? (
+                            <option key={ent.entityId} value={ent.entityId}>
+                              🔗 {ent.displayName}
+                            </option>
+                          ) : null;
+                        })}
+                      </optgroup>
+                    </Form.Select>
+                  </div>
                 </div>
 
-                <div className="d-flex align-items-center gap-2">
-                  <Button
-                    variant={viewMode === "table" ? "primary" : "outline-secondary"}
-                    size="sm"
-                    style={{ fontSize: "0.75rem" }}
-                    onClick={() => setViewMode("table")}
-                  >
-                    <FaTable /> Table
-                  </Button>
-                  <Button
-                    variant={viewMode === "chart" ? "primary" : "outline-secondary"}
-                    size="sm"
-                    style={{ fontSize: "0.75rem" }}
-                    onClick={() => setViewMode("chart")}
-                  >
-                    <FaChartBar /> Chart
-                  </Button>
-                  <Form.Select
-                    size="sm"
-                    style={{ width: "90px", fontSize: "0.75rem" }}
-                    value={pageSize}
-                    onChange={(e) => setPageSize(parseInt(e.target.value))}
-                  >
-                    <option value={25}>25 Rows</option>
-                    <option value={50}>50 Rows</option>
-                    <option value={100}>100 Rows</option>
-                    <option value={500}>500 Rows</option>
-                  </Form.Select>
-                </div>
+                {openSections.mapping && (
+                  <div className="rb-adv-card-body">
+                    {tablesInUse.length <= 1 ? (
+                      <div className="rb-mapping-single-alert">
+                        <FaLink color="#3b82f6" />
+                        <div>
+                          <strong>Single Entity Mode:</strong> Currently querying data directly from{" "}
+                          <u>{selectedEntity?.displayName || "Primary Table"}</u>.
+                          <div style={{ fontSize: "0.76rem", color: "#64748b", marginTop: "2px" }}>
+                            To join other factory departments or records, pick a table from the{" "}
+                            <strong>"+ Link Related Table"</strong> dropdown above or select fields from related tables on the left.
+                          </div>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="rb-mapping-trail-container">
+                        <div className="rb-mapping-trail">
+                          <div className="rb-mapping-node primary">
+                            <span className="rb-node-badge">Primary</span>
+                            <span className="rb-node-title">{tablesInUse[0]}</span>
+                          </div>
+
+                          {joinPath.map((step, sIdx) => (
+                            <React.Fragment key={sIdx}>
+                              <div className="rb-mapping-connector">
+                                <div className="rb-connector-line" />
+                                <div className="rb-connector-badge" title={step.condition}>
+                                  {step.joinType || "INNER JOIN"}
+                                </div>
+                                <FaArrowRight className="rb-connector-arrow" />
+                              </div>
+
+                              <div className="rb-mapping-node linked">
+                                <span className="rb-node-badge">Auto-Linked</span>
+                                <span className="rb-node-title">{step.toTable}</span>
+                              </div>
+                            </React.Fragment>
+                          ))}
+                        </div>
+
+                        <div className="rb-mapping-footer-note">
+                          ✅ BFS Pathfinding resolved shortest database join path automatically with Zero-Lock (WITH NOLOCK).
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
 
-              <div className="rb-grid-container">
-                {viewMode === "table" ? (
-                  previewData.length === 0 ? (
-                    <div className="text-center py-5 text-muted">
-                      <FaTable size={32} color="#cbd5e1" className="mb-2" />
-                      <div>No data to display. Add columns or adjust filters to view live results.</div>
+              {/* ACCORDION 3: Smart Filter Rules & Conditions */}
+              <div className="rb-adv-card">
+                <div className="rb-adv-card-header" onClick={() => toggleSection("filters")}>
+                  <div className="d-flex align-items-center gap-2">
+                    {openSections.filters ? <FaChevronUp size={12} color="#64748b" /> : <FaChevronDown size={12} color="#64748b" />}
+                    <span className="rb-adv-card-title">
+                      <FaFilter color="#f59e0b" /> Filter Rules & Criteria
+                    </span>
+                    <Badge bg="secondary" style={{ fontSize: "0.72rem" }}>
+                      {filters.length} Rules Active
+                    </Badge>
+                  </div>
+
+                  <div className="d-flex align-items-center gap-2" onClick={(e) => e.stopPropagation()}>
+                    <button className="rb-btn-xs" onClick={handleAddFilter}>
+                      <FaPlus /> Add Filter Rule
+                    </button>
+                    {filters.length > 0 && (
+                      <button className="rb-btn-xs text-danger" onClick={() => setFilters([])}>
+                        Clear All
+                      </button>
+                    )}
+                  </div>
+                </div>
+
+                {openSections.filters && (
+                  <div className="rb-adv-card-body">
+                    {filters.length === 0 ? (
+                      <div className="text-muted p-2 text-center" style={{ fontSize: "0.82rem" }}>
+                        No filters applied. Click <strong>"+ Add Filter Rule"</strong> above to filter by specific values or dates.
+                      </div>
+                    ) : (
+                      <div className="rb-filters-grid">
+                        {filters.map((flt, idx) => {
+                          const currentKey = `${flt.physicalTable}.${flt.physicalColumn}`;
+                          return (
+                            <div key={idx} className="rb-filter-card">
+                              {/* 1. Field Dropdown */}
+                              <Form.Select
+                                size="sm"
+                                className="rb-filter-select"
+                                value={currentKey}
+                                onChange={(e) => handleFilterColumnChange(idx, e.target.value)}
+                              >
+                                {availableFilterColumns.map((c, i) => (
+                                  <option key={i} value={`${c.physicalTable}.${c.physicalColumn}`}>
+                                    {c.displayLabel}
+                                  </option>
+                                ))}
+                              </Form.Select>
+
+                              {/* 2. Operator Dropdown */}
+                              <Form.Select
+                                size="sm"
+                                className="rb-filter-select"
+                                style={{ width: "160px" }}
+                                value={flt.operator}
+                                onChange={(e) => handleUpdateFilter(idx, "operator", e.target.value)}
+                              >
+                                <option value="EQ">Is Equal To (=)</option>
+                                <option value="NEQ">Does Not Equal (≠)</option>
+                                <option value="LIKE">Contains Text</option>
+                                <option value="GT">Greater Than (&gt;)</option>
+                                <option value="LT">Less Than (&lt;)</option>
+                                <option value="IS_NULL">Is Empty (Null)</option>
+                                <option value="IS_NOT_NULL">Is Not Empty</option>
+                              </Form.Select>
+
+                              {/* 3. Value Input */}
+                              {flt.operator !== "IS_NULL" && flt.operator !== "IS_NOT_NULL" && (
+                                <Form.Control
+                                  size="sm"
+                                  className="rb-filter-input"
+                                  type={flt.dataType === "DateTime" ? "date" : "text"}
+                                  placeholder="Enter value..."
+                                  value={flt.value1 || ""}
+                                  onChange={(e) => handleUpdateFilter(idx, "value1", e.target.value)}
+                                />
+                              )}
+
+                              <FaTimes className="rb-card-close ms-2" onClick={() => handleRemoveFilter(idx)} />
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              {/* ACCORDION 4: Live Data Preview & Virtual Grid */}
+              <div className="rb-adv-card">
+                <div className="rb-adv-card-header" onClick={() => toggleSection("grid")}>
+                  <div className="d-flex align-items-center gap-3">
+                    {openSections.grid ? <FaChevronUp size={12} color="#64748b" /> : <FaChevronDown size={12} color="#64748b" />}
+                    <span className="rb-adv-card-title">
+                      <FaChartBar color="#10b981" /> Live Results & Virtual Grid
+                    </span>
+                    <span className="rb-preview-meta-pill">
+                      <strong>{totalRows}</strong> Records ({executionTimeMs} ms)
+                    </span>
+                    {loadingQuery && <Spinner animation="border" size="sm" variant="primary" />}
+                  </div>
+
+                  <div className="d-flex align-items-center gap-2" onClick={(e) => e.stopPropagation()}>
+                    <div className="rb-table-search-box">
+                      <FaSearch className="rb-table-search-icon" />
+                      <input
+                        type="text"
+                        placeholder="Search grid..."
+                        value={tableSearch}
+                        onChange={(e) => setTableSearch(e.target.value)}
+                      />
                     </div>
-                  ) : (
-                    <table className="rb-table">
-                      <thead>
-                        <tr>
-                          {columnHeaders.map((col, idx) => (
-                            <th key={idx}>{col}</th>
-                          ))}
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {previewData.map((row, rIdx) => (
-                          <tr key={rIdx}>
-                            {columnHeaders.map((col, cIdx) => (
-                              <td key={cIdx}>
-                                {row[col] !== null && row[col] !== undefined ? String(row[col]) : "-"}
-                              </td>
+
+                    <Button
+                      variant={viewMode === "table" ? "primary" : "outline-secondary"}
+                      size="sm"
+                      style={{ fontSize: "0.75rem", padding: "4px 8px" }}
+                      onClick={() => setViewMode("table")}
+                    >
+                      <FaTable /> Table
+                    </Button>
+                    <Button
+                      variant={viewMode === "chart" ? "primary" : "outline-secondary"}
+                      size="sm"
+                      style={{ fontSize: "0.75rem", padding: "4px 8px" }}
+                      onClick={() => setViewMode("chart")}
+                    >
+                      <FaChartBar /> Chart
+                    </Button>
+
+                    <Form.Select
+                      size="sm"
+                      style={{ width: "95px", fontSize: "0.75rem" }}
+                      value={pageSize}
+                      onChange={(e) => setPageSize(parseInt(e.target.value))}
+                    >
+                      <option value={25}>25 Rows</option>
+                      <option value={50}>50 Rows</option>
+                      <option value={100}>100 Rows</option>
+                      <option value={500}>500 Rows</option>
+                    </Form.Select>
+                  </div>
+                </div>
+
+                {openSections.grid && (
+                  <div className="rb-adv-card-body p-0">
+                    <div className="rb-grid-container" style={{ borderRadius: "0 0 10px 10px", maxHeight: "420px" }}>
+                      {viewMode === "table" ? (
+                        displayedPreviewData.length === 0 ? (
+                          <div className="text-center py-5 text-muted">
+                            <FaTable size={36} color="#cbd5e1" className="mb-2" />
+                            <div>No data to display. Add columns or adjust filters to view live results.</div>
+                          </div>
+                        ) : (
+                          <table className="rb-table">
+                            <thead>
+                              <tr>
+                                {columnHeaders.map((col, idx) => (
+                                  <th key={idx}>{col}</th>
+                                ))}
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {displayedPreviewData.map((row, rIdx) => (
+                                <tr key={rIdx}>
+                                  {columnHeaders.map((col, cIdx) => (
+                                    <td key={cIdx}>
+                                      {row[col] !== null && row[col] !== undefined ? String(row[col]) : "-"}
+                                    </td>
+                                  ))}
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        )
+                      ) : (
+                        <div className="p-4 text-center">
+                          <h6 className="text-muted">Data Distribution Chart</h6>
+                          <p style={{ fontSize: "0.85rem", color: "#64748b" }}>
+                            Visual analytics rendered dynamically for numeric metric columns across {totalRows} records.
+                          </p>
+                          <div className="d-flex justify-content-center gap-3 mt-4">
+                            {previewData.slice(0, 8).map((r, i) => (
+                              <div key={i} className="d-flex flex-column align-items-center">
+                                <div
+                                  style={{
+                                    width: "36px",
+                                    height: `${Math.min(Math.max((i + 1) * 20, 30), 160)}px`,
+                                    background: "linear-gradient(180deg, #3b82f6 0%, #1d4ed8 100%)",
+                                    borderRadius: "4px 4px 0 0"
+                                  }}
+                                />
+                                <small style={{ fontSize: "0.68rem", marginTop: "4px" }}>
+                                  {Object.values(r)[0] || `Item ${i + 1}`}
+                                </small>
+                              </div>
                             ))}
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  )
-                ) : (
-                  <div className="p-4 text-center">
-                    <h6 className="text-muted">Data Distribution Chart</h6>
-                    <p style={{ fontSize: "0.85rem", color: "#64748b" }}>
-                      Visual analytics rendered dynamically for numeric metric columns across {totalRows} records.
-                    </p>
-                    <div className="d-flex justify-content-center gap-3 mt-4">
-                      {previewData.slice(0, 8).map((r, i) => (
-                        <div key={i} className="d-flex flex-column align-items-center">
-                          <div
-                            style={{
-                              width: "36px",
-                              height: `${Math.min(Math.max((i + 1) * 20, 30), 160)}px`,
-                              background: "linear-gradient(180deg, #3b82f6 0%, #1d4ed8 100%)",
-                              borderRadius: "4px 4px 0 0"
-                            }}
-                          />
-                          <small style={{ fontSize: "0.68rem", marginTop: "4px" }}>
-                            {Object.values(r)[0] || `Item ${i + 1}`}
-                          </small>
+                          </div>
                         </div>
-                      ))}
+                      )}
                     </div>
                   </div>
                 )}

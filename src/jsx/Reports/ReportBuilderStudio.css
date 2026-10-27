@@ -529,16 +529,19 @@
 }
 
 /* ==========================================================================
-   ADVANCED STUDIO WORKBENCH STYLES (4-ZONE WORKBENCH)
+   ADVANCED STUDIO WORKBENCH STYLES (COLLAPSIBLE ACCORDION & VISUAL MAPPING)
    ========================================================================== */
 .rb-studio-body {
   display: grid;
-  grid-template-columns: 320px 1fr;
+  grid-template-columns: 310px 1fr;
   flex: 1;
   overflow: hidden;
-  height: calc(100vh - 180px);
+  height: calc(100vh - 150px);
 }
 
+/* --------------------------------------------------------------------------
+   Zone 1: Collapsible Data Entity Explorer (Left Panel)
+   -------------------------------------------------------------------------- */
 .rb-explorer-panel {
   background: #ffffff;
   border-right: 1px solid var(--rb-slate-200);
@@ -548,69 +551,117 @@
 }
 
 .rb-explorer-header {
-  padding: 14px 16px;
+  padding: 12px 14px;
   border-bottom: 1px solid var(--rb-slate-200);
-  background: #fdfdfd;
+  background: #ffffff;
+}
+
+.rb-btn-micro {
+  font-size: 0.68rem;
+  font-weight: 600;
+  padding: 2px 7px;
+  border-radius: 4px;
+  border: 1px solid var(--rb-slate-200);
+  background: var(--rb-slate-50);
+  color: var(--rb-slate-600);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.rb-btn-micro:hover {
+  background: var(--rb-slate-200);
+  color: var(--rb-slate-800);
 }
 
 .rb-search-wrapper {
   position: relative;
-  margin-top: 8px;
+  margin-top: 6px;
 }
 
 .rb-search-icon {
   position: absolute;
-  left: 10px;
+  left: 9px;
   top: 50%;
   transform: translateY(-50%);
   color: var(--rb-slate-400);
-  font-size: 0.85rem;
+  font-size: 0.8rem;
 }
 
 .rb-search-input {
   width: 100%;
-  padding: 7px 10px 7px 32px;
-  font-size: 0.82rem;
+  padding: 6px 8px 6px 28px;
+  font-size: 0.78rem;
   border: 1px solid var(--rb-slate-200);
   border-radius: 6px;
   background: var(--rb-slate-50);
   outline: none;
+  transition: all 0.15s;
 }
 
 .rb-search-input:focus {
   border-color: var(--rb-primary);
   background: #ffffff;
+  box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.12);
 }
 
 .rb-entity-list {
   flex: 1;
   overflow-y: auto;
-  padding: 10px;
+  padding: 8px;
 }
 
-.rb-domain-group-title {
-  font-size: 0.72rem;
+/* Accordion Domain Category Blocks */
+.rb-domain-accordion-block {
+  margin-bottom: 6px;
+  border: 1px solid var(--rb-slate-200);
+  border-radius: 8px;
+  overflow: hidden;
+  background: #ffffff;
+}
+
+.rb-domain-accordion-header {
+  padding: 8px 10px;
+  background: var(--rb-slate-50);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  cursor: pointer;
+  user-select: none;
+  transition: background 0.15s ease;
+}
+
+.rb-domain-accordion-header:hover {
+  background: var(--rb-slate-100);
+}
+
+.rb-domain-title-text {
+  font-size: 0.76rem;
   font-weight: 700;
+  color: var(--rb-slate-700);
   text-transform: uppercase;
-  color: var(--rb-slate-400);
-  padding: 8px 8px 4px 8px;
-  letter-spacing: 0.5px;
+  letter-spacing: 0.3px;
+}
+
+.rb-domain-accordion-content {
+  padding: 4px;
+  background: #ffffff;
 }
 
 .rb-entity-item {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 7px 10px;
-  border-radius: 6px;
+  padding: 6px 8px;
+  border-radius: 5px;
   cursor: pointer;
-  transition: all 0.15s ease;
+  transition: all 0.12s ease;
   margin-bottom: 2px;
   color: var(--rb-slate-700);
 }
 
 .rb-entity-item:hover {
   background: var(--rb-slate-100);
+  color: var(--rb-slate-900);
 }
 
 .rb-entity-item.active {
@@ -620,10 +671,10 @@
 }
 
 .rb-entity-tag {
-  font-size: 0.68rem;
-  padding: 2px 6px;
+  font-size: 0.65rem;
+  padding: 1px 5px;
   border-radius: 4px;
-  font-weight: 500;
+  font-weight: 600;
 }
 
 .rb-tag-direct {
@@ -641,22 +692,21 @@
   color: var(--rb-slate-500);
 }
 
+/* Active Entity Fields Drawer */
 .rb-field-list-section {
-  padding: 12px 16px;
+  padding: 10px 12px;
   border-top: 1px solid var(--rb-slate-200);
   background: #ffffff;
-  max-height: 250px;
-  overflow-y: auto;
 }
 
 .rb-field-item {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 6px 8px;
+  padding: 5px 6px;
   border-radius: 4px;
   cursor: pointer;
-  font-size: 0.8rem;
+  font-size: 0.78rem;
   transition: all 0.1s ease;
 }
 
@@ -665,13 +715,16 @@
 }
 
 .rb-type-badge {
-  font-size: 0.68rem;
+  font-size: 0.65rem;
   background: var(--rb-slate-100);
   color: var(--rb-slate-600);
   padding: 1px 5px;
   border-radius: 3px;
 }
 
+/* --------------------------------------------------------------------------
+   Zone 2: Workbench with Collapsible Cards (Right Panel)
+   -------------------------------------------------------------------------- */
 .rb-workbench {
   display: flex;
   flex-direction: column;
@@ -679,118 +732,265 @@
   background: #f8fafc;
 }
 
-.rb-shelf-section {
-  background: #ffffff;
-  border-bottom: 1px solid var(--rb-slate-200);
-  padding: 12px 20px;
+.rb-workbench-scrollable {
+  flex: 1;
+  overflow-y: auto;
+  padding: 16px 20px 40px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
 }
 
-.rb-shelf-header {
+/* Collapsible Workbench Cards */
+.rb-adv-card {
+  background: #ffffff;
+  border-radius: 10px;
+  border: 1px solid var(--rb-slate-200);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+  overflow: hidden;
+}
+
+.rb-adv-card-header {
+  padding: 10px 16px;
+  background: #ffffff;
+  border-bottom: 1px solid var(--rb-slate-100);
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 8px;
+  cursor: pointer;
+  user-select: none;
+  transition: background 0.15s ease;
 }
 
-.rb-shelf-title {
-  font-size: 0.82rem;
+.rb-adv-card-header:hover {
+  background: #fbfcfe;
+}
+
+.rb-adv-card-title {
+  font-size: 0.86rem;
   font-weight: 700;
-  color: var(--rb-slate-600);
-  text-transform: uppercase;
+  color: var(--rb-slate-800);
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
 }
 
+.rb-adv-card-body {
+  padding: 14px 16px;
+  background: #ffffff;
+}
+
+/* Section 1: Columns Shelf Cards */
 .rb-columns-row {
   display: flex;
   align-items: center;
   gap: 8px;
   overflow-x: auto;
-  padding: 4px 0 6px 0;
+  padding-bottom: 4px;
 }
 
 .rb-column-card {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
+  display: flex;
+  flex-direction: column;
   background: #ffffff;
-  border: 1px solid var(--rb-slate-300);
-  border-radius: 6px;
-  padding: 5px 9px;
-  font-size: 0.8rem;
-  font-weight: 600;
+  border: 1.5px solid var(--rb-slate-200);
+  border-radius: 7px;
+  padding: 6px 10px;
+  min-width: 170px;
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03);
+  transition: all 0.15s ease;
+}
+
+.rb-column-card:hover {
+  border-color: var(--rb-primary);
+  box-shadow: 0 2px 6px rgba(37, 99, 235, 0.1);
+}
+
+.rb-col-card-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.rb-card-label {
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--rb-slate-800);
   white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 130px;
 }
 
 .rb-agg-select {
-  font-size: 0.72rem;
+  font-size: 0.7rem;
   border: 1px solid var(--rb-slate-200);
   border-radius: 4px;
   padding: 2px 4px;
   background: var(--rb-slate-50);
   outline: none;
+  color: var(--rb-slate-700);
+  cursor: pointer;
 }
 
 .rb-card-close {
   cursor: pointer;
   color: var(--rb-slate-400);
-  font-size: 0.75rem;
+  font-size: 0.72rem;
+  transition: color 0.12s;
 }
 
 .rb-card-close:hover {
   color: var(--rb-danger);
 }
 
-.rb-filter-strip {
-  background: #fdfdfd;
-  border-bottom: 1px solid var(--rb-slate-200);
-  padding: 8px 20px;
+/* Section 2: Visual Join Mapping System */
+.rb-mapping-single-alert {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  background: #eff6ff;
+  border: 1px solid #bfdbfe;
+  border-radius: 8px;
+  padding: 10px 14px;
+  font-size: 0.82rem;
+  color: #1e3a8a;
+}
+
+.rb-mapping-trail-container {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.rb-mapping-trail {
   display: flex;
   align-items: center;
   gap: 10px;
   overflow-x: auto;
+  padding: 8px 4px;
 }
 
-.rb-filter-chip {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  background: #ffffff;
-  border: 1px solid var(--rb-slate-200);
-  border-radius: 20px;
-  padding: 4px 10px;
-  font-size: 0.75rem;
-}
-
-.rb-filter-chip select,
-.rb-filter-chip input {
-  font-size: 0.75rem;
-  border: 1px solid var(--rb-slate-200);
-  border-radius: 4px;
-  padding: 2px 6px;
-  outline: none;
-}
-
-.rb-preview-section {
-  flex: 1;
+.rb-mapping-node {
   display: flex;
   flex-direction: column;
-  overflow: hidden;
-  padding: 16px 20px;
+  padding: 8px 14px;
+  border-radius: 8px;
+  background: #ffffff;
+  border: 1.5px solid var(--rb-slate-300);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.04);
+  min-width: 130px;
 }
 
-.rb-preview-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 10px;
+.rb-mapping-node.primary {
+  border-color: var(--rb-primary);
+  background: #eff6ff;
 }
 
-.rb-preview-meta {
+.rb-mapping-node.linked {
+  border-color: #8b5cf6;
+  background: #f5f3ff;
+}
+
+.rb-node-badge {
+  font-size: 0.64rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: var(--rb-slate-500);
+  letter-spacing: 0.4px;
+}
+
+.rb-mapping-node.primary .rb-node-badge {
+  color: var(--rb-primary);
+}
+
+.rb-mapping-node.linked .rb-node-badge {
+  color: #7c3aed;
+}
+
+.rb-node-title {
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: var(--rb-slate-800);
+  margin-top: 2px;
+}
+
+.rb-mapping-connector {
   display: flex;
   align-items: center;
-  gap: 16px;
-  font-size: 0.8rem;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.rb-connector-line {
+  width: 20px;
+  height: 2px;
+  background: #94a3b8;
+}
+
+.rb-connector-badge {
+  font-size: 0.65rem;
+  font-weight: 700;
+  padding: 3px 8px;
+  border-radius: 12px;
+  background: #ede9fe;
+  color: #6d28d9;
+  border: 1px solid #ddd6fe;
+  white-space: nowrap;
+}
+
+.rb-connector-arrow {
+  color: #7c3aed;
+  font-size: 0.75rem;
+}
+
+.rb-mapping-footer-note {
+  font-size: 0.74rem;
+  color: #059669;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* Section 3: Smart Filter Rules & Criteria */
+.rb-filters-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.rb-filter-card {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--rb-slate-50);
+  border: 1px solid var(--rb-slate-200);
+  border-radius: 6px;
+  padding: 6px 10px;
+  flex-wrap: wrap;
+}
+
+.rb-filter-select {
+  font-size: 0.76rem;
+  max-width: 220px;
+  background: #ffffff;
+}
+
+.rb-filter-input {
+  font-size: 0.76rem;
+  max-width: 200px;
+  background: #ffffff;
+}
+
+/* Section 4: Live Data Preview Header Pill */
+.rb-preview-meta-pill {
+  font-size: 0.74rem;
   color: var(--rb-slate-600);
+  background: var(--rb-slate-100);
+  padding: 3px 8px;
+  border-radius: 12px;
 }
 
 /* --------------------------------------------------------------------------
@@ -880,3 +1080,4 @@
   min-height: 50px;
   word-break: break-all;
 }
+
