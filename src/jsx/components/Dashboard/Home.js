@@ -125,6 +125,16 @@ const Home = () => {
   const userData = JSON.parse(localStorage.getItem("authUser")) || {};
   const userId = userData.id || userData.UserId || 0;
   const userToken = "token"; // JWT sent via Authorization header, not in URL path
+  const isAdmin = Boolean(
+    userData?.role === 1 ||
+    userData?.roleId === 1 ||
+    userData?.Role === 1 ||
+    userData?.userType === 1 ||
+    userData?.UserType === 1 ||
+    userData?.userName?.toLowerCase() === "admin" ||
+    userData?.username?.toLowerCase() === "admin" ||
+    userData?.Name?.toLowerCase() === "admin"
+  );
 
   // Fetch dashboard data (isSilent: true updates background state quietly without blocking the UI)
   const fetchDashboardData = useCallback(async (isSilent = false) => {
@@ -1072,7 +1082,7 @@ const Home = () => {
                             </td>
                             <td>{step.OperatorName || <span className="text-muted">N/A</span>}</td>
                             <td className="text-center">
-                              {statusText === "IN PROGRESS" ? (
+                              {isAdmin && statusText === "IN PROGRESS" ? (
                                 <Button
                                   variant="danger"
                                   size="sm"

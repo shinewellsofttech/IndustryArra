@@ -114,6 +114,16 @@ const MachineDelayDashboard = () => {
   const userData = JSON.parse(localStorage.getItem("authUser")) || {};
   const userId = userData.id || userData.UserId || 0;
   // JWT sent via Authorization header by ApiHelper - use literal 'token' in path
+  const isAdmin = Boolean(
+    userData?.role === 1 ||
+    userData?.roleId === 1 ||
+    userData?.Role === 1 ||
+    userData?.userType === 1 ||
+    userData?.UserType === 1 ||
+    userData?.userName?.toLowerCase() === "admin" ||
+    userData?.username?.toLowerCase() === "admin" ||
+    userData?.Name?.toLowerCase() === "admin"
+  );
 
   // Fetch dashboard data (isSilent: true updates background state quietly without blocking the UI)
   const fetchDashboardData = useCallback(async (isSilent = false) => {
@@ -896,19 +906,21 @@ const MachineDelayDashboard = () => {
                                   >
                                     <FaEye className="me-1" /> View Flow
                                   </Button>
-                                  <Button
-                                    variant="danger"
-                                    className="btn-xs"
-                                    onClick={() => handleStopMachine(m)}
-                                    disabled={!!stoppingMachineId}
-                                    title={`Stop machine: ${currentMachineName}`}
-                                  >
-                                    {stoppingMachineId === currentLineId ? (
-                                      <><Spinner animation="border" size="sm" className="me-1" /> Stopping...</>
-                                    ) : (
-                                      <><FaStopCircle className="me-1" /> Stop</>
-                                    )}
-                                  </Button>
+                                  {isAdmin && (
+                                    <Button
+                                      variant="danger"
+                                      className="btn-xs"
+                                      onClick={() => handleStopMachine(m)}
+                                      disabled={!!stoppingMachineId}
+                                      title={`Stop machine: ${currentMachineName}`}
+                                    >
+                                      {stoppingMachineId === currentLineId ? (
+                                        <><Spinner animation="border" size="sm" className="me-1" /> Stopping...</>
+                                      ) : (
+                                        <><FaStopCircle className="me-1" /> Stop</>
+                                      )}
+                                    </Button>
+                                  )}
                                 </div>
                               </td>
                             </tr>

@@ -12,6 +12,15 @@ const PausedMachinesTableWidget = ({ pausedMachines = [], onRefresh, formatDateT
 
   const userData = JSON.parse(localStorage.getItem("authUser")) || {};
   const currentUserName = userData.name || userData.UserName || "Admin";
+  const isAdmin = 
+    userData?.role === 1 || 
+    userData?.roleId === 1 || 
+    userData?.Role === 1 || 
+    userData?.userType === 1 || 
+    userData?.UserType === 1 || 
+    userData?.userName?.toLowerCase() === "admin" || 
+    userData?.username?.toLowerCase() === "admin" || 
+    userData?.Name?.toLowerCase() === "admin";
 
   const handleResumeConfirm = async () => {
     if (!selectedMachineToResume) return;
@@ -124,15 +133,21 @@ const PausedMachinesTableWidget = ({ pausedMachines = [], onRefresh, formatDateT
                       </span>
                     </td>
                     <td className="text-end">
-                      <Button
-                        size="sm"
-                        variant="success"
-                        className="py-1 px-3 d-inline-flex align-items-center gap-1"
-                        style={{ fontSize: "0.75rem", borderRadius: "16px" }}
-                        onClick={() => setSelectedMachineToResume(m)}
-                      >
-                        <FaPlay size={9} /> Resume
-                      </Button>
+                      {isAdmin ? (
+                        <Button
+                          size="sm"
+                          variant="success"
+                          className="py-1 px-3 d-inline-flex align-items-center gap-1"
+                          style={{ fontSize: "0.75rem", borderRadius: "16px" }}
+                          onClick={() => setSelectedMachineToResume(m)}
+                        >
+                          <FaPlay size={9} /> Resume
+                        </Button>
+                      ) : (
+                        <span className="badge bg-light text-secondary border px-2 py-1" style={{ fontSize: "0.72rem" }}>
+                          On Hold
+                        </span>
+                      )}
                     </td>
                   </tr>
                 ))}

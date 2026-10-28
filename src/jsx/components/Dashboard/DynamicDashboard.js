@@ -9,7 +9,7 @@ import "react-resizable/css/styles.css";
 import "./DynamicDashboard.css";
 
 import { API_WEB_URLS } from "../../../constants/constAPI";
-import { Fn_FillListData } from "../../../store/Functions";
+import { Fn_FillListData, Fn_AddEditData } from "../../../store/Functions";
 import { WIDGET_REGISTRY } from "./WidgetRegistry";
 import WidgetWrapper from "./WidgetWrapper";
 import CustomizeDashboardDrawer from "./modals/CustomizeDashboardDrawer";
@@ -27,7 +27,10 @@ import {
   FaExclamationTriangle,
   FaCircle,
   FaCheckCircle,
-  FaEye
+  FaEye,
+  FaStop,
+  FaPlay,
+  FaRoute
 } from "react-icons/fa";
 
 // Default fallback layout if database has no record and connection is offline
@@ -190,6 +193,175 @@ const DynamicDashboard = () => {
 
   // KPI detail modal state
   const [detailModalType, setDetailModalType] = useState(null);
+
+  // Admin role validation (Only Admin can trigger floor Machine Start/Stop actions)
+  const isAdmin = useMemo(() => {
+    return Boolean(
+      userData?.role === 1 ||
+      userData?.roleId === 1 ||
+      userData?.Role === 1 ||
+      userData?.userType === 1 ||
+      userData?.UserType === 1 ||
+      userData?.userName?.toLowerCase() === "admin" ||
+      userData?.username?.toLowerCase() === "admin" ||
+      userData?.Name?.toLowerCase() === "admin"
+    );
+  }, [userData]);
+
+  // Start / Stop machine operation state
+  const [stoppingMachineId, setStoppingMachineId] = useState(null);
+  const [startingMachineId, setStartingMachineId] = useState(null);
+
+  // Job Card Flow modal state
+  const [showFlowModal, setShowFlowModal] = useState(false);
+  const [selectedJobCardId, setSelectedJobCardId] = useState(null);
+  const [selectedJobCardNo, setSelectedJobCardNo] = useState("");
+  const [jobCardFlow, setJobCardFlow] = useState([]);
+  const [loadingFlow, setLoadingFlow] = useState(false);
+
+  // Fetch Job Card Process Flow details
+  const fetchJobCardFlowData = useCallback(async (jobCardId) => {
+    try {
+      const response = await axios.get(
+        `${API_WEB_URLS.BASE}MachineDelayDashboard/JobCardFlow/${userId}/${userToken}/${jobCardId}`
+      );
+      if (response.data && response.data.success && response.data.data) {
+        setJobCardFlow(response.data.data);
+      }
+    } catch (err) {
+      console.error("Flow refresh error:", err);
+    }
+  }, [userId, userToken]);
+
+  const handleViewJobCardFlow = async (jobCardId, jobCardNo) => {
+    if (!jobCardId) return;
+    setSelectedJobCardId(jobCardId);
+    setSelectedJobCardNo(jobCardNo || `#${jobCardId}`);
+    setShowFlowModal(true);
+    setLoadingFlow(true);
+    try {
+      const response = await axios.get(
+        `${API_WEB_URLS.BASE}MachineDelayDashboard/JobCardFlow/${userId}/${userToken}/${jobCardId}`
+      );
+      if (response.data && response.data.success && response.data.data) {
+        setJobCardFlow(response.data.data);
+      } else {
+        setJobCardFlow([]);
+      }
+    } catch (err) {
+      console.error("Error fetching job card flow:", err);
+      setJobCardFlow([]);
+    } finally {
+      setLoadingFlow(false);
+    }
+  };
+
+  // Stop machine directly from dashboard (Admin Only)
+  const handleStopMachine = async (m) => {
+    if (!m || stoppingMachineId) return;
+
+    const currentLineId = m.JobCardLineId || m.jobCardLineId;
+    const currentMasterId = m.JobCardMasterId || m.jobCardMasterId;
+    const currentMachineId = m.MachineMasterId || m.machineMasterId;
+    const currentMachineName = m.MachineName || m.machineName;
+    const currentJobCardNo = m.JobCardNo || m.jobCardNo;
+
+    const confirmStop = window.confirm(
+      `Are you sure you want to STOP machine "${currentMachineName}" (Job Card: ${currentJobCardNo})?`
+    );
+    if (!confirmStop) return;
+
+    setStoppingMachineId(currentLineId);
+
+    try {
+      const now = new Date();
+      const pad = (n) => String(n).padStart(2, "0");
+      const nowStr = `${now.getFullYear()}-${pad(now.getMonth()+1)}-${pad(now.getDate())}T${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`;
+
+      const vFormData = new FormData();
+      vFormData.append("F_JobCardMaster", currentMasterId || "");
+      vFormData.append("F_MachineMaster", currentMachineId || "");
+      vFormData.append("NewDate", nowStr);
+      vFormData.append("Type", "2");
+
+      const postData = {
+        arguList: {
+          id: 0,
+          formData: vFormData
+        }
+      };
+
+      await Fn_AddEditData(
+        dispatch,
+        () => {},
+        postData,
+        "UpdateTransferDateByJobCard/0/token",
+        true
+      );
+
+      alert(`Machine "${currentMachineName}" stopped successfully!`);
+      fetchDashboardData(true);
+      if (currentMasterId) {
+        fetchJobCardFlowData(currentMasterId);
+      }
+    } catch (err) {
+      console.error("Error stopping machine from dashboard:", err);
+      alert(err?.message || "Failed to stop machine. Please try again.");
+    } finally {
+      setStoppingMachineId(null);
+    }
+  };
+
+  // Start machine directly from dashboard (Admin Only)
+  const handleStartMachine = async ({ jobCardMasterId, machineMasterId, machineName, jobCardNo, jobCardLineId }) => {
+    if (!machineMasterId) {
+      alert(`Error: Machine ID is missing for "${machineName}".`);
+      return;
+    }
+    const confirmStart = window.confirm(
+      `Are you sure you want to START machine "${machineName}" on Job Card: ${jobCardNo}?`
+    );
+    if (!confirmStart) return;
+
+    setStartingMachineId(jobCardLineId);
+    try {
+      const now = new Date();
+      const pad = (n) => String(n).padStart(2, "0");
+      const nowStr = `${now.getFullYear()}-${pad(now.getMonth()+1)}-${pad(now.getDate())}T${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`;
+
+      const vFormData = new FormData();
+      vFormData.append("F_JobCardMaster", jobCardMasterId || "");
+      vFormData.append("F_MachineMaster", machineMasterId || "");
+      vFormData.append("NewDate", nowStr);
+      vFormData.append("Type", "1");
+
+      const postData = {
+        arguList: {
+          id: 0,
+          formData: vFormData
+        }
+      };
+
+      await Fn_AddEditData(
+        dispatch,
+        () => {},
+        postData,
+        "UpdateTransferDateByJobCard/0/token",
+        true
+      );
+
+      alert(`Machine "${machineName}" started successfully!`);
+      fetchDashboardData(true);
+      if (jobCardMasterId) {
+        fetchJobCardFlowData(jobCardMasterId);
+      }
+    } catch (err) {
+      console.error("Error starting machine from dashboard:", err);
+      alert(err?.message || "Failed to start machine. Please try again.");
+    } finally {
+      setStartingMachineId(null);
+    }
+  };
 
   // Base API url for direct axios calls
   const baseUrl = API_WEB_URLS.BASE.endsWith("/") ? API_WEB_URLS.BASE : `${API_WEB_URLS.BASE}/`;
@@ -732,20 +904,70 @@ const DynamicDashboard = () => {
                     <th>Code</th>
                     <th>Job Card</th>
                     <th>Start Time</th>
+                    <th>Operator</th>
+                    {isAdmin && <th className="text-center" style={{ width: "160px" }}>Action</th>}
                   </tr>
                 </thead>
                 <tbody>
                   {runningMachines.length === 0 ? (
-                    <tr><td colSpan="4" className="text-center text-muted">No machines currently running</td></tr>
+                    <tr><td colSpan={isAdmin ? "6" : "5"} className="text-center text-muted">No machines currently running</td></tr>
                   ) : (
-                    runningMachines.map((m, i) => (
-                      <tr key={i}>
-                        <td className="fw-bold">{m.MachineName}</td>
-                        <td>{m.MachineCode}</td>
-                        <td><Badge bg="success">{m.JobCardNo || m.JobCardMasterId}</Badge></td>
-                        <td>{formatDateTime(m.StartTime)}</td>
-                      </tr>
-                    ))
+                    runningMachines.map((m, i) => {
+                      const lineId = m.JobCardLineId || m.jobCardLineId;
+                      const masterId = m.JobCardMasterId || m.jobCardMasterId;
+                      const jcNo = m.JobCardNo || m.jobCardNo;
+                      const mName = m.MachineName || m.machineName;
+
+                      return (
+                        <tr key={lineId || i}>
+                          <td className="fw-bold">{mName}</td>
+                          <td>{m.MachineCode || m.machineCode}</td>
+                          <td>
+                            <Badge 
+                              bg="success" 
+                              style={{ cursor: "pointer" }} 
+                              onClick={() => handleViewJobCardFlow(masterId, jcNo)}
+                              title="Click to view full Job Card process flow"
+                            >
+                              {jcNo || masterId}
+                            </Badge>
+                          </td>
+                          <td>{formatDateTime(m.StartTime || m.startTime)}</td>
+                          <td>{m.OperatorName || m.operatorName || <span className="text-muted">N/A</span>}</td>
+                          {isAdmin && (
+                            <td className="text-center">
+                              <div className="d-flex gap-1 justify-content-center align-items-center">
+                                <Button
+                                  variant="outline-info"
+                                  size="sm"
+                                  className="py-1 px-2 d-inline-flex align-items-center gap-1"
+                                  style={{ fontSize: "0.75rem" }}
+                                  onClick={() => handleViewJobCardFlow(masterId, jcNo)}
+                                  title="View Process Flow"
+                                >
+                                  <FaEye size={10} /> Flow
+                                </Button>
+                                <Button
+                                  variant="danger"
+                                  size="sm"
+                                  className="py-1 px-2 d-inline-flex align-items-center gap-1"
+                                  style={{ fontSize: "0.75rem" }}
+                                  onClick={() => handleStopMachine(m)}
+                                  disabled={stoppingMachineId === lineId}
+                                  title={`Stop machine: ${mName}`}
+                                >
+                                  {stoppingMachineId === lineId ? (
+                                    <><Spinner animation="border" size="sm" style={{ width: "0.7rem", height: "0.7rem" }} /> Stopping...</>
+                                  ) : (
+                                    <><FaStop size={9} /> Stop</>
+                                  )}
+                                </Button>
+                              </div>
+                            </td>
+                          )}
+                        </tr>
+                      );
+                    })
                   )}
                 </tbody>
               </Table>
@@ -759,20 +981,63 @@ const DynamicDashboard = () => {
                     <th>Job Card</th>
                     <th>Pause Reason</th>
                     <th>Paused At</th>
+                    {isAdmin && <th className="text-end" style={{ width: "110px" }}>Action</th>}
                   </tr>
                 </thead>
                 <tbody>
                   {pausedMachines.length === 0 ? (
-                    <tr><td colSpan="4" className="text-center text-muted">No machines currently paused</td></tr>
+                    <tr><td colSpan={isAdmin ? "5" : "4"} className="text-center text-muted">No machines currently paused</td></tr>
                   ) : (
-                    pausedMachines.map((m, i) => (
-                      <tr key={i}>
-                        <td className="fw-bold">{m.MachineName}</td>
-                        <td><Badge bg="secondary">{m.JobCardNo || m.JobCardMasterId}</Badge></td>
-                        <td className="text-danger fw-semibold">{m.Reason || m.CurrentPauseReason || "Break"}</td>
-                        <td>{formatDateTime(m.PauseStartTime || m.CurrentPauseStartTime)}</td>
-                      </tr>
-                    ))
+                    pausedMachines.map((m, i) => {
+                      const masterId = m.JobCardMasterId || m.F_JobCardMaster || 0;
+                      const jcNo = m.JobCardNo || `#${masterId}`;
+                      const mName = m.MachineName || "Unknown Machine";
+
+                      return (
+                        <tr key={i}>
+                          <td className="fw-bold">{mName}</td>
+                          <td>
+                            <Badge 
+                              bg="secondary" 
+                              style={{ cursor: "pointer" }} 
+                              onClick={() => handleViewJobCardFlow(masterId, jcNo)}
+                              title="Click to view process flow"
+                            >
+                              {jcNo}
+                            </Badge>
+                          </td>
+                          <td className="text-danger fw-semibold">{m.Reason || m.CurrentPauseReason || "Break"}</td>
+                          <td>{formatDateTime(m.PauseStartTime || m.CurrentPauseStartTime)}</td>
+                          {isAdmin && (
+                            <td className="text-end">
+                              <Button
+                                size="sm"
+                                variant="success"
+                                className="py-1 px-2 d-inline-flex align-items-center gap-1"
+                                style={{ fontSize: "0.75rem", borderRadius: "16px" }}
+                                onClick={async () => {
+                                  const confirmResume = window.confirm(`Resume machine "${mName}" on Job Card ${jcNo}?`);
+                                  if (!confirmResume) return;
+                                  try {
+                                    const vFormData = new FormData();
+                                    vFormData.append("JobCardMasterId", masterId);
+                                    vFormData.append("MachineMasterId", m.MachineMasterId || m.F_MachineMaster || 0);
+                                    vFormData.append("UserName", userData.name || userData.UserName || "Admin");
+                                    await Fn_AddEditData(dispatch, () => {}, { formData: { id: 0, formData: vFormData } }, API_WEB_URLS.RESUME_MACHINE, true);
+                                    alert(`Machine "${mName}" resumed successfully!`);
+                                    fetchDashboardData(true);
+                                  } catch (err) {
+                                    alert(err?.message || "Failed to resume machine.");
+                                  }
+                                }}
+                              >
+                                <FaPlay size={8} /> Resume
+                              </Button>
+                            </td>
+                          )}
+                        </tr>
+                      );
+                    })
                   )}
                 </tbody>
               </Table>
@@ -813,7 +1078,172 @@ const DynamicDashboard = () => {
         </Modal>
       )}
 
-      {/* 4. Configuration Modals */}
+      {/* 4. Drill-down Job Card Process Flow Modal (With Admin Start & Stop Controls) */}
+      <Modal show={showFlowModal} onHide={() => setShowFlowModal(false)} size="lg" centered>
+        <Modal.Header closeButton className="bg-primary text-white">
+          <Modal.Title className="text-white fw-bold h6 mb-0">
+            <FaRoute className="me-2 text-white" />
+            Job Card Process Flow: {selectedJobCardNo}
+          </Modal.Title>
+        </Modal.Header>
+        <Modal.Body className="p-3" style={{ minHeight: "220px", maxHeight: "65vh", overflowY: "auto" }}>
+          {loadingFlow ? (
+            <div className="d-flex justify-content-center align-items-center py-5">
+              <Spinner animation="border" variant="primary" />
+            </div>
+          ) : jobCardFlow.length > 0 ? (
+            <div className="table-responsive">
+              <Table bordered hover className="align-middle mb-0 small">
+                <thead className="table-light">
+                  <tr>
+                    <th style={{ width: "60px" }} className="text-center">Seq #</th>
+                    <th>Machine Name & Code</th>
+                    <th>Status</th>
+                    <th>Timestamps</th>
+                    <th>Operator</th>
+                    {isAdmin && <th className="text-center" style={{ width: "110px" }}>Admin Action</th>}
+                  </tr>
+                </thead>
+                <tbody>
+                  {jobCardFlow.map((step, idx) => {
+                    const hasStarted = !!step.StartTime;
+                    const hasEnded = !!step.EndTime;
+                    const isBypassed = !!(step.IsBypassed === 1 || step.IsBypassed === true || (step.UserName && String(step.UserName).includes("BYPASS")));
+                    const isPaused = !!(step.IsPaused === 1 || step.IsPaused === true || step.IsPaused === "1");
+
+                    let badgeBg = "secondary";
+                    let statusText = "NOT STARTED";
+                    if (isBypassed) {
+                      badgeBg = "info";
+                      statusText = "BYPASSED";
+                    } else if (isPaused) {
+                      badgeBg = "warning";
+                      statusText = "PAUSED";
+                    } else if (hasStarted && !hasEnded) {
+                      badgeBg = "primary";
+                      statusText = "IN PROGRESS";
+                    } else if (hasStarted && hasEnded) {
+                      badgeBg = "success";
+                      statusText = "COMPLETED";
+                    }
+
+                    // Check if ready to start: first step or previous step is finished
+                    const isReadyToStart = !hasStarted && !isBypassed && (idx === 0 || !!jobCardFlow[idx - 1]?.EndTime);
+
+                    const resolvedMachineId = step.MachineId || step.machineId || (() => {
+                      const matched = allMachines.find(am => 
+                        (am.Name && step.MachineName && am.Name.toLowerCase().trim() === step.MachineName.toLowerCase().trim()) ||
+                        (am.Code && step.MachineCode && am.Code.toLowerCase().trim() === step.MachineCode.toLowerCase().trim())
+                      );
+                      return matched ? (matched.Id || matched.id || matched.ID || "") : "";
+                    })();
+
+                    return (
+                      <tr key={step.JobCardLineId || idx} className={statusText === "IN PROGRESS" ? "table-warning-light" : ""}>
+                        <td className="text-center fw-bold">{step.Series || idx + 1}</td>
+                        <td>
+                          <div className="fw-bold">{step.MachineName}</div>
+                          <div className="text-xs text-muted">{step.MachineCode}</div>
+                        </td>
+                        <td>
+                          <Badge bg={badgeBg} className="p-2 fs-11 text-uppercase">
+                            {statusText}
+                          </Badge>
+                        </td>
+                        <td>
+                          <div className="text-xs">
+                            {hasStarted ? (
+                              <div><strong className="text-success">Start:</strong> {formatDateTime(step.StartTime)}</div>
+                            ) : (
+                              <div className="text-muted">Not Started Yet</div>
+                            )}
+                            {hasEnded && (
+                              <div className="mt-1"><strong className="text-danger">End:</strong> {formatDateTime(step.EndTime)}</div>
+                            )}
+                            {Number(step.TotalPauseTime) > 0 && (
+                              <div className="text-muted mt-1">
+                                <strong>Pause:</strong> {Math.floor(Number(step.TotalPauseTime) / 60)}h {Math.round(Number(step.TotalPauseTime) % 60)}m
+                              </div>
+                            )}
+                            {Number(step.TotalTimeTaken) > 0 && (
+                              <div className="text-success mt-1">
+                                <strong>Net Runtime:</strong> {Math.floor(Number(step.TotalTimeTaken) / 60)}h {Math.round(Number(step.TotalTimeTaken) % 60)}m
+                              </div>
+                            )}
+                          </div>
+                        </td>
+                        <td>{step.OperatorName || <span className="text-muted">N/A</span>}</td>
+                        {isAdmin && (
+                          <td className="text-center">
+                            {statusText === "IN PROGRESS" ? (
+                              <Button
+                                variant="danger"
+                                size="sm"
+                                className="py-1 px-2 d-inline-flex align-items-center gap-1"
+                                style={{ fontSize: "0.75rem" }}
+                                disabled={stoppingMachineId === step.JobCardLineId}
+                                onClick={() => handleStopMachine({
+                                  JobCardMasterId: selectedJobCardId,
+                                  JobCardLineId: step.JobCardLineId,
+                                  MachineMasterId: resolvedMachineId,
+                                  MachineName: step.MachineName,
+                                  JobCardNo: selectedJobCardNo
+                                })}
+                                title={`Stop ${step.MachineName}`}
+                              >
+                                {stoppingMachineId === step.JobCardLineId ? (
+                                  <Spinner animation="border" size="sm" style={{ width: "0.7rem", height: "0.7rem" }} />
+                                ) : (
+                                  <FaStop size={9} />
+                                )}
+                                Stop
+                              </Button>
+                            ) : isReadyToStart ? (
+                              <Button
+                                variant="success"
+                                size="sm"
+                                className="py-1 px-2 d-inline-flex align-items-center gap-1"
+                                style={{ fontSize: "0.75rem" }}
+                                disabled={startingMachineId === step.JobCardLineId}
+                                onClick={() => handleStartMachine({
+                                  jobCardMasterId: selectedJobCardId,
+                                  machineMasterId: resolvedMachineId,
+                                  machineName: step.MachineName,
+                                  jobCardNo: selectedJobCardNo,
+                                  jobCardLineId: step.JobCardLineId
+                                })}
+                                title={`Start ${step.MachineName}`}
+                              >
+                                {startingMachineId === step.JobCardLineId ? (
+                                  <Spinner animation="border" size="sm" style={{ width: "0.7rem", height: "0.7rem" }} />
+                                ) : (
+                                  <FaPlay size={8} />
+                                )}
+                                Start
+                              </Button>
+                            ) : (
+                              <span className="text-muted fs-12">—</span>
+                            )}
+                          </td>
+                        )}
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </Table>
+            </div>
+          ) : (
+            <p className="text-center text-muted py-4 mb-0">No process steps found for this Job Card.</p>
+          )}
+        </Modal.Body>
+        <Modal.Footer className="py-2">
+          <Button variant="secondary" size="sm" onClick={() => setShowFlowModal(false)}>
+            Close
+          </Button>
+        </Modal.Footer>
+      </Modal>
+
+      {/* 5. Configuration Modals */}
       <CustomizeDashboardDrawer
         show={showCustomizeModal}
         onHide={() => setShowCustomizeModal(false)}
