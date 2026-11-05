@@ -7,6 +7,24 @@ import { API_WEB_URLS } from "../../constants/constAPI";
 import { parseBarcodeValue } from "./BarcodeHelper";
 import { ThemeContext } from "../../context/ThemeContext";
 import usePagePermissions from "../../helpers/usePagePermissions";
+import {
+  FaLock,
+  FaQrcode,
+  FaCamera,
+  FaUpload,
+  FaSearch,
+  FaRedo,
+  FaPlay,
+  FaStop,
+  FaSyncAlt,
+  FaExclamationTriangle,
+  FaCheck,
+  FaRegCircle,
+  FaPrint,
+  FaPlusCircle,
+  FaHistory,
+  FaSave
+} from "react-icons/fa";
 
 // Play a physical scanner sound using the Web Audio API
 const playBeepSound = () => {
@@ -488,7 +506,7 @@ const WoodIssueScanner = () => {
       <div className="container-fluid py-5 text-center">
         <Card className="p-4 mx-auto border-0 shadow-sm" style={{ maxWidth: 500, backgroundColor: cardBg }}>
           <h4 className="text-danger mb-3">
-            <i className="fas fa-lock me-2"></i> Access Denied
+            <FaLock className="me-2" /> Access Denied
           </h4>
           <p className="text-muted mb-0">
             You do not have permission to view the Wood Issue Scanner module. Please contact your system administrator.
@@ -506,7 +524,7 @@ const WoodIssueScanner = () => {
           <div className="d-flex flex-wrap align-items-center justify-content-between gap-2">
             <div>
               <h4 className="fw-bold mb-1" style={{ color: "#2563eb" }}>
-                <i className="fas fa-qrcode me-2"></i> WOOD ISSUE SCANNER
+                <FaQrcode className="me-2" /> WOOD ISSUE SCANNER
               </h4>
               <p className="text-muted small mb-0">
                 Scan Wood Issue Sheet QR Code or JobCard Barcode to report wood issues and record extra issues.
@@ -522,11 +540,11 @@ const WoodIssueScanner = () => {
                   startCamera();
                 }}
               >
-                <i className="fas fa-camera me-1"></i> Live Camera
+                <FaCamera className="me-1" /> Live Camera
               </Button>
 
               <label className={`btn btn-sm ${scanMode === "file" ? "btn-primary" : "btn-outline-primary"} mb-0`}>
-                <i className="fas fa-upload me-1"></i> Upload QR
+                <FaUpload className="me-1" /> Upload QR
                 <input
                   type="file"
                   accept="image/*"
@@ -548,7 +566,7 @@ const WoodIssueScanner = () => {
                   handleSearchSheets();
                 }}
               >
-                <i className="fas fa-search me-1"></i> Manual Search
+                <FaSearch className="me-1" /> Manual Search
               </Button>
 
               {sheetHeader && (
@@ -564,7 +582,7 @@ const WoodIssueScanner = () => {
                     startCamera();
                   }}
                 >
-                  <i className="fas fa-redo me-1"></i> Scan Another
+                  <FaRedo className="me-1" /> Scan Another
                 </Button>
               )}
             </div>
@@ -594,15 +612,15 @@ const WoodIssueScanner = () => {
                     <div className="d-flex justify-content-center gap-2 mt-3">
                       {!isCameraActive ? (
                         <Button variant="success" size="sm" onClick={() => startCamera()}>
-                          <i className="fas fa-play me-1"></i> Start Camera
+                          <FaPlay className="me-1" /> Start Camera
                         </Button>
                       ) : (
                         <>
                           <Button variant="danger" size="sm" onClick={stopCamera}>
-                            <i className="fas fa-stop me-1"></i> Stop Camera
+                            <FaStop className="me-1" /> Stop Camera
                           </Button>
                           <Button variant="secondary" size="sm" onClick={handleSwitchCamera}>
-                            <i className="fas fa-sync-alt me-1"></i> Switch Camera
+                            <FaSyncAlt className="me-1" /> Switch Camera
                           </Button>
                         </>
                       )}
@@ -625,7 +643,7 @@ const WoodIssueScanner = () => {
                         }}
                       />
                       <Button variant="primary" onClick={() => handleSearchSheets(searchQuery)}>
-                        <i className="fas fa-search"></i>
+                        <FaSearch />
                       </Button>
                     </div>
 
@@ -687,7 +705,7 @@ const WoodIssueScanner = () => {
 
                 {fetchError && (
                   <div className="alert alert-danger mt-3 mb-0" role="alert">
-                    <i className="fas fa-exclamation-triangle me-2"></i> {fetchError}
+                    <FaExclamationTriangle className="me-2" /> {fetchError}
                   </div>
                 )}
               </Card.Body>
@@ -821,7 +839,7 @@ const WoodIssueScanner = () => {
                             disabled={!canEdit}
                             title={!canEdit ? "Permission Denied: Cannot edit issued status" : (comp.IsIssued ? `Issued on ${comp.IssuedDate || "today"}` : "Click to mark Issued")}
                           >
-                            {comp.IsIssued ? <i className="fas fa-check fw-bold"></i> : <i className="far fa-circle"></i>}
+                            {comp.IsIssued ? <FaCheck className="fw-bold" /> : <FaRegCircle />}
                           </button>
                         </td>
 
@@ -907,7 +925,7 @@ const WoodIssueScanner = () => {
                             disabled={!canEdit}
                             title={!canEdit ? "Permission Denied: Cannot edit issued status" : (comp.IsIssued ? `Issued on ${comp.IssuedDate || "today"}` : "Click to mark Issued")}
                           >
-                            {comp.IsIssued ? <i className="fas fa-check fw-bold"></i> : <i className="far fa-circle"></i>}
+                            {comp.IsIssued ? <FaCheck className="fw-bold" /> : <FaRegCircle />}
                           </button>
                         </td>
 
@@ -1024,14 +1042,14 @@ const WoodIssueScanner = () => {
                         size="sm"
                         onClick={() => window.print()}
                       >
-                        <i className="fas fa-print me-1"></i> Print BOM
+                        <FaPrint className="me-1" /> Print BOM
                       </Button>
                       <Button
                         variant="outline-secondary"
                         size="sm"
                         onClick={() => loadSheetDetails(sheetHeader.Id)}
                       >
-                        <i className="fas fa-sync-alt me-1"></i> Refresh Data
+                        <FaSyncAlt className="me-1" /> Refresh Data
                       </Button>
                     </div>
                   </div>
@@ -1046,7 +1064,7 @@ const WoodIssueScanner = () => {
       <Modal show={showExtraModal} onHide={() => setShowExtraModal(false)} size="lg" centered>
         <Modal.Header closeButton style={{ backgroundColor: headerBgColor }}>
           <Modal.Title className="h6 fw-bold">
-            <i className="fas fa-plus-circle text-warning me-2"></i>
+            <FaPlusCircle className="text-warning me-2" />
             Issue Extra Wood - {selectedCompForExtra?.Description}
           </Modal.Title>
         </Modal.Header>
@@ -1167,7 +1185,7 @@ const WoodIssueScanner = () => {
               {/* History of Previous Extra Issues for This Component */}
               <div className="mt-4">
                 <h6 className="fw-bold small mb-2">
-                  <i className="fas fa-history me-1"></i> Previous Extra Issues History ({extraLogs.length})
+                  <FaHistory className="me-1" /> Previous Extra Issues History ({extraLogs.length})
                 </h6>
                 {logsLoading ? (
                   <div className="text-center py-2"><Spinner animation="border" size="sm" /></div>
@@ -1220,7 +1238,7 @@ const WoodIssueScanner = () => {
             disabled={savingExtra}
             onClick={handleSaveExtraIssue}
           >
-            {savingExtra ? <Spinner animation="border" size="sm" className="me-1" /> : <i className="fas fa-save me-1"></i>}
+            {savingExtra ? <Spinner animation="border" size="sm" className="me-1" /> : <FaSave className="me-1" />}
             Save Extra Issue
           </Button>
         </Modal.Footer>

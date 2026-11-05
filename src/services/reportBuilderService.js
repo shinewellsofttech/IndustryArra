@@ -178,5 +178,18 @@ export const reportBuilderService = {
         printWindow.print();
       };
     }
+  },
+
+  // 18. Generate report configuration from natural language prompt via Gemini AI
+  generateFromPrompt: async (prompt) => {
+    const userData = JSON.parse(localStorage.getItem("authUser")) || {};
+    const userId = userData.id || userData.UserId || 1;
+    const res = await requestApi(
+      "post",
+      `${API_WEB_URLS.REPORT_BUILDER_AI_GENERATE}/${userId}/token`,
+      { prompt },
+      { headers: { "Content-Type": "application/json" } }
+    );
+    return res.data;
   }
 };

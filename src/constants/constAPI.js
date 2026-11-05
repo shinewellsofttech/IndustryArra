@@ -63,6 +63,7 @@ export const API_WEB_URLS = {
   REPORT_BUILDER_DELETE: "ReportBuilder/DeleteReport",
   REPORT_BUILDER_SAVED_REPORTS: "ReportBuilder/GetSavedReports",
   REPORT_BUILDER_GET_CONFIG: "ReportBuilder/GetReportConfig",
+  REPORT_BUILDER_AI_GENERATE: "ReportBuilder/GenerateFromPrompt",
   REPORT_BUILDER_MENU_REPORTS: "ReportBuilder/GetMenuReports",
   REPORT_BUILDER_VERSIONS: "ReportBuilder/GetVersionHistory",
   REPORT_BUILDER_RESTORE: "ReportBuilder/RestoreVersion",

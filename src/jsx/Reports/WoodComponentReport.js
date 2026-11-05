@@ -9,6 +9,7 @@ import XLSX from 'xlsx';
 import { Fn_FillListData, Fn_GetReport } from '../../store/Functions';
 import { API_WEB_URLS } from '../../constants/constAPI';
 import { useDispatch } from 'react-redux';
+import { FaFileExcel, FaFilePdf } from 'react-icons/fa';
 
 // Helper function to format numbers - remove .00 if no decimal value
 const formatNumber = (value, decimals = 2) => {
@@ -468,10 +469,10 @@ function WoodComponentReport() {
                                 </Col>
                                 <Col md={6} className="text-end">
                                     <Button variant="success" size="sm" className="me-2" onClick={exportToExcel}>
-                                        <i className="fa fa-file-excel-o me-1"></i> Excel
+                                        <FaFileExcel className="me-1" /> Excel
                                     </Button>
                                     <Button variant="danger" size="sm" onClick={exportToPDF}>
-                                        <i className="fa fa-file-pdf-o me-1"></i> PDF
+                                        <FaFilePdf className="me-1" /> PDF
                                     </Button>
                                 </Col>
                             </Row>

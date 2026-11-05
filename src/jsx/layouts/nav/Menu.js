@@ -104,6 +104,10 @@ const allReportingItems = [
         to: 'MachineRunningStatusReport',
     },
     {
+        title: 'ACTIVE JOB CARDS',
+        to: 'ActiveJobCards',
+    },
+    {
         title: 'ITEM MACHINING TIME',
         to: 'ItemMachiningTimeReport',
     },
@@ -161,15 +165,41 @@ export const getAllUniqueMenuItems = () => {
     });
 };
 
+// Helper to detect admin role / user
+const isUserAdmin = (userData) => {
+    if (!userData) return false;
+    const role = userData.role || userData.roleId || userData.Role || userData.userType || userData.UserType;
+    if (role === 1 || role === '1') return true;
+    const name = (userData.userName || userData.username || userData.Name || '').toLowerCase();
+    if (name === 'admin' || name === 'administrator') return true;
+    const roleNames = (userData.roleNames || '').toLowerCase();
+    if (roleNames.includes('admin')) return true;
+    return false;
+};
+
 // Filter function based on role wise permission list
-const filterByPermissions = (menuList, permissions) => {
+const filterByPermissions = (menuList, permissions, isAdmin = false) => {
+    if (isAdmin) {
+        return menuList;
+    }
     if (!permissions || permissions.length === 0) {
         return menuList;
     }
     return menuList.filter(item => {
-        if (item.to === 'dashboard' || item.to === 'ReportBuilder') return true;
+        if (
+            item.to === 'dashboard' || 
+            item.to === 'ReportBuilder' || 
+            item.to === 'DepartmentMaster' || 
+            item.to === 'department-master' ||
+            item.to === 'ActiveJobCards'
+        ) {
+            return true;
+        }
         const itemPath = (item.to || '').toLowerCase().replace(/^\//, '');
-        const perm = permissions.find(p => (p.ModulePath || p.Path)?.toLowerCase().replace(/^\//, '') === itemPath);
+        const perm = permissions.find(p => {
+            const pPath = (p.ModulePath || p.Path || '').toLowerCase().replace(/^\//, '');
+            return pPath === itemPath;
+        });
         return perm ? !!perm.IsView : false;
     });
 };
@@ -178,6 +208,7 @@ const filterByPermissions = (menuList, permissions) => {
 export const getMenuList = () => {
     const userData = JSON.parse(localStorage.getItem('authUser'));
     const permissions = userData?.permissions || [];
+    const isAdmin = isUserAdmin(userData);
 
     const baseMenu = [
         {
@@ -187,8 +218,8 @@ export const getMenuList = () => {
         }
     ];
 
-    const filteredDocumentation = filterByPermissions(allDocumentationItems, permissions);
-    const filteredReporting = filterByPermissions(allReportingItems, permissions);
+    const filteredDocumentation = filterByPermissions(allDocumentationItems, permissions, isAdmin);
+    const filteredReporting = filterByPermissions(allReportingItems, permissions, isAdmin);
 
     // Dynamic Saved Reports from Local Cache or Server
     let customReportsItems = [];

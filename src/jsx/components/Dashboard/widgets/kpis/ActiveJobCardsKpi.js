@@ -2,7 +2,7 @@ import React from "react";
 import { FaFileAlt, FaSyncAlt, FaArrowRight } from "react-icons/fa";
 import { useNavigate } from "react-router-dom";
 
-const ActiveJobCardsKpi = ({ counts = {}, runningMachines = [], isLoading = false }) => {
+const ActiveJobCardsKpi = ({ counts = {}, runningMachines = [], isLoading = false, onKpiClick }) => {
   const navigate = useNavigate();
 
   if (isLoading) {
@@ -37,7 +37,8 @@ const ActiveJobCardsKpi = ({ counts = {}, runningMachines = [], isLoading = fals
         <button 
           className="btn btn-sm btn-link text-info text-decoration-none p-0 fw-semibold"
           style={{ fontSize: "0.78rem" }}
-          onClick={() => navigate("/JobCardForm")}
+          onClick={() => navigate("/ActiveJobCards")}
+          title="Open real-time Active Job Cards floor report"
         >
           View All <FaArrowRight size={10} className="ms-1" />
         </button>
@@ -45,7 +46,20 @@ const ActiveJobCardsKpi = ({ counts = {}, runningMachines = [], isLoading = fals
       <div className="card-body px-4 pt-1 pb-3">
         <div 
           className="p-3 rounded-3"
-          style={{ background: "rgba(13, 202, 240, 0.12)", border: "1px solid rgba(13, 202, 240, 0.35)" }}
+          style={{ 
+            background: "rgba(13, 202, 240, 0.12)", 
+            border: "1px solid rgba(13, 202, 240, 0.35)",
+            cursor: "pointer",
+            transition: "all 0.2s ease"
+          }}
+          onClick={() => {
+            if (onKpiClick) {
+              onKpiClick("RUNNING");
+            } else {
+              navigate("/ActiveJobCards");
+            }
+          }}
+          title="Click to view running Job Cards"
         >
           <div className="d-flex justify-content-between align-items-center mb-1">
             <span className="fw-semibold dynamic-title" style={{ fontSize: "0.8rem" }}>

@@ -16,14 +16,28 @@ const usePagePermissions = (modulePath) => {
         const authUser = JSON.parse(localStorage.getItem('authUser'));
         const permissions = authUser?.permissions;
 
-        // If no permissions array exists (super admin / dev), allow everything
-        if (!permissions || permissions.length === 0) {
+        const isAdmin = authUser?.role === 1 || authUser?.roleId === 1 || authUser?.Role === 1 || 
+                        authUser?.userType === 1 || authUser?.UserType === 1 || 
+                        authUser?.userName?.toLowerCase() === 'admin' || 
+                        authUser?.username?.toLowerCase() === 'admin' || 
+                        authUser?.Name?.toLowerCase() === 'admin' ||
+                        authUser?.roleNames?.toLowerCase().includes('admin');
+
+        // If admin or no permissions array exists, allow everything
+        if (isAdmin || !permissions || permissions.length === 0) {
             return { canView: true, canAdd: true, canEdit: true, canDelete: true };
         }
 
+        const normModulePath = (modulePath || '').toLowerCase().replace(/^\//, '');
+
         const perm = permissions.find(
-            (p) => (p.ModulePath || p.Path)?.toLowerCase() === modulePath?.toLowerCase()
+            (p) => (p.ModulePath || p.Path)?.toLowerCase().replace(/^\//, '') === normModulePath
         );
+
+        // For DepartmentMaster & ActiveJobCards: if not explicitly configured in permissions, default to allowing full access
+        if ((normModulePath === 'departmentmaster' || normModulePath === 'department-master' || normModulePath === 'activejobcards') && !perm) {
+            return { canView: true, canAdd: true, canEdit: true, canDelete: true };
+        }
 
         // Module not found in permission list — deny all restricted actions
         if (!perm) {

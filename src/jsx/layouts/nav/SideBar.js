@@ -165,7 +165,11 @@ const SideBar = () => {
                                           </Collapse>
                                         </>
                                       :
-                                      <Link to={data.to} onClick={closeSidebarMobile}>
+                                      <Link 
+                                        to={data.to} 
+                                        onClick={closeSidebarMobile}
+                                        className={`${path.toLowerCase() === (data.to || '').toLowerCase() ? "mm-active" : ""}`}
+                                      >
                                         {data.title}
                                       </Link>
                                     }

@@ -9,6 +9,7 @@ import { useDispatch } from 'react-redux';
 import { API_WEB_URLS } from '../../constants/constAPI';
 import { ThemeContext } from '../../context/ThemeContext';
 import { generateQRCodeSVG } from './BarcodeHelper';
+import { FaPrint } from 'react-icons/fa';
 
 function WoodIssue({woodIssueData = {}, components = [], woodSummary = []}) {
   const woodIssueRef = useRef(null);
@@ -905,7 +906,7 @@ function WoodIssue({woodIssueData = {}, components = [], woodSummary = []}) {
           onClick={handlePrintA4}
           style={{ fontWeight: 'bold' }}
         >
-          <i className="fa fa-print me-2"></i> Print Sheet (A4)
+          <FaPrint className="me-2" /> Print Sheet (A4)
         </Button>
         {isEditing && (
           <Button 

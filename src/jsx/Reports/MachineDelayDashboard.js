@@ -267,7 +267,18 @@ const MachineDelayDashboard = () => {
     try {
       await Fn_FillListData(
         dispatch,
-        setJobCardFlow,
+        (res) => {
+          const list = Array.isArray(res)
+            ? res
+            : Array.isArray(res?.dataList)
+            ? res.dataList
+            : Array.isArray(res?.DataList)
+            ? res.DataList
+            : Array.isArray(res?.data)
+            ? res.data
+            : [];
+          setJobCardFlow(list);
+        },
         "gridData",
         `MachineDelayDashboard/JobCardFlow/${userId}/token/${jobCardId}`
       );
@@ -432,9 +443,11 @@ const MachineDelayDashboard = () => {
     );
   }
 
-  const runningMachines = data?.runningMachines || [];
-  const delayedTransitions = data?.delayedTransitions || [];
-  const chartStats = data?.chartStats || [];
+  const runningMachines = data?.runningMachines || data?.RunningMachines || [];
+  const delayedTransitions = data?.delayedTransitions || data?.DelayedTransitions || [];
+  const chartStats = data?.chartStats || data?.ChartStats || [];
+  const pausedMachines = data?.pausedMachines || data?.PausedMachines || [];
+  const machineCounts = data?.machineCounts || data?.MachineCounts || {};
 
   // Distinct running machines calculation (machines that have at least 1 running job card)
   const uniqueRunningMachineIds = new Set(
@@ -442,25 +455,24 @@ const MachineDelayDashboard = () => {
   );
   const uniqueRunningMachinesCount = uniqueRunningMachineIds.size;
 
-  const totalMachines = data?.machineCounts?.total || 0;
+  const totalMachines = machineCounts.total || machineCounts.Total || 0;
   
   // Running Machines must be distinct running machines count
-  const runningMachinesCount = (data?.machineCounts?.running !== undefined && data?.machineCounts?.running <= uniqueRunningMachinesCount)
-    ? data.machineCounts.running
+  const runningMachinesCount = ((machineCounts.running !== undefined || machineCounts.Running !== undefined) && (machineCounts.running ?? machineCounts.Running) <= uniqueRunningMachinesCount)
+    ? (machineCounts.running ?? machineCounts.Running)
     : uniqueRunningMachinesCount;
     
   // Paused machines count (machines on hold for shift end, duty off, or breaks)
-  const pausedMachines = data?.pausedMachines || [];
-  const pausedMachinesCount = data?.machineCounts?.paused ?? pausedMachines.length;
+  const pausedMachinesCount = machineCounts.paused ?? machineCounts.Paused ?? pausedMachines.length;
 
-  const activeMachines = data?.machineCounts?.active ?? (totalMachines - (data?.machineCounts?.inactive || 0));
-  const inactiveMachines = data?.machineCounts?.inactive ?? 0;
+  const activeMachines = machineCounts.active ?? machineCounts.Active ?? (totalMachines - (machineCounts.inactive ?? machineCounts.Inactive ?? 0));
+  const inactiveMachines = machineCounts.inactive ?? machineCounts.Inactive ?? 0;
 
   // Idle machines = Active Machines - (Running Machines + Paused Machines)
   const idleMachinesCount = Math.max(0, activeMachines - (runningMachinesCount + pausedMachinesCount));
   
   // Running Job Cards count
-  const runningJobCardsCount = data?.machineCounts?.runningJobCards ?? runningMachines.length;
+  const runningJobCardsCount = machineCounts.runningJobCards ?? machineCounts.RunningJobCards ?? runningMachines.length;
 
   const counts = {
     total: totalMachines,
@@ -470,7 +482,7 @@ const MachineDelayDashboard = () => {
     paused: pausedMachinesCount,
     idle: idleMachinesCount,
     runningJobCards: runningJobCardsCount,
-    delayedTransitionsCount: data?.machineCounts?.delayedTransitionsCount || 0
+    delayedTransitionsCount: machineCounts.delayedTransitionsCount ?? machineCounts.DelayedTransitionsCount ?? delayedTransitions.length
   };
 
   // Inactive / Band machines from machineLogs
@@ -1160,21 +1172,24 @@ const MachineDelayDashboard = () => {
             <div className="d-flex justify-content-center align-items-center py-5">
               <Spinner animation="border" variant="primary" />
             </div>
-          ) : jobCardFlow.length > 0 ? (
-            <div className="timeline-container px-2">
-              <div className="table-responsive">
-                <Table bordered hover>
-                  <thead className="table-light">
-                    <tr>
-                      <th style={{ width: "80px" }} className="text-center">Seq #</th>
-                      <th>Machine Name & Code</th>
-                      <th>Status</th>
-                      <th>Timestamps</th>
-                      <th>Operator</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {jobCardFlow.map((step, idx) => {
+          ) : (Array.isArray(jobCardFlow) ? jobCardFlow : (jobCardFlow?.dataList || jobCardFlow?.DataList || [])).length > 0 ? (
+            (() => {
+              const flowList = Array.isArray(jobCardFlow) ? jobCardFlow : (jobCardFlow?.dataList || jobCardFlow?.DataList || []);
+              return (
+                <div className="timeline-container px-2">
+                  <div className="table-responsive">
+                    <Table bordered hover>
+                      <thead className="table-light">
+                        <tr>
+                          <th style={{ width: "80px" }} className="text-center">Seq #</th>
+                          <th>Machine Name & Code</th>
+                          <th>Status</th>
+                          <th>Timestamps</th>
+                          <th>Operator</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {flowList.map((step, idx) => {
                       const hasStarted = !!step.StartTime;
                       const hasEnded = !!step.EndTime;
                       const isBypassed = !!(step.IsBypassed === 1 || step.IsBypassed === true || (step.UserName && String(step.UserName).includes("BYPASS")));
@@ -1199,7 +1214,7 @@ const MachineDelayDashboard = () => {
                       // Calculate transit delay from previous step (suppressed if bypassed)
                       let transitDelayHtml = null;
                       if (idx > 0) {
-                        const prevStep = jobCardFlow[idx - 1];
+                        const prevStep = flowList[idx - 1];
                         const prevBypassed = !!(prevStep.IsBypassed === 1 || prevStep.IsBypassed === true || (prevStep.UserName && String(prevStep.UserName).includes("BYPASS")));
                         if (prevStep.EndTime && !prevBypassed && !isBypassed) {
                           const currentEnd = new Date(prevStep.EndTime.replace(" ", "T"));
@@ -1312,6 +1327,8 @@ const MachineDelayDashboard = () => {
                 </Table>
               </div>
             </div>
+              );
+            })()
           ) : (
             <p className="text-center text-muted py-5">No process steps found for this Job Card.</p>
           )}

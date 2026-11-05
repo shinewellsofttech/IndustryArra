@@ -16,9 +16,14 @@ export const Fn_FillListData = (dispatch, setState, gridName, apiURL, setKey, se
             callback: (response) => {
                 if (response && response.status === 200 && response.data) {
                    
-                    let dataList = response.data.dataList;
+                    let dataList = response.data.dataList || response.data.DataList;
                     if (dataList === undefined || dataList === null) {
-                        dataList = response.data.response || response.data.data || response.data;
+                        const raw = response.data.response || response.data.data || response.data.Data || response.data;
+                        if (raw && typeof raw === 'object' && !Array.isArray(raw)) {
+                            dataList = raw.dataList || raw.DataList || raw;
+                        } else {
+                            dataList = raw;
+                        }
                     }
                     
                     if (gridName === "gridDataSearch") {
@@ -141,7 +146,16 @@ export const Fn_DeleteData = (dispatch, setState, id, apiURL, apiURL_Display) =>
 ) => {
  
     return new Promise((resolve, reject) => {
-        const { arguList } = data;
+        let arguList = data?.arguList || data?.formData || (data instanceof FormData ? { id: 0, formData: data } : data) || { id: 0 };
+        if (arguList.id === undefined && arguList.Id !== undefined) {
+            arguList.id = arguList.Id;
+        }
+        if (arguList.id === undefined) {
+            arguList.id = 0;
+        }
+        if (isMultiPart && !arguList.formData && data?.formData instanceof FormData) {
+            arguList = { ...arguList, formData: data.formData };
+        }
         const request = {
             arguList: arguList,
             apiURL: apiURL,
@@ -194,7 +208,7 @@ export const Fn_DeleteData = (dispatch, setState, id, apiURL, apiURL_Display) =>
                     }
 
                     // Success: Add / Update
-                    if (arguList.id === 0) {
+                    if (arguList?.id === 0) {
                         // showToastWithCloseButton("success", "Data added successfully");
                         resolve(resData);
                         if (forward) navigate(forward, { state: { Id: 0 } });
@@ -217,14 +231,14 @@ export const Fn_DeleteData = (dispatch, setState, id, apiURL, apiURL_Display) =>
                 }
                 else {
                     // Failure Case
-                    const errorMsg = response?.message || (response?.data?.message) || (arguList.id === 0 ? 'Some error occurred while adding data' : 'Some error occurred while updating data');
+                    const errorMsg = response?.message || (response?.data?.message) || (arguList?.id === 0 ? 'Some error occurred while adding data' : 'Some error occurred while updating data');
                     reject(errorMsg);
                 }
             },
         };
 
         // Call API based on ID and multipart
-        if (arguList.id == 0) {
+        if (arguList?.id == 0) {
             if (isMultiPart) dispatch(callAdd_Data_Multipart(request));
             else dispatch(callAdd_Data(request)); // Missing dispatch
         } else {

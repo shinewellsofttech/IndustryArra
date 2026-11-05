@@ -292,7 +292,18 @@ const Home = () => {
     try {
       await Fn_FillListData(
         dispatch,
-        setJobCardFlow,
+        (res) => {
+          const list = Array.isArray(res)
+            ? res
+            : Array.isArray(res?.dataList)
+            ? res.dataList
+            : Array.isArray(res?.DataList)
+            ? res.DataList
+            : Array.isArray(res?.data)
+            ? res.data
+            : [];
+          setJobCardFlow(list);
+        },
         "gridData",
         `MachineDelayDashboard/JobCardFlow/${userId}/${userToken}/${jobCardId}`
       );
@@ -308,7 +319,18 @@ const Home = () => {
     try {
       await Fn_FillListData(
         dispatch,
-        setJobCardFlow,
+        (res) => {
+          const list = Array.isArray(res)
+            ? res
+            : Array.isArray(res?.dataList)
+            ? res.dataList
+            : Array.isArray(res?.DataList)
+            ? res.DataList
+            : Array.isArray(res?.data)
+            ? res.data
+            : [];
+          setJobCardFlow(list);
+        },
         "gridData",
         `MachineDelayDashboard/JobCardFlow/${userId}/${userToken}/${jobCardId}`
       );
@@ -936,23 +958,26 @@ const Home = () => {
             <div className="d-flex justify-content-center align-items-center py-5">
               <Spinner animation="border" variant="primary" />
             </div>
-          ) : jobCardFlow.length > 0 ? (
-            <div className="timeline-container px-2">
-              <div className="table-responsive">
-                <Table bordered hover>
-                  <thead className="table-light">
-                    <tr>
-                      <th style={{ width: "60px" }} className="text-center">Seq #</th>
-                      <th>Machine Name & Code</th>
-                      <th>Status</th>
-                      <th>Timestamps</th>
-                      <th>Operator</th>
-                      <th className="text-center" style={{ width: "100px" }}>Action</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {jobCardFlow.map((step, idx) => {
-                      const hasStarted = !!step.StartTime;
+          ) : (Array.isArray(jobCardFlow) ? jobCardFlow : (jobCardFlow?.dataList || jobCardFlow?.DataList || [])).length > 0 ? (
+            (() => {
+              const flowList = Array.isArray(jobCardFlow) ? jobCardFlow : (jobCardFlow?.dataList || jobCardFlow?.DataList || []);
+              return (
+                <div className="timeline-container px-2">
+                  <div className="table-responsive">
+                    <Table bordered hover>
+                      <thead className="table-light">
+                        <tr>
+                          <th style={{ width: "60px" }} className="text-center">Seq #</th>
+                          <th>Machine Name & Code</th>
+                          <th>Status</th>
+                          <th>Timestamps</th>
+                          <th>Operator</th>
+                          <th className="text-center" style={{ width: "100px" }}>Action</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {flowList.map((step, idx) => {
+                          const hasStarted = !!step.StartTime;
                       const hasEnded = !!step.EndTime;
                       const isBypassed = !!(step.IsBypassed === 1 || step.IsBypassed === true || (step.UserName && String(step.UserName).includes("BYPASS")));
                       const isPaused = !!(step.IsPaused === 1 || step.IsPaused === true || step.IsPaused === "1");
@@ -976,7 +1001,7 @@ const Home = () => {
                       // Calculate transit delay from previous step (suppressed if bypassed)
                       let transitDelayHtml = null;
                       if (idx > 0) {
-                        const prevStep = jobCardFlow[idx - 1];
+                        const prevStep = flowList[idx - 1];
                         const prevBypassed = !!(prevStep.IsBypassed === 1 || prevStep.IsBypassed === true || (prevStep.UserName && String(prevStep.UserName).includes("BYPASS")));
                         if (prevStep.EndTime && !prevBypassed && !isBypassed) {
                           const currentEnd = new Date(prevStep.EndTime.replace(" ", "T"));
@@ -1123,6 +1148,8 @@ const Home = () => {
                 </Table>
               </div>
             </div>
+              );
+            })()
           ) : (
             <p className="text-center text-muted py-5">No process steps found for this Job Card.</p>
           )}

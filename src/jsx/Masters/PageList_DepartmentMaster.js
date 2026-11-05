@@ -36,27 +36,68 @@ export const PageList_DepartmentMaster = () => {
     }
   }, []);
 
-  const userId = authUser.id || 1;
-  const userToken = authUser.token || "token";
+  const userId = authUser.id || authUser.Id || authUser.UserId || 1;
+  const token = authUser.jwtToken || authUser.token || authUser.UserToken || authUser.UserTokenNew || localStorage.getItem("jwtToken") || localStorage.getItem("token") || "";
+  const userToken = "token";
+
+  const getAxiosConfig = useCallback(() => {
+    const config = {};
+    if (token) {
+      config.headers = {
+        Authorization: `Bearer ${token}`,
+      };
+    }
+    return config;
+  }, [token]);
 
   const fetchDepartments = useCallback(async () => {
     setLoading(true);
     setErrorMsg("");
     try {
       const url = `${API_WEB_URLS.BASE}${API_WEB_URLS.DEPARTMENT_MASTER}/${userId}/${userToken}`;
-      const res = await axios.get(url);
-      if (res.data && res.data.data && res.data.data.dataList) {
-        setDepartments(res.data.data.dataList);
-      } else {
-        setDepartments([]);
+      try {
+        const res = await axios.get(url, getAxiosConfig());
+        if (res.data && res.data.data && res.data.data.dataList) {
+          setDepartments(res.data.data.dataList);
+          return;
+        } else {
+          setDepartments([]);
+        }
+      } catch (primaryErr) {
+        console.warn("Primary DepartmentMaster endpoint failed, attempting fallback:", primaryErr);
+        if (primaryErr.response?.status === 401) {
+          const fallbackUrl = `${API_WEB_URLS.BASE}${API_WEB_URLS.MASTER}/0/token/DepartmentMaster/Id/0`;
+          const fallbackRes = await axios.get(fallbackUrl, getAxiosConfig());
+          const list = fallbackRes.data?.data?.dataList || fallbackRes.data?.data || fallbackRes.data?.DataList || [];
+          if (Array.isArray(list) && list.length > 0) {
+            setDepartments(list.map((d, i) => ({
+              Id: d.Id,
+              Name: d.Name,
+              Code: d.Code || d.Name?.substring(0, 4).toUpperCase() || "",
+              Sequence: d.Sequence || (i + 1),
+              IsMachineTracking: !!d.IsMachineTracking || d.Id === 1,
+              ColorCode: d.ColorCode || "#2563eb",
+              Description: d.Description || "",
+              IsActive: d.IsActive !== false && d.IsActive !== 0,
+            })));
+            return;
+          }
+          throw primaryErr;
+        } else {
+          throw primaryErr;
+        }
       }
     } catch (err) {
       console.error("Error fetching departments:", err);
-      setErrorMsg("Failed to load departments. " + (err.response?.data?.message || err.message));
+      if (err.response?.status === 401) {
+        setErrorMsg("Session Expired ya Unauthorized (401): Please ek baar Logout karke wapas Login karein taaki fresh JWT token mil sake.");
+      } else {
+        setErrorMsg("Failed to load departments. " + (err.response?.data?.message || err.message));
+      }
     } finally {
       setLoading(false);
     }
-  }, [userId, userToken]);
+  }, [userId, userToken, getAxiosConfig]);
 
   useEffect(() => {
     fetchDepartments();
@@ -117,11 +158,11 @@ export const PageList_DepartmentMaster = () => {
 
       if (modalMode === "add") {
         const url = `${API_WEB_URLS.BASE}${API_WEB_URLS.DEPARTMENT_MASTER}/${userId}/${userToken}`;
-        await axios.post(url, payload);
+        await axios.post(url, payload, getAxiosConfig());
         setSuccessMsg(`Department "${payload.Name}" added successfully.`);
       } else {
         const url = `${API_WEB_URLS.BASE}${API_WEB_URLS.DEPARTMENT_MASTER}/${userId}/${userToken}/${formData.id}`;
-        await axios.put(url, payload);
+        await axios.put(url, payload, getAxiosConfig());
         setSuccessMsg(`Department "${payload.Name}" updated successfully.`);
       }
 
@@ -160,7 +201,7 @@ export const PageList_DepartmentMaster = () => {
           Sequence: d.Sequence,
         })),
       };
-      await axios.post(url, payload);
+      await axios.post(url, payload, getAxiosConfig());
       setSuccessMsg("Department sequence updated successfully.");
       setTimeout(() => setSuccessMsg(""), 3000);
     } catch (err) {
@@ -178,7 +219,7 @@ export const PageList_DepartmentMaster = () => {
     setErrorMsg("");
     try {
       const url = `${API_WEB_URLS.BASE}${API_WEB_URLS.DEPARTMENT_MASTER}/${userId}/${userToken}/${dept.Id}`;
-      const res = await axios.delete(url);
+      const res = await axios.delete(url, getAxiosConfig());
       setSuccessMsg(res.data?.message || "Department processed.");
       await fetchDepartments();
     } catch (err) {

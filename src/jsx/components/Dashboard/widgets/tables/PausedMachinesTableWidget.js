@@ -1,8 +1,8 @@
 import React, { useState } from "react";
 import { Table, Badge, Button, Modal, Form, Spinner } from "react-bootstrap";
 import { FaPauseCircle, FaPlay, FaClock, FaExclamationCircle } from "react-icons/fa";
+import axios from "axios";
 import { API_WEB_URLS } from "../../../../../constants/constAPI";
-import { Fn_AddEditData } from "../../../../../store/Functions";
 import { useDispatch } from "react-redux";
 
 const PausedMachinesTableWidget = ({ pausedMachines = [], onRefresh, formatDateTime, isLoading = false }) => {
@@ -11,7 +11,7 @@ const PausedMachinesTableWidget = ({ pausedMachines = [], onRefresh, formatDateT
   const [resumeLoading, setResumeLoading] = useState(false);
 
   const userData = JSON.parse(localStorage.getItem("authUser")) || {};
-  const currentUserName = userData.name || userData.UserName || "Admin";
+  const currentUserName = userData.name || userData.UserName || userData.userName || "Admin";
   const isAdmin = 
     userData?.role === 1 || 
     userData?.roleId === 1 || 
@@ -27,32 +27,39 @@ const PausedMachinesTableWidget = ({ pausedMachines = [], onRefresh, formatDateT
 
     setResumeLoading(true);
     try {
+      const authUser = JSON.parse(localStorage.getItem("authUser") || "{}");
+      const userId = authUser?.id || authUser?.ID || authUser?.UserId || authUser?.userId || "0";
+      const userToken = authUser?.token || authUser?.UserToken || authUser?.jwtToken || "token";
+      const token = authUser?.jwtToken || authUser?.token || authUser?.UserToken || authUser?.UserTokenNew || localStorage.getItem("token") || localStorage.getItem("jwtToken");
+      const headers = token ? { Authorization: token.startsWith("Bearer ") ? token : `Bearer ${token}` } : {};
+
+      const jcId = selectedMachineToResume.JobCardMasterId || selectedMachineToResume.F_JobCardMaster || 0;
+      const machId = selectedMachineToResume.MachineMasterId || selectedMachineToResume.F_MachineMaster || selectedMachineToResume.ID || 0;
+
       const vFormData = new FormData();
-      vFormData.append("JobCardMasterId", selectedMachineToResume.JobCardMasterId || selectedMachineToResume.F_JobCardMaster || 0);
-      vFormData.append("MachineMasterId", selectedMachineToResume.MachineMasterId || selectedMachineToResume.F_MachineMaster || 0);
+      vFormData.append("JobCardMasterId", jcId);
+      vFormData.append("F_JobCardMaster", jcId);
+      vFormData.append("MachineMasterId", machId);
+      vFormData.append("F_MachineMaster", machId);
       vFormData.append("UserName", currentUserName);
 
-      const postData = {
-        formData: {
-          id: 0,
-          formData: vFormData
-        }
-      };
+      const baseUrl = API_WEB_URLS.BASE.endsWith("/") ? API_WEB_URLS.BASE : `${API_WEB_URLS.BASE}/`;
+      const url = `${baseUrl}${API_WEB_URLS.RESUME_MACHINE}/${userId}/${userToken}`;
 
-      await Fn_AddEditData(
-        dispatch,
-        () => {},
-        postData,
-        API_WEB_URLS.RESUME_MACHINE,
-        true
-      );
+      const res = await axios.post(url, vFormData, { headers });
 
-      alert(`Machine "${selectedMachineToResume.MachineName}" has been resumed successfully!`);
-      setSelectedMachineToResume(null);
-      if (onRefresh) onRefresh();
+      if (res?.data?.Success || res?.data?.success || res?.status === 200) {
+        alert(`Machine "${selectedMachineToResume.MachineName}" has been resumed successfully!`);
+        setSelectedMachineToResume(null);
+        if (onRefresh) onRefresh();
+      } else {
+        const errorMsg = res?.data?.Message || res?.data?.message || "Failed to resume machine. Please try again.";
+        alert(errorMsg);
+      }
     } catch (err) {
       console.error("Resume machine error:", err);
-      alert(err?.message || "Failed to resume machine. Please try again.");
+      const errMsg = err?.response?.data?.Message || err?.response?.data?.message || err?.message || "Failed to resume machine. Please try again.";
+      alert(errMsg);
     } finally {
       setResumeLoading(false);
     }

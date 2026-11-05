@@ -9,6 +9,14 @@ const ShortcutSelectorModal = ({ show, onHide, shortcuts = [], onSaveShortcuts }
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedRoutes, setSelectedRoutes] = useState(shortcuts.map((s) => s.route || s.id));
 
+  // Sync selectedRoutes whenever modal is opened or shortcuts prop changes
+  React.useEffect(() => {
+    if (show) {
+      setSelectedRoutes(shortcuts.map((s) => s.route || s.id));
+      setSearchTerm("");
+    }
+  }, [show, shortcuts]);
+
   const allMenuItems = getAllUniqueMenuItems().filter((item) => item.to && item.to !== "dashboard");
 
   const filteredItems = allMenuItems.filter((item) => {
@@ -33,11 +41,21 @@ const ShortcutSelectorModal = ({ show, onHide, shortcuts = [], onSaveShortcuts }
       const title = menuItem ? menuItem.title : route;
       const color = COLOR_PALETTE[idx % COLOR_PALETTE.length];
 
+      // Smart icon mapping
+      let icon = "FaThLarge";
+      const lower = (route + " " + title).toLowerCase();
+      if (lower.includes("qr") || lower.includes("scanner")) icon = "FaQrcode";
+      else if (lower.includes("jobcard") || lower.includes("slip") || lower.includes("form") || lower.includes("entry")) icon = "FaFileAlt";
+      else if (lower.includes("wood") || lower.includes("stock") || lower.includes("box")) icon = "FaBoxes";
+      else if (lower.includes("machine") || lower.includes("master") || lower.includes("cogs")) icon = "FaCogs";
+      else if (lower.includes("report") || lower.includes("summary") || lower.includes("chart")) icon = "FaChartBar";
+      else if (lower.includes("active") || lower.includes("plant") || lower.includes("delay")) icon = "FaIndustry";
+
       return {
         id: route,
         title: title,
         route: route,
-        icon: "FaThLarge",
+        icon: icon,
         color: color
       };
     });

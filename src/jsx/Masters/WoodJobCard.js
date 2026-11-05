@@ -10,6 +10,7 @@ import { useDispatch } from "react-redux";
 import { useNavigate } from "react-router-dom";
 import ComponentDrawing from "./ComponentDrawing";
 import { generateQRCodeSVG, getBarcodeValue } from "./BarcodeHelper";
+import { FaSave } from "react-icons/fa";
 
 const WoodJobCard = ({
   F_ItemMaster,
@@ -802,7 +803,7 @@ const WoodJobCard = ({
             }}
           >
             <span>Save All Batch Codes</span>
-            <i className="fas fa-save"></i>
+            <FaSave />
           </Button>
         </Col>
       </Row>

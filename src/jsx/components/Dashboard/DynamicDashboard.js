@@ -30,7 +30,9 @@ import {
   FaEye,
   FaStop,
   FaPlay,
-  FaRoute
+  FaRoute,
+  FaSearch,
+  FaClock
 } from "react-icons/fa";
 
 // Default fallback layout if database has no record and connection is offline
@@ -147,9 +149,25 @@ const DynamicDashboard = () => {
   const getCachedShortcuts = () => {
     try {
       const c = localStorage.getItem("dashboard_shortcuts_cache");
-      if (c) return JSON.parse(c);
+      if (c) {
+        const parsed = JSON.parse(c);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      }
     } catch {}
     return DEFAULT_FALLBACK_SHORTCUTS;
+  };
+
+  const getCachedWidgets = () => {
+    try {
+      const c = localStorage.getItem("dashboard_layout_cache");
+      if (c) {
+        const parsed = JSON.parse(c);
+        if (parsed.widgets && Array.isArray(parsed.widgets) && parsed.widgets.length > 0) {
+          return parsed.widgets;
+        }
+      }
+    } catch {}
+    return DEFAULT_FALLBACK_WIDGETS;
   };
 
   const getCachedData = () => {
@@ -164,7 +182,7 @@ const DynamicDashboard = () => {
   };
 
   // Dashboard configuration state
-  const [widgets, setWidgets] = useState(DEFAULT_FALLBACK_WIDGETS);
+  const [widgets, setWidgets] = useState(getCachedWidgets);
   const [shortcuts, setShortcuts] = useState(getCachedShortcuts);
   const [isCustomized, setIsCustomized] = useState(false);
   const [isEditMode, setIsEditMode] = useState(false);
@@ -193,6 +211,7 @@ const DynamicDashboard = () => {
 
   // KPI detail modal state
   const [detailModalType, setDetailModalType] = useState(null);
+  const [modalSearchText, setModalSearchText] = useState("");
 
   // Admin role validation (Only Admin can trigger floor Machine Start/Stop actions)
   const isAdmin = useMemo(() => {
@@ -219,19 +238,43 @@ const DynamicDashboard = () => {
   const [jobCardFlow, setJobCardFlow] = useState([]);
   const [loadingFlow, setLoadingFlow] = useState(false);
 
+  // Auth header helper to prevent 401 Unauthorized on direct API calls
+  const getAuthHeaders = useCallback(() => {
+    try {
+      const auth = JSON.parse(localStorage.getItem("authUser")) || {};
+      const token = auth.jwtToken || auth.token || auth.UserToken || auth.UserTokenNew || localStorage.getItem("token") || localStorage.getItem("jwtToken");
+      if (token) {
+        return { Authorization: token.startsWith("Bearer ") ? token : `Bearer ${token}` };
+      }
+    } catch (e) {
+      console.warn("Could not retrieve auth token:", e);
+    }
+    return {};
+  }, []);
+
   // Fetch Job Card Process Flow details
   const fetchJobCardFlowData = useCallback(async (jobCardId) => {
     try {
+      const headers = getAuthHeaders();
       const response = await axios.get(
-        `${API_WEB_URLS.BASE}MachineDelayDashboard/JobCardFlow/${userId}/${userToken}/${jobCardId}`
+        `${API_WEB_URLS.BASE}MachineDelayDashboard/JobCardFlow/${userId}/token/${jobCardId}`,
+        { headers }
       );
-      if (response.data && response.data.success && response.data.data) {
-        setJobCardFlow(response.data.data);
+      if (response.data && (response.data.success || response.data.Success)) {
+        const raw = response.data.data || response.data.Data || response.data;
+        const list = Array.isArray(raw)
+          ? raw
+          : Array.isArray(raw?.dataList)
+          ? raw.dataList
+          : Array.isArray(raw?.DataList)
+          ? raw.DataList
+          : [];
+        setJobCardFlow(list);
       }
     } catch (err) {
       console.error("Flow refresh error:", err);
     }
-  }, [userId, userToken]);
+  }, [userId, getAuthHeaders]);
 
   const handleViewJobCardFlow = async (jobCardId, jobCardNo) => {
     if (!jobCardId) return;
@@ -239,14 +282,73 @@ const DynamicDashboard = () => {
     setSelectedJobCardNo(jobCardNo || `#${jobCardId}`);
     setShowFlowModal(true);
     setLoadingFlow(true);
+    setJobCardFlow([]);
+
     try {
-      const response = await axios.get(
-        `${API_WEB_URLS.BASE}MachineDelayDashboard/JobCardFlow/${userId}/${userToken}/${jobCardId}`
-      );
-      if (response.data && response.data.success && response.data.data) {
-        setJobCardFlow(response.data.data);
-      } else {
-        setJobCardFlow([]);
+      let flowFound = false;
+
+      // 1. Primary: Authenticated Axios request with JWT Bearer Token
+      try {
+        const headers = getAuthHeaders();
+        const response = await axios.get(
+          `${API_WEB_URLS.BASE}MachineDelayDashboard/JobCardFlow/${userId}/token/${jobCardId}`,
+          { headers }
+        );
+        if (response.data && (response.data.success || response.data.Success)) {
+          const raw = response.data.data || response.data.Data || response.data;
+          const list = Array.isArray(raw)
+            ? raw
+            : Array.isArray(raw?.dataList)
+            ? raw.dataList
+            : Array.isArray(raw?.DataList)
+            ? raw.DataList
+            : [];
+          if (list && list.length > 0) {
+            setJobCardFlow(list);
+            flowFound = true;
+          }
+        }
+      } catch (axiosErr) {
+        console.warn("Direct axios flow fetch failed in DynamicDashboard, attempting Fn_FillListData:", axiosErr);
+      }
+
+      // 2. Secondary fallback: Fn_FillListData via Redux (only if primary didn't load items)
+      if (!flowFound) {
+        try {
+          const dataList = await Fn_FillListData(
+            dispatch,
+            (res) => {
+              const list = Array.isArray(res)
+                ? res
+                : Array.isArray(res?.dataList)
+                ? res.dataList
+                : Array.isArray(res?.DataList)
+                ? res.DataList
+                : Array.isArray(res?.data)
+                ? res.data
+                : [];
+              if (list && list.length > 0) {
+                setJobCardFlow(list);
+              }
+            },
+            "gridData",
+            `MachineDelayDashboard/JobCardFlow/${userId}/token/${jobCardId}`
+          );
+          if (dataList) {
+            const list = Array.isArray(dataList)
+              ? dataList
+              : Array.isArray(dataList?.dataList)
+              ? dataList.dataList
+              : Array.isArray(dataList?.DataList)
+              ? dataList.DataList
+              : [];
+            if (list && list.length > 0) {
+              setJobCardFlow(list);
+            }
+          }
+        } catch (reduxErr) {
+          console.error("Redux flow fetch also failed:", reduxErr);
+        }
       }
     } catch (err) {
       console.error("Error fetching job card flow:", err);
@@ -369,8 +471,9 @@ const DynamicDashboard = () => {
   // 1. Fetch Dashboard Configuration from Database
   const fetchDashboardConfig = useCallback(async () => {
     try {
+      const headers = getAuthHeaders();
       const url = `${baseUrl}${API_WEB_URLS.USER_DASHBOARD_GET}?userId=${userId}&roleId=${roleId}`;
-      const res = await axios.get(url);
+      const res = await axios.get(url, { headers });
 
       if (res.data && res.data.statusCode === 200) {
         setIsCustomized(res.data.isCustomized === 1);
@@ -378,8 +481,11 @@ const DynamicDashboard = () => {
         if (res.data.layoutJson) {
           try {
             const parsed = JSON.parse(res.data.layoutJson);
-            if (parsed.widgets && Array.isArray(parsed.widgets)) {
+            if (parsed.widgets && Array.isArray(parsed.widgets) && parsed.widgets.length > 0) {
               setWidgets(parsed.widgets);
+              try {
+                localStorage.setItem("dashboard_layout_cache", JSON.stringify(parsed));
+              } catch (e) {}
             }
           } catch (e) {
             console.error("Error parsing layoutJson:", e);
@@ -389,7 +495,7 @@ const DynamicDashboard = () => {
         if (res.data.shortcutsJson) {
           try {
             const parsedShortcuts = JSON.parse(res.data.shortcutsJson);
-            if (Array.isArray(parsedShortcuts)) {
+            if (Array.isArray(parsedShortcuts) && parsedShortcuts.length > 0) {
               setShortcuts(parsedShortcuts);
               try {
                 localStorage.setItem("dashboard_shortcuts_cache", JSON.stringify(parsedShortcuts));
@@ -401,9 +507,9 @@ const DynamicDashboard = () => {
         }
       }
     } catch (err) {
-      console.warn("Could not fetch user dashboard config, using defaults:", err);
+      console.warn("Could not fetch user dashboard config from server, using cached/defaults:", err);
     }
-  }, [baseUrl, userId, roleId]);
+  }, [baseUrl, userId, roleId, getAuthHeaders]);
 
   // 2. Fetch Operational Floor Data (Machines, Delays, Pauses)
   const fetchDashboardData = useCallback(async (isSilent = false) => {
@@ -446,7 +552,10 @@ const DynamicDashboard = () => {
     try {
       await Fn_FillListData(
         dispatch,
-        setAllMachines,
+        (res) => {
+          const list = Array.isArray(res) ? res : (res?.dataList || res?.DataList || []);
+          setAllMachines(list);
+        },
         "gridData",
         `${API_WEB_URLS.MASTER}/0/token/MachineMaster/Id/0`
       );
@@ -499,8 +608,15 @@ const DynamicDashboard = () => {
         WidgetSettingsJson: "{}"
       };
 
+      // Save locally first for instant persistence
+      try {
+        localStorage.setItem("dashboard_layout_cache", JSON.stringify({ version: 1, widgets }));
+        localStorage.setItem("dashboard_shortcuts_cache", JSON.stringify(shortcuts));
+      } catch (e) {}
+
+      const headers = getAuthHeaders();
       const url = `${baseUrl}${API_WEB_URLS.USER_DASHBOARD_SAVE}`;
-      await axios.post(url, payload);
+      await axios.post(url, payload, { headers });
 
       setHasUnsavedChanges(false);
       setIsCustomized(true);
@@ -523,17 +639,28 @@ const DynamicDashboard = () => {
         RoleId: Number(roleId)
       };
 
+      const headers = getAuthHeaders();
       const url = `${baseUrl}${API_WEB_URLS.USER_DASHBOARD_RESET}`;
-      const res = await axios.post(url, payload);
+      const res = await axios.post(url, payload, { headers });
 
       if (res.data && res.data.statusCode === 200) {
         if (res.data.layoutJson) {
           const parsed = JSON.parse(res.data.layoutJson);
-          if (parsed.widgets) setWidgets(parsed.widgets);
+          if (parsed.widgets) {
+            setWidgets(parsed.widgets);
+            try {
+              localStorage.setItem("dashboard_layout_cache", JSON.stringify(parsed));
+            } catch (e) {}
+          }
         }
         if (res.data.shortcutsJson) {
           const parsedShortcuts = JSON.parse(res.data.shortcutsJson);
-          if (Array.isArray(parsedShortcuts)) setShortcuts(parsedShortcuts);
+          if (Array.isArray(parsedShortcuts)) {
+            setShortcuts(parsedShortcuts);
+            try {
+              localStorage.setItem("dashboard_shortcuts_cache", JSON.stringify(parsedShortcuts));
+            } catch (e) {}
+          }
         }
 
         setIsCustomized(false);
@@ -608,30 +735,161 @@ const DynamicDashboard = () => {
     setHasUnsavedChanges(true);
   };
 
-  // Shortcuts manipulation
-  const handleSaveShortcuts = (updatedShortcuts) => {
+  // Shortcuts manipulation (Auto-persisted to both localStorage and database)
+  const handleSaveShortcuts = async (updatedShortcuts) => {
     setShortcuts(updatedShortcuts);
-    setHasUnsavedChanges(true);
+
+    // 1. Immediately persist to localStorage so page refresh never loses them
+    try {
+      localStorage.setItem("dashboard_shortcuts_cache", JSON.stringify(updatedShortcuts));
+    } catch (e) {}
+
+    // 2. Persist to server database
+    try {
+      const headers = getAuthHeaders();
+      const payload = {
+        UserId: Number(userId),
+        LayoutJson: JSON.stringify({ version: 1, widgets }),
+        ShortcutsJson: JSON.stringify(updatedShortcuts),
+        WidgetSettingsJson: "{}"
+      };
+      const url = `${baseUrl}${API_WEB_URLS.USER_DASHBOARD_SAVE}`;
+      await axios.post(url, payload, { headers });
+      setIsCustomized(true);
+    } catch (err) {
+      console.warn("Background auto-save of shortcuts to server failed, kept in local storage:", err);
+    }
   };
 
-  const handleRemoveShortcut = (shortcutId) => {
-    setShortcuts((prev) => prev.filter((s) => (s.id || s.route) !== shortcutId));
-    setHasUnsavedChanges(true);
+  const handleRemoveShortcut = async (shortcutId) => {
+    const updated = shortcuts.filter((s) => (s.id || s.route) !== shortcutId);
+    setShortcuts(updated);
+
+    // 1. Immediately persist to localStorage
+    try {
+      localStorage.setItem("dashboard_shortcuts_cache", JSON.stringify(updated));
+    } catch (e) {}
+
+    // 2. Persist to server database
+    try {
+      const headers = getAuthHeaders();
+      const payload = {
+        UserId: Number(userId),
+        LayoutJson: JSON.stringify({ version: 1, widgets }),
+        ShortcutsJson: JSON.stringify(updated),
+        WidgetSettingsJson: "{}"
+      };
+      const url = `${baseUrl}${API_WEB_URLS.USER_DASHBOARD_SAVE}`;
+      await axios.post(url, payload, { headers });
+    } catch (err) {
+      console.warn("Background auto-save of removed shortcut to server failed:", err);
+    }
   };
 
   // Operational metrics aggregation
-  const runningMachines = data?.runningMachines || [];
-  const delayedTransitions = data?.delayedTransitions || [];
-  const pausedMachines = data?.pausedMachines || [];
+  const runningMachines = data?.runningMachines || data?.RunningMachines || [];
+  const delayedTransitions = data?.delayedTransitions || data?.DelayedTransitions || [];
+  const pausedMachines = data?.pausedMachines || data?.PausedMachines || [];
+  const machineLogs = data?.machineLogs || data?.MachineLogs || [];
 
   const counts = useMemo(() => {
-    const total = data?.machineCounts?.total || allMachines.length || 0;
-    const running = data?.machineCounts?.running || runningMachines.length || 0;
-    const paused = data?.machineCounts?.paused ?? pausedMachines.length;
+    const countsObj = data?.machineCounts || data?.MachineCounts || {};
+    const total = countsObj.total || countsObj.Total || (allMachines.length > 0 ? allMachines.length : machineLogs.length) || (runningMachines.length + pausedMachines.length);
+    const running = countsObj.running ?? countsObj.Running ?? runningMachines.length;
+    const paused = countsObj.paused ?? countsObj.Paused ?? pausedMachines.length;
     const idle = Math.max(0, total - (running + paused));
-    const runningJobCards = data?.machineCounts?.runningJobCards ?? runningMachines.length;
+    const runningJobCards = countsObj.runningJobCards ?? countsObj.RunningJobCards ?? runningMachines.length;
     return { total, running, paused, idle, runningJobCards };
-  }, [data, allMachines, runningMachines, pausedMachines]);
+  }, [data, allMachines, machineLogs, runningMachines, pausedMachines]);
+
+  // Unified fleet list for Detail Modals (Total Fleet, Idle Machines, Running, Paused)
+  const fleetMachines = useMemo(() => {
+    if (machineLogs && machineLogs.length > 0) {
+      return machineLogs.map((m, idx) => {
+        const id = m.MachineId || m.machineId || m.ID || m.Id || idx;
+        const name = m.MachineName || m.machineName || m.Name || "Unnamed Machine";
+        const code = m.MachineCode || m.machineCode || m.Code || "";
+        const isActive = m.IsActive !== 0 && m.IsActive !== false && m.isActive !== 0 && m.isActive !== false;
+
+        const isRun = !!(m.RunningJobCardMasterId || m.runningJobCardMasterId || m.RunningJobCardLineId || m.runningJobCardLineId);
+        const isPause = !!(m.RunningIsPaused || m.runningIsPaused);
+
+        let status = "IDLE";
+        if (isRun && isPause) status = "PAUSED";
+        else if (isRun) status = "RUNNING";
+
+        return {
+          id,
+          name,
+          code,
+          isActive,
+          status,
+          runningJobCardMasterId: m.RunningJobCardMasterId || m.runningJobCardMasterId,
+          runningJobCardLineId: m.RunningJobCardLineId || m.runningJobCardLineId,
+          runningJobCardNo: m.RunningJobCardNo || m.runningJobCardNo,
+          runningShipmentNo: m.RunningShipmentNo || m.runningShipmentNo,
+          runningStartTime: m.RunningStartTime || m.runningStartTime,
+          runningOperator: m.RunningOperatorName || m.runningOperatorName,
+          runningHours: m.RunningHours || m.runningHours || 0,
+          pauseReason: m.RunningPauseReason || m.runningPauseReason || "Paused",
+          lastJobCardMasterId: m.LastJobCardMasterId || m.lastJobCardMasterId,
+          lastJobCardNo: m.LastJobCardNo || m.lastJobCardNo,
+          lastShipmentNo: m.LastShipmentNo || m.lastShipmentNo,
+          lastEndTime: m.LastEndTime || m.lastEndTime,
+          lastOperator: m.LastOperatorName || m.lastOperatorName,
+          idleHours: m.IdleHours || m.idleHours || 0,
+          rawMachine: m
+        };
+      });
+    }
+
+    // Fallback: build from allMachines combined with runningMachines and pausedMachines
+    return allMachines.map((am, idx) => {
+      const id = am.Id || am.ID || am.MachineMasterId || idx;
+      const name = am.Name || am.MachineName || "Machine";
+      const code = am.Code || am.MachineCode || "";
+      const isActive = am.IsActive !== 0 && am.IsActive !== false;
+
+      const runMatch = runningMachines.find(r =>
+        (r.MachineMasterId && String(r.MachineMasterId) === String(id)) ||
+        (r.machineMasterId && String(r.machineMasterId) === String(id)) ||
+        (r.MachineName && name && r.MachineName.toLowerCase() === name.toLowerCase())
+      );
+
+      const pauseMatch = pausedMachines.find(p =>
+        (p.MachineMasterId && String(p.MachineMasterId) === String(id)) ||
+        (p.F_MachineMaster && String(p.F_MachineMaster) === String(id)) ||
+        (p.MachineName && name && p.MachineName.toLowerCase() === name.toLowerCase())
+      );
+
+      let status = "IDLE";
+      if (pauseMatch) status = "PAUSED";
+      else if (runMatch) status = "RUNNING";
+
+      return {
+        id,
+        name,
+        code,
+        isActive,
+        status,
+        runningJobCardMasterId: runMatch?.JobCardMasterId || runMatch?.jobCardMasterId,
+        runningJobCardLineId: runMatch?.JobCardLineId || runMatch?.jobCardLineId,
+        runningJobCardNo: runMatch?.JobCardNo || runMatch?.jobCardNo,
+        runningShipmentNo: runMatch?.ShipmentNo || runMatch?.shipmentNo,
+        runningStartTime: runMatch?.StartTime || runMatch?.startTime,
+        runningOperator: runMatch?.OperatorName || runMatch?.operatorName,
+        runningHours: 0,
+        pauseReason: pauseMatch?.Reason || pauseMatch?.CurrentPauseReason || "Paused",
+        lastJobCardMasterId: null,
+        lastJobCardNo: null,
+        lastShipmentNo: null,
+        lastEndTime: null,
+        lastOperator: null,
+        idleHours: 0,
+        rawMachine: am
+      };
+    });
+  }, [machineLogs, allMachines, runningMachines, pausedMachines]);
 
   // Filter only visible widgets for rendering in grid
   const visibleWidgets = useMemo(() => {
@@ -855,6 +1113,7 @@ const DynamicDashboard = () => {
                       counts={counts}
                       runningMachines={runningMachines}
                       isLoading={loading && !hasData}
+                      onKpiClick={(filterType) => setDetailModalType(filterType || "RUNNING")}
                     />
                   )}
 
@@ -895,180 +1154,459 @@ const DynamicDashboard = () => {
               {detailModalType === "TOTAL_DELAY_HOURS" && "Delay & Lost Time Details"}
             </Modal.Title>
           </Modal.Header>
-          <Modal.Body style={{ maxHeight: "60vh", overflowY: "auto" }}>
-            {detailModalType === "RUNNING" && (
-              <Table hover responsive className="align-middle small">
-                <thead className="table-light">
-                  <tr>
-                    <th>Machine</th>
-                    <th>Code</th>
-                    <th>Job Card</th>
-                    <th>Start Time</th>
-                    <th>Operator</th>
-                    {isAdmin && <th className="text-center" style={{ width: "160px" }}>Action</th>}
-                  </tr>
-                </thead>
-                <tbody>
-                  {runningMachines.length === 0 ? (
-                    <tr><td colSpan={isAdmin ? "6" : "5"} className="text-center text-muted">No machines currently running</td></tr>
-                  ) : (
-                    runningMachines.map((m, i) => {
-                      const lineId = m.JobCardLineId || m.jobCardLineId;
-                      const masterId = m.JobCardMasterId || m.jobCardMasterId;
-                      const jcNo = m.JobCardNo || m.jobCardNo;
-                      const mName = m.MachineName || m.machineName;
+          <Modal.Body style={{ maxHeight: "65vh", overflowY: "auto" }}>
+            <div className="mb-3 d-flex align-items-center gap-2">
+              <div className="input-group input-group-sm">
+                <span className="input-group-text bg-light border-end-0">
+                  <FaSearch size={12} className="text-muted" />
+                </span>
+                <input
+                  type="text"
+                  className="form-control border-start-0"
+                  placeholder="Search by machine, code, job card, or operator..."
+                  value={modalSearchText}
+                  onChange={(e) => setModalSearchText(e.target.value)}
+                />
+              </div>
+              {modalSearchText && (
+                <Button 
+                  variant="outline-secondary" 
+                  size="sm" 
+                  className="py-1 px-2"
+                  onClick={() => setModalSearchText("")}
+                >
+                  Clear
+                </Button>
+              )}
+            </div>
 
-                      return (
-                        <tr key={lineId || i}>
-                          <td className="fw-bold">{mName}</td>
-                          <td>{m.MachineCode || m.machineCode}</td>
+            {/* A. Running Machines */}
+            {detailModalType === "RUNNING" && (() => {
+              const q = modalSearchText.toLowerCase().trim();
+              const filtered = runningMachines.filter((m) => {
+                if (!q) return true;
+                const mName = (m.MachineName || m.machineName || "").toLowerCase();
+                const mCode = (m.MachineCode || m.machineCode || "").toLowerCase();
+                const jc = (String(m.JobCardNo || m.jobCardNo || "")).toLowerCase();
+                const op = (m.OperatorName || m.operatorName || "").toLowerCase();
+                return mName.includes(q) || mCode.includes(q) || jc.includes(q) || op.includes(q);
+              });
+
+              return (
+                <Table hover responsive className="align-middle small mb-0">
+                  <thead className="table-light">
+                    <tr>
+                      <th>Machine</th>
+                      <th>Code</th>
+                      <th>Job Card</th>
+                      <th>Start Time</th>
+                      <th>Operator</th>
+                      {isAdmin && <th className="text-center" style={{ width: "160px" }}>Action</th>}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filtered.length === 0 ? (
+                      <tr><td colSpan={isAdmin ? "6" : "5"} className="text-center text-muted py-4">No running machines match your search</td></tr>
+                    ) : (
+                      filtered.map((m, i) => {
+                        const lineId = m.JobCardLineId || m.jobCardLineId;
+                        const masterId = m.JobCardMasterId || m.jobCardMasterId;
+                        const jcNo = m.JobCardNo || m.jobCardNo;
+                        const mName = m.MachineName || m.machineName;
+
+                        return (
+                          <tr key={lineId || i}>
+                            <td className="fw-bold">{mName}</td>
+                            <td>{m.MachineCode || m.machineCode}</td>
+                            <td>
+                              <Badge 
+                                bg="success" 
+                                style={{ cursor: "pointer" }} 
+                                onClick={() => handleViewJobCardFlow(masterId, jcNo)}
+                                title="Click to view full Job Card process flow"
+                              >
+                                {jcNo || masterId}
+                              </Badge>
+                            </td>
+                            <td>{formatDateTime(m.StartTime || m.startTime)}</td>
+                            <td>{m.OperatorName || m.operatorName || <span className="text-muted">N/A</span>}</td>
+                            {isAdmin && (
+                              <td className="text-center">
+                                <div className="d-flex gap-1 justify-content-center align-items-center">
+                                  <Button
+                                    variant="outline-info"
+                                    size="sm"
+                                    className="py-1 px-2 d-inline-flex align-items-center gap-1"
+                                    style={{ fontSize: "0.75rem" }}
+                                    onClick={() => handleViewJobCardFlow(masterId, jcNo)}
+                                    title="View Process Flow"
+                                  >
+                                    <FaEye size={10} /> Flow
+                                  </Button>
+                                  <Button
+                                    variant="danger"
+                                    size="sm"
+                                    className="py-1 px-2 d-inline-flex align-items-center gap-1"
+                                    style={{ fontSize: "0.75rem" }}
+                                    onClick={() => handleStopMachine(m)}
+                                    disabled={stoppingMachineId === lineId}
+                                    title={`Stop machine: ${mName}`}
+                                  >
+                                    {stoppingMachineId === lineId ? (
+                                      <><Spinner animation="border" size="sm" style={{ width: "0.7rem", height: "0.7rem" }} /> Stopping...</>
+                                    ) : (
+                                      <><FaStop size={9} /> Stop</>
+                                    )}
+                                  </Button>
+                                </div>
+                              </td>
+                            )}
+                          </tr>
+                        );
+                      })
+                    )}
+                  </tbody>
+                </Table>
+              );
+            })()}
+
+            {/* B. Paused Machines */}
+            {detailModalType === "PAUSED" && (() => {
+              const q = modalSearchText.toLowerCase().trim();
+              const filtered = pausedMachines.filter((m) => {
+                if (!q) return true;
+                const mName = (m.MachineName || "").toLowerCase();
+                const jc = (String(m.JobCardNo || m.JobCardMasterId || "")).toLowerCase();
+                const reason = (m.Reason || m.CurrentPauseReason || "").toLowerCase();
+                return mName.includes(q) || jc.includes(q) || reason.includes(q);
+              });
+
+              return (
+                <Table hover responsive className="align-middle small mb-0">
+                  <thead className="table-light">
+                    <tr>
+                      <th>Machine</th>
+                      <th>Job Card</th>
+                      <th>Pause Reason</th>
+                      <th>Paused At</th>
+                      {isAdmin && <th className="text-end" style={{ width: "110px" }}>Action</th>}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filtered.length === 0 ? (
+                      <tr><td colSpan={isAdmin ? "5" : "4"} className="text-center text-muted py-4">No paused machines match your search</td></tr>
+                    ) : (
+                      filtered.map((m, i) => {
+                        const masterId = m.JobCardMasterId || m.F_JobCardMaster || 0;
+                        const jcNo = m.JobCardNo || `#${masterId}`;
+                        const mName = m.MachineName || "Unknown Machine";
+
+                        return (
+                          <tr key={i}>
+                            <td className="fw-bold">{mName}</td>
+                            <td>
+                              <Badge 
+                                bg="secondary" 
+                                style={{ cursor: "pointer" }} 
+                                onClick={() => handleViewJobCardFlow(masterId, jcNo)}
+                                title="Click to view process flow"
+                              >
+                                {jcNo}
+                              </Badge>
+                            </td>
+                            <td className="text-danger fw-semibold">{m.Reason || m.CurrentPauseReason || "Break"}</td>
+                            <td>{formatDateTime(m.PauseStartTime || m.CurrentPauseStartTime)}</td>
+                            {isAdmin && (
+                              <td className="text-end">
+                                <Button
+                                  size="sm"
+                                  variant="success"
+                                  className="py-1 px-2 d-inline-flex align-items-center gap-1"
+                                  style={{ fontSize: "0.75rem", borderRadius: "16px" }}
+                                  onClick={async () => {
+                                    const confirmResume = window.confirm(`Resume machine "${mName}" on Job Card ${jcNo}?`);
+                                    if (!confirmResume) return;
+                                    try {
+                                      const vFormData = new FormData();
+                                      vFormData.append("JobCardMasterId", masterId);
+                                      vFormData.append("F_JobCardMaster", masterId);
+                                      vFormData.append("MachineMasterId", m.MachineMasterId || m.F_MachineMaster || 0);
+                                      vFormData.append("F_MachineMaster", m.MachineMasterId || m.F_MachineMaster || 0);
+                                      vFormData.append("UserName", userData.name || userData.UserName || "Admin");
+
+                                      const token = userData?.jwtToken || userData?.token || userData?.UserToken || userData?.UserTokenNew || localStorage.getItem("token") || localStorage.getItem("jwtToken");
+                                      const headers = token ? { Authorization: token.startsWith("Bearer ") ? token : `Bearer ${token}` } : {};
+
+                                      const url = `${baseUrl}${API_WEB_URLS.RESUME_MACHINE}/${userId}/${userToken}`;
+                                      const res = await axios.post(url, vFormData, { headers });
+
+                                      if (res?.data?.Success || res?.data?.success || res?.status === 200) {
+                                        alert(`Machine "${mName}" resumed successfully!`);
+                                        fetchDashboardData(true);
+                                      } else {
+                                        alert(res?.data?.Message || res?.data?.message || "Failed to resume machine.");
+                                      }
+                                    } catch (err) {
+                                      console.error("Resume machine error:", err);
+                                      alert(err?.response?.data?.Message || err?.response?.data?.message || err?.message || "Failed to resume machine.");
+                                    }
+                                  }}
+                                >
+                                  <FaPlay size={8} /> Resume
+                                </Button>
+                              </td>
+                            )}
+                          </tr>
+                        );
+                      })
+                    )}
+                  </tbody>
+                </Table>
+              );
+            })()}
+
+            {/* C. Idle Machines */}
+            {detailModalType === "IDLE" && (() => {
+              const q = modalSearchText.toLowerCase().trim();
+              const idleList = fleetMachines.filter(m => m.status === "IDLE");
+              const filtered = idleList.filter(m => {
+                if (!q) return true;
+                const mName = (m.name || "").toLowerCase();
+                const mCode = (m.code || "").toLowerCase();
+                const lastJc = (String(m.lastJobCardNo || "")).toLowerCase();
+                const op = (m.lastOperator || "").toLowerCase();
+                return mName.includes(q) || mCode.includes(q) || lastJc.includes(q) || op.includes(q);
+              });
+
+              return (
+                <Table hover responsive className="align-middle small mb-0">
+                  <thead className="table-light">
+                    <tr>
+                      <th>Machine</th>
+                      <th>Code</th>
+                      <th>Status</th>
+                      <th>Last Job Card</th>
+                      <th>Last Completed At</th>
+                      <th>Idle Duration</th>
+                      <th>Last Operator</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filtered.length === 0 ? (
+                      <tr><td colSpan="7" className="text-center text-muted py-4">No idle machines match your search</td></tr>
+                    ) : (
+                      filtered.map((m, i) => (
+                        <tr key={m.id || i}>
+                          <td className="fw-bold">{m.name}</td>
+                          <td>{m.code || "—"}</td>
                           <td>
-                            <Badge 
-                              bg="success" 
-                              style={{ cursor: "pointer" }} 
-                              onClick={() => handleViewJobCardFlow(masterId, jcNo)}
-                              title="Click to view full Job Card process flow"
-                            >
-                              {jcNo || masterId}
-                            </Badge>
+                            <Badge bg="secondary" className="px-2 py-1">IDLE</Badge>
                           </td>
-                          <td>{formatDateTime(m.StartTime || m.startTime)}</td>
-                          <td>{m.OperatorName || m.operatorName || <span className="text-muted">N/A</span>}</td>
-                          {isAdmin && (
+                          <td>
+                            {m.lastJobCardNo ? (
+                              <Badge 
+                                bg="light" 
+                                text="primary" 
+                                className="border"
+                                style={{ cursor: "pointer" }}
+                                onClick={() => handleViewJobCardFlow(m.lastJobCardMasterId, m.lastJobCardNo)}
+                                title="Click to view flow"
+                              >
+                                {m.lastJobCardNo}
+                              </Badge>
+                            ) : (
+                              <span className="text-muted">None</span>
+                            )}
+                          </td>
+                          <td>{m.lastEndTime ? formatDateTime(m.lastEndTime) : <span className="text-muted">N/A</span>}</td>
+                          <td>
+                            {m.idleHours > 0 ? (
+                              <span className="fw-semibold text-warning">{parseFloat(m.idleHours).toFixed(1)} hrs</span>
+                            ) : (
+                              <span className="text-muted">—</span>
+                            )}
+                          </td>
+                          <td>{m.lastOperator || <span className="text-muted">N/A</span>}</td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </Table>
+              );
+            })()}
+
+            {/* D. Total Fleet Overview */}
+            {detailModalType === "TOTAL" && (() => {
+              const q = modalSearchText.toLowerCase().trim();
+              const filtered = fleetMachines.filter(m => {
+                if (!q) return true;
+                const mName = (m.name || "").toLowerCase();
+                const mCode = (m.code || "").toLowerCase();
+                const rJc = (String(m.runningJobCardNo || "")).toLowerCase();
+                const lJc = (String(m.lastJobCardNo || "")).toLowerCase();
+                const op = (m.runningOperator || m.lastOperator || "").toLowerCase();
+                return mName.includes(q) || mCode.includes(q) || rJc.includes(q) || lJc.includes(q) || op.includes(q);
+              });
+
+              return (
+                <Table hover responsive className="align-middle small mb-0">
+                  <thead className="table-light">
+                    <tr>
+                      <th>Machine</th>
+                      <th>Code</th>
+                      <th>Status</th>
+                      <th>Active / Last Job Card</th>
+                      <th>Operator</th>
+                      <th>Activity Notes</th>
+                      <th className="text-center" style={{ width: "130px" }}>Action</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filtered.length === 0 ? (
+                      <tr><td colSpan="7" className="text-center text-muted py-4">No machines match your search</td></tr>
+                    ) : (
+                      filtered.map((m, i) => {
+                        const statusBadgeBg = m.status === "RUNNING" ? "success" : m.status === "PAUSED" ? "danger" : "secondary";
+                        const activeJcNo = m.runningJobCardNo || m.lastJobCardNo;
+                        const activeJcId = m.runningJobCardMasterId || m.lastJobCardMasterId;
+
+                        return (
+                          <tr key={m.id || i}>
+                            <td className="fw-bold">{m.name}</td>
+                            <td>{m.code || "—"}</td>
+                            <td>
+                              <Badge bg={statusBadgeBg} className="px-2 py-1">{m.status}</Badge>
+                            </td>
+                            <td>
+                              {activeJcNo ? (
+                                <Badge 
+                                  bg={m.status === "RUNNING" ? "success" : "light"}
+                                  text={m.status === "RUNNING" ? "white" : "dark"}
+                                  className={m.status === "RUNNING" ? "" : "border"}
+                                  style={{ cursor: "pointer" }}
+                                  onClick={() => handleViewJobCardFlow(activeJcId, activeJcNo)}
+                                  title="Click to view flow"
+                                >
+                                  {activeJcNo}
+                                </Badge>
+                              ) : (
+                                <span className="text-muted">None</span>
+                              )}
+                            </td>
+                            <td>{m.runningOperator || m.lastOperator || <span className="text-muted">N/A</span>}</td>
+                            <td>
+                              {m.status === "RUNNING" && (
+                                <span className="text-success small">Started {formatDateTime(m.runningStartTime)}</span>
+                              )}
+                              {m.status === "PAUSED" && (
+                                <span className="text-danger small fw-semibold">{m.pauseReason}</span>
+                              )}
+                              {m.status === "IDLE" && (
+                                <span className="text-muted small">
+                                  {m.idleHours > 0 ? `Idle ${parseFloat(m.idleHours).toFixed(1)}h` : "Ready"}
+                                </span>
+                              )}
+                            </td>
                             <td className="text-center">
-                              <div className="d-flex gap-1 justify-content-center align-items-center">
+                              {activeJcId ? (
                                 <Button
                                   variant="outline-info"
                                   size="sm"
                                   className="py-1 px-2 d-inline-flex align-items-center gap-1"
                                   style={{ fontSize: "0.75rem" }}
-                                  onClick={() => handleViewJobCardFlow(masterId, jcNo)}
-                                  title="View Process Flow"
+                                  onClick={() => handleViewJobCardFlow(activeJcId, activeJcNo)}
+                                  title="View Flow"
                                 >
                                   <FaEye size={10} /> Flow
                                 </Button>
-                                <Button
-                                  variant="danger"
-                                  size="sm"
-                                  className="py-1 px-2 d-inline-flex align-items-center gap-1"
-                                  style={{ fontSize: "0.75rem" }}
-                                  onClick={() => handleStopMachine(m)}
-                                  disabled={stoppingMachineId === lineId}
-                                  title={`Stop machine: ${mName}`}
-                                >
-                                  {stoppingMachineId === lineId ? (
-                                    <><Spinner animation="border" size="sm" style={{ width: "0.7rem", height: "0.7rem" }} /> Stopping...</>
-                                  ) : (
-                                    <><FaStop size={9} /> Stop</>
-                                  )}
-                                </Button>
-                              </div>
+                              ) : (
+                                <span className="text-muted fs-12">—</span>
+                              )}
                             </td>
-                          )}
-                        </tr>
-                      );
-                    })
-                  )}
-                </tbody>
-              </Table>
-            )}
+                          </tr>
+                        );
+                      })
+                    )}
+                  </tbody>
+                </Table>
+              );
+            })()}
 
-            {detailModalType === "PAUSED" && (
-              <Table hover responsive className="align-middle small">
-                <thead className="table-light">
-                  <tr>
-                    <th>Machine</th>
-                    <th>Job Card</th>
-                    <th>Pause Reason</th>
-                    <th>Paused At</th>
-                    {isAdmin && <th className="text-end" style={{ width: "110px" }}>Action</th>}
-                  </tr>
-                </thead>
-                <tbody>
-                  {pausedMachines.length === 0 ? (
-                    <tr><td colSpan={isAdmin ? "5" : "4"} className="text-center text-muted">No machines currently paused</td></tr>
-                  ) : (
-                    pausedMachines.map((m, i) => {
-                      const masterId = m.JobCardMasterId || m.F_JobCardMaster || 0;
-                      const jcNo = m.JobCardNo || `#${masterId}`;
-                      const mName = m.MachineName || "Unknown Machine";
+            {/* E. Delayed Transitions & Total Lost Time Details */}
+            {(detailModalType === "DELAYED_COUNT" || detailModalType === "TOTAL_DELAY_HOURS") && (() => {
+              const q = modalSearchText.toLowerCase().trim();
+              const filtered = delayedTransitions.filter((t) => {
+                if (!q) return true;
+                const fromM = (t.CurrentMachineName || "").toLowerCase();
+                const toM = (t.NextMachineName || "").toLowerCase();
+                const jc = (String(t.JobCardNo || t.JobCardMasterId || "")).toLowerCase();
+                const ship = (String(t.ShipmentNo || "")).toLowerCase();
+                return fromM.includes(q) || toM.includes(q) || jc.includes(q) || ship.includes(q);
+              });
 
-                      return (
+              return (
+                <Table hover responsive className="align-middle small mb-0">
+                  <thead className="table-light">
+                    <tr>
+                      <th>Shipment No</th>
+                      <th>Job Card</th>
+                      <th>From Machine</th>
+                      <th>Finished At</th>
+                      <th>To Machine</th>
+                      <th>Lost Time / Delay</th>
+                      <th className="text-center" style={{ width: "110px" }}>Action</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filtered.length === 0 ? (
+                      <tr><td colSpan="7" className="text-center text-muted py-4">No delayed transitions match your filters</td></tr>
+                    ) : (
+                      filtered.map((t, i) => (
                         <tr key={i}>
-                          <td className="fw-bold">{mName}</td>
+                          <td>{t.ShipmentNo || <span className="text-muted">N/A</span>}</td>
                           <td>
                             <Badge 
-                              bg="secondary" 
-                              style={{ cursor: "pointer" }} 
-                              onClick={() => handleViewJobCardFlow(masterId, jcNo)}
-                              title="Click to view process flow"
+                              bg="warning" 
+                              text="dark"
+                              style={{ cursor: "pointer" }}
+                              onClick={() => handleViewJobCardFlow(t.JobCardMasterId, t.JobCardNo)}
+                              title="Click to view flow"
                             >
-                              {jcNo}
+                              {t.JobCardNo || t.JobCardMasterId}
                             </Badge>
                           </td>
-                          <td className="text-danger fw-semibold">{m.Reason || m.CurrentPauseReason || "Break"}</td>
-                          <td>{formatDateTime(m.PauseStartTime || m.CurrentPauseStartTime)}</td>
-                          {isAdmin && (
-                            <td className="text-end">
-                              <Button
-                                size="sm"
-                                variant="success"
-                                className="py-1 px-2 d-inline-flex align-items-center gap-1"
-                                style={{ fontSize: "0.75rem", borderRadius: "16px" }}
-                                onClick={async () => {
-                                  const confirmResume = window.confirm(`Resume machine "${mName}" on Job Card ${jcNo}?`);
-                                  if (!confirmResume) return;
-                                  try {
-                                    const vFormData = new FormData();
-                                    vFormData.append("JobCardMasterId", masterId);
-                                    vFormData.append("MachineMasterId", m.MachineMasterId || m.F_MachineMaster || 0);
-                                    vFormData.append("UserName", userData.name || userData.UserName || "Admin");
-                                    await Fn_AddEditData(dispatch, () => {}, { formData: { id: 0, formData: vFormData } }, API_WEB_URLS.RESUME_MACHINE, true);
-                                    alert(`Machine "${mName}" resumed successfully!`);
-                                    fetchDashboardData(true);
-                                  } catch (err) {
-                                    alert(err?.message || "Failed to resume machine.");
-                                  }
-                                }}
-                              >
-                                <FaPlay size={8} /> Resume
-                              </Button>
-                            </td>
-                          )}
+                          <td className="fw-bold">
+                            {t.CurrentMachineName}
+                            <div className="text-xs text-muted">{t.CurrentMachineCode}</div>
+                          </td>
+                          <td>{formatDateTime(t.CurrentEndTime)}</td>
+                          <td className="fw-bold">
+                            {t.NextMachineName || <span className="text-muted">None (Last Step)</span>}
+                            {t.NextMachineCode && <div className="text-xs text-muted">{t.NextMachineCode}</div>}
+                          </td>
+                          <td>
+                            <Badge bg="danger" className="p-2 fs-11">
+                              {parseFloat(t.DelayHours || t.delayHours || 0).toFixed(1)} hrs
+                            </Badge>
+                          </td>
+                          <td className="text-center">
+                            <Button 
+                              variant="outline-info" 
+                              size="sm" 
+                              className="py-1 px-2 d-inline-flex align-items-center gap-1"
+                              style={{ fontSize: "0.75rem" }}
+                              onClick={() => handleViewJobCardFlow(t.JobCardMasterId, t.JobCardNo)}
+                            >
+                              <FaEye size={10} /> Flow
+                            </Button>
+                          </td>
                         </tr>
-                      );
-                    })
-                  )}
-                </tbody>
-              </Table>
-            )}
-
-            {detailModalType === "DELAYED_COUNT" && (
-              <Table hover responsive className="align-middle small">
-                <thead className="table-light">
-                  <tr>
-                    <th>From Machine</th>
-                    <th>To Machine</th>
-                    <th>Job Card</th>
-                    <th>Delay Duration</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {delayedTransitions.length === 0 ? (
-                    <tr><td colSpan="4" className="text-center text-muted">No delayed transitions detected</td></tr>
-                  ) : (
-                    delayedTransitions.map((t, i) => (
-                      <tr key={i}>
-                        <td className="fw-bold">{t.CurrentMachineName}</td>
-                        <td className="fw-bold">{t.NextMachineName}</td>
-                        <td><Badge bg="warning" text="dark">{t.JobCardNo || t.JobCardMasterId}</Badge></td>
-                        <td className="text-danger fw-bold">{t.DelayHours || t.delayHours} hrs</td>
-                      </tr>
-                    ))
-                  )}
-                </tbody>
-              </Table>
-            )}
+                      ))
+                    )}
+                  </tbody>
+                </Table>
+              );
+            })()}
           </Modal.Body>
           <Modal.Footer>
             <Button variant="secondary" size="sm" onClick={() => setDetailModalType(null)}>
@@ -1091,44 +1629,47 @@ const DynamicDashboard = () => {
             <div className="d-flex justify-content-center align-items-center py-5">
               <Spinner animation="border" variant="primary" />
             </div>
-          ) : jobCardFlow.length > 0 ? (
-            <div className="table-responsive">
-              <Table bordered hover className="align-middle mb-0 small">
-                <thead className="table-light">
-                  <tr>
-                    <th style={{ width: "60px" }} className="text-center">Seq #</th>
-                    <th>Machine Name & Code</th>
-                    <th>Status</th>
-                    <th>Timestamps</th>
-                    <th>Operator</th>
-                    {isAdmin && <th className="text-center" style={{ width: "110px" }}>Admin Action</th>}
-                  </tr>
-                </thead>
-                <tbody>
-                  {jobCardFlow.map((step, idx) => {
-                    const hasStarted = !!step.StartTime;
-                    const hasEnded = !!step.EndTime;
-                    const isBypassed = !!(step.IsBypassed === 1 || step.IsBypassed === true || (step.UserName && String(step.UserName).includes("BYPASS")));
-                    const isPaused = !!(step.IsPaused === 1 || step.IsPaused === true || step.IsPaused === "1");
+          ) : (Array.isArray(jobCardFlow) ? jobCardFlow : (jobCardFlow?.dataList || jobCardFlow?.DataList || [])).length > 0 ? (
+            (() => {
+              const flowList = Array.isArray(jobCardFlow) ? jobCardFlow : (jobCardFlow?.dataList || jobCardFlow?.DataList || []);
+              return (
+                <div className="table-responsive">
+                  <Table bordered hover className="align-middle mb-0 small">
+                    <thead className="table-light">
+                      <tr>
+                        <th style={{ width: "60px" }} className="text-center">Seq #</th>
+                        <th>Machine Name & Code</th>
+                        <th>Status</th>
+                        <th>Timestamps</th>
+                        <th>Operator</th>
+                        {isAdmin && <th className="text-center" style={{ width: "110px" }}>Admin Action</th>}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {flowList.map((step, idx) => {
+                        const hasStarted = !!step.StartTime;
+                        const hasEnded = !!step.EndTime;
+                        const isBypassed = !!(step.IsBypassed === 1 || step.IsBypassed === true || (step.UserName && String(step.UserName).includes("BYPASS")));
+                        const isPaused = !!(step.IsPaused === 1 || step.IsPaused === true || step.IsPaused === "1");
 
-                    let badgeBg = "secondary";
-                    let statusText = "NOT STARTED";
-                    if (isBypassed) {
-                      badgeBg = "info";
-                      statusText = "BYPASSED";
-                    } else if (isPaused) {
-                      badgeBg = "warning";
-                      statusText = "PAUSED";
-                    } else if (hasStarted && !hasEnded) {
-                      badgeBg = "primary";
-                      statusText = "IN PROGRESS";
-                    } else if (hasStarted && hasEnded) {
-                      badgeBg = "success";
-                      statusText = "COMPLETED";
-                    }
+                        let badgeBg = "secondary";
+                        let statusText = "NOT STARTED";
+                        if (isBypassed) {
+                          badgeBg = "info";
+                          statusText = "BYPASSED";
+                        } else if (isPaused) {
+                          badgeBg = "warning";
+                          statusText = "PAUSED";
+                        } else if (hasStarted && !hasEnded) {
+                          badgeBg = "primary";
+                          statusText = "IN PROGRESS";
+                        } else if (hasStarted && hasEnded) {
+                          badgeBg = "success";
+                          statusText = "COMPLETED";
+                        }
 
-                    // Check if ready to start: first step or previous step is finished
-                    const isReadyToStart = !hasStarted && !isBypassed && (idx === 0 || !!jobCardFlow[idx - 1]?.EndTime);
+                        // Check if ready to start: first step or previous step is finished
+                        const isReadyToStart = !hasStarted && !isBypassed && (idx === 0 || !!flowList[idx - 1]?.EndTime);
 
                     const resolvedMachineId = step.MachineId || step.machineId || (() => {
                       const matched = allMachines.find(am => 
@@ -1232,6 +1773,8 @@ const DynamicDashboard = () => {
                 </tbody>
               </Table>
             </div>
+              );
+            })()
           ) : (
             <p className="text-center text-muted py-4 mb-0">No process steps found for this Job Card.</p>
           )}

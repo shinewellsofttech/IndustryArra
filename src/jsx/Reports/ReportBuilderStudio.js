@@ -55,6 +55,27 @@ import "./ReportBuilderStudio.css";
 // ---------------------------------------------------------------------------
 const PRESET_TEMPLATES = [
   {
+    id: "tpl_container_jobcard",
+    title: "Container ➔ Contract Lines ➔ Job Cards Multi-Row Tracking",
+    icon: FaTruck,
+    color: "#2563eb",
+    bgColor: "#eff6ff",
+    badge: "Container & JobCards",
+    description: "Shipment containers joined through contract items to floor job cards with Master-Detail grouping",
+    entityId: 1,
+    multiEntityIds: [1, 10],
+    defaultColumns: [
+      { physicalTable: "ContainerMaster", physicalColumn: "ContainerNumber", displayLabel: "Container Number" },
+      { physicalTable: "ContainerMasterL", physicalColumn: "ContractNo", displayLabel: "Contract No" },
+      { physicalTable: "ContainerMasterL", physicalColumn: "ItemName", displayLabel: "Item / Article Name" },
+      { physicalTable: "JobCardMaster", physicalColumn: "JobCardNo", displayLabel: "Job Card Number" },
+      { physicalTable: "JobCardMaster", physicalColumn: "ProductCode", displayLabel: "Product Code" },
+      { physicalTable: "JobCardMaster", physicalColumn: "Category", displayLabel: "Category" },
+      { physicalTable: "JobCardMaster", physicalColumn: "OrderQty", displayLabel: "Order Qty" },
+      { physicalTable: "JobCardMaster", physicalColumn: "DateOfCreation", displayLabel: "Job Card Date" }
+    ]
+  },
+  {
     id: "tpl_wood",
     title: "Daily Wood Recovery & Wastage Yield Audit",
     icon: FaTree,
@@ -127,40 +148,67 @@ const PRESET_TEMPLATES = [
 // ---------------------------------------------------------------------------
 const BUSINESS_MODULES = [
   {
-    id: 2,
-    name: "Shipment & Dispatch",
+    id: 1,
+    name: "Container / Shipment",
     icon: "🚢",
+    color: "#1d4ed8",
+    badge: "Shipping",
+    subtitle: "Container numbers, shipping dates & destinations",
+    recommendedCols: ["ContainerNumber", "DateOfCreation"]
+  },
+  {
+    id: 2,
+    name: "Container Line Items",
+    icon: "📦",
     color: "#2563eb",
-    badge: "Logistics",
-    subtitle: "Containers, contracts, export items & quantities",
+    badge: "Contract Items",
+    subtitle: "Contract numbers, articles, batch codes & quantities",
     recommendedCols: ["ContractNo", "BatchCode", "ItemCode", "ItemName", "Quantity", "ShipmentQty", "DateOfCreation"]
+  },
+  {
+    id: 10,
+    name: "Job Cards (Production)",
+    icon: "📋",
+    color: "#4f46e5",
+    badge: "Factory Floor",
+    subtitle: "Job card numbers, order qtys, categories & dates",
+    recommendedCols: ["JobCardNo", "DateOfCreation", "ProductCode", "Category", "OrderQty", "CFT"]
+  },
+  {
+    id: 11,
+    name: "Job Card Operations",
+    icon: "⚙️",
+    color: "#6366f1",
+    badge: "Operations",
+    subtitle: "Machine start/end times & operator logs",
+    recommendedCols: ["StartScanTime", "EndScanTime", "TotalTime", "OperatorUserId"]
+  },
+  {
+    id: 12,
+    name: "Factory Machines",
+    icon: "🏭",
+    color: "#0891b2",
+    badge: "Machines",
+    subtitle: "Machine names, types, serial numbers & status",
+    recommendedCols: ["MachineName", "DateOfCreation"]
+  },
+  {
+    id: 14,
+    name: "Machine Downtime & Delays",
+    icon: "⏸️",
+    color: "#dc2626",
+    badge: "Maintenance",
+    subtitle: "Breakdown reasons, downtime mins & operators",
+    recommendedCols: ["PauseReason", "PauseStartTime", "ResumeTime", "PauseDurationMinutes", "PausedByUserName"]
   },
   {
     id: 18,
     name: "Wood & Raw Materials",
     icon: "🪵",
     color: "#d97706",
-    badge: "Store",
+    badge: "Wood Store",
     subtitle: "Wood issues, issued CFT, consumed CFT & wastage",
     recommendedCols: ["DateOfCreation", "BatchNo", "ALCode", "TotalIssueCFT", "TotalFinalCFT", "TotalExcessCFT", "Quantity"]
-  },
-  {
-    id: 10,
-    name: "Job Cards & Production",
-    icon: "📋",
-    color: "#4f46e5",
-    badge: "Factory Floor",
-    subtitle: "Job card numbers, categories, order qtys & dates",
-    recommendedCols: ["JobCardNo", "DateOfCreation", "ProductCode", "Category", "OrderQty", "CFT"]
-  },
-  {
-    id: 14,
-    name: "Machine Downtime & Delays",
-    icon: "⚙️",
-    color: "#dc2626",
-    badge: "Maintenance",
-    subtitle: "Breakdown reasons, downtime mins & operators",
-    recommendedCols: ["PauseReason", "PauseStartTime", "ResumeTime", "PauseDurationMinutes", "PausedByUserName"]
   },
   {
     id: 24,
@@ -169,7 +217,7 @@ const BUSINESS_MODULES = [
     color: "#059669",
     badge: "Movement",
     subtitle: "Department handovers, stage completions & transfer logs",
-    recommendedCols: ["DateOfCreation", "Actual"]
+    recommendedCols: ["DateOfCreation", "Total", "Actual"]
   },
   {
     id: 30,
@@ -179,7 +227,44 @@ const BUSINESS_MODULES = [
     badge: "Inspection",
     subtitle: "QC inspection logs, batch approvals & defect rates",
     recommendedCols: ["DateOfCreation", "ContractNo", "ReportQty", "Quantity", "StartDate", "EndDate"]
+  },
+  {
+    id: 3,
+    name: "Items & Articles",
+    icon: "🪑",
+    color: "#0284c7",
+    badge: "Item Catalog",
+    subtitle: "Finished articles, dimensions & codes",
+    recommendedCols: ["ItemCode", "Name", "Length", "Width", "Height"]
+  },
+  {
+    id: 5,
+    name: "Wooden Components",
+    icon: "🧩",
+    color: "#ca8a04",
+    badge: "Components",
+    subtitle: "Component parts, dimensions & wood types",
+    recommendedCols: ["Name", "Length", "Width", "Thickness"]
+  },
+  {
+    id: 34,
+    name: "Departments",
+    icon: "🏢",
+    color: "#7c3aed",
+    badge: "Departments",
+    subtitle: "Factory departments & workflow stages",
+    recommendedCols: ["Name"]
   }
+];
+
+const AI_SAMPLE_PROMPTS = [
+  { label: "📦 Item-wise Job Card Status", prompt: "Item wise jobcard status report with item code, item name, job card numbers, order quantity, and category" },
+  { label: "🚢 Container-wise MDF Summary", prompt: "Container-wise MDF summary report with container number, contract items, job card number, and MDF category" },
+  { label: "⏸️ Paused Machines Downtime", prompt: "Show all paused machines from last month with downtime duration, breakdown reason, and operator name" },
+  { label: "🚢 Container Shipment Tracking", prompt: "Shipment containers joined with contract line items showing container number, item name, and shipment quantities" },
+  { label: "🪵 Wood Yield & Wastage Audit", prompt: "Wood issue audit report with batch numbers, issued volume, consumed volume, and excess log wastage" },
+  { label: "📋 Factory Job Cards Status", prompt: "Active production job cards with job card number, product code, category, batch code, and order quantity" },
+  { label: "🏢 Department Transfers", prompt: "Department transfer summary report showing handover stages, total count, and actual transferred quantity" }
 ];
 
 const ReportBuilderStudio = () => {
@@ -233,6 +318,17 @@ const ReportBuilderStudio = () => {
   const [loadingQuery, setLoadingQuery] = useState(false);
   const [viewMode, setViewMode] = useState("table"); // 'table' | 'chart'
 
+  // Multi-Table & Bridge State
+  const [selectedEntityIds, setSelectedEntityIds] = useState([1]); // default to ContainerMaster (1)
+  const [bridgeEntities, setBridgeEntities] = useState([]); // auto-detected intermediate bridge tables
+  const [activeTableTab, setActiveTableTab] = useState("ALL"); // 'ALL' or entityId
+  const [entityFieldsCache, setEntityFieldsCache] = useState({}); // { [entityId]: [fields] }
+
+  // Hierarchical Master-Detail & Presentation State
+  const [viewStyle, setViewStyle] = useState("tree"); // 'tree' (Master-Detail Accordion) | 'smart' (Row-Merge) | 'flat' (Grid)
+  const [groupByColumn, setGroupByColumn] = useState("");
+  const [expandedGroups, setExpandedGroups] = useState(new Set());
+
   // 4. Modals
   const [showFormulaModal, setShowFormulaModal] = useState(false);
   const [showSaveModal, setShowSaveModal] = useState(false);
@@ -244,6 +340,12 @@ const ReportBuilderStudio = () => {
   const [showReportsListModal, setShowReportsListModal] = useState(false);
   const [loadingSavedReports, setLoadingSavedReports] = useState(false);
   const [reportsListSearch, setReportsListSearch] = useState("");
+
+  // 5. Gemini AI Prompt-to-Report Assistant State
+  const [aiPrompt, setAiPrompt] = useState("");
+  const [loadingAi, setLoadingAi] = useState(false);
+  const [aiExplanation, setAiExplanation] = useState("");
+  const [aiRejectionMsg, setAiRejectionMsg] = useState("");
 
   const currentAuthUser = useMemo(() => {
     try {
@@ -290,6 +392,9 @@ const ReportBuilderStudio = () => {
           if (cfg.filters) setFilters(cfg.filters);
           if (cfg.orderBy) setOrderBy(cfg.orderBy);
           if (cfg.joinPath) setJoinPath(cfg.joinPath);
+          if (cfg.viewStyle) setViewStyle(cfg.viewStyle);
+          if (cfg.groupByColumn) setGroupByColumn(cfg.groupByColumn);
+          if (cfg.selectedEntityIds) setSelectedEntityIds(cfg.selectedEntityIds);
         }
         setShowReportsListModal(false);
       } else {
@@ -367,6 +472,9 @@ const ReportBuilderStudio = () => {
               if (cfg.filters) setFilters(cfg.filters);
               if (cfg.orderBy) setOrderBy(cfg.orderBy);
               if (cfg.joinPath) setJoinPath(cfg.joinPath);
+              if (cfg.viewStyle) setViewStyle(cfg.viewStyle);
+              if (cfg.groupByColumn) setGroupByColumn(cfg.groupByColumn);
+              if (cfg.selectedEntityIds) setSelectedEntityIds(cfg.selectedEntityIds);
             }
           }
         } catch (err) {
@@ -380,15 +488,36 @@ const ReportBuilderStudio = () => {
   // -------------------------------------------------------------------------
   // Entity Selection Handler
   // -------------------------------------------------------------------------
+  // -------------------------------------------------------------------------
+  // Entity & Multi-Table Selection Handlers
+  // -------------------------------------------------------------------------
   const handleSelectEntity = async (entity, autoSelectRecommended = false) => {
+    if (!entity) return;
     setSelectedEntity(entity);
+    setActiveTableTab(String(entity.entityId));
+
+    // Ensure entity is included in selectedEntityIds
+    setSelectedEntityIds((prev) => {
+      if (!prev.includes(entity.entityId)) {
+        return [...prev, entity.entityId];
+      }
+      return prev;
+    });
+
     try {
-      const fieldsRes = await reportBuilderService.getFields(entity.entityId);
-      if (fieldsRes.success && fieldsRes.data) {
-        const loadedFields = fieldsRes.data;
+      let loadedFields = entityFieldsCache[entity.entityId];
+      if (!loadedFields) {
+        const fieldsRes = await reportBuilderService.getFields(entity.entityId);
+        if (fieldsRes.success && fieldsRes.data) {
+          loadedFields = fieldsRes.data;
+          setEntityFieldsCache((prev) => ({ ...prev, [entity.entityId]: loadedFields }));
+        }
+      }
+
+      if (loadedFields) {
         setFields(loadedFields);
 
-        // Only auto-select recommended if explicitly requested AND user hasn't selected any columns yet
+        // Auto-select recommended if explicitly requested AND user hasn't selected any columns yet
         if (autoSelectRecommended && selectedColumns.length === 0) {
           const moduleInfo = BUSINESS_MODULES.find((m) => m.id === entity.entityId);
           const recCols = moduleInfo ? moduleInfo.recommendedCols : [];
@@ -428,6 +557,68 @@ const ReportBuilderStudio = () => {
     }
   };
 
+  const handleToggleTableSelection = (entity) => {
+    if (!entity) return;
+    const entId = entity.entityId;
+
+    setSelectedEntityIds((prev) => {
+      const exists = prev.includes(entId);
+      if (exists) {
+        if (prev.length === 1) return prev; // Keep at least one
+        // Remove columns belonging to this entity
+        setSelectedColumns((cols) =>
+          cols.filter(
+            (c) => c.physicalTable?.toLowerCase() !== entity.physicalTableName?.toLowerCase()
+          )
+        );
+        return prev.filter((id) => id !== entId);
+      } else {
+        // Fetch fields into cache if not loaded
+        if (!entityFieldsCache[entId]) {
+          reportBuilderService.getFields(entId).then((res) => {
+            if (res.success && res.data) {
+              setEntityFieldsCache((c) => ({ ...c, [entId]: res.data }));
+            }
+          });
+        }
+        return [...prev, entId];
+      }
+    });
+
+    setSelectedEntity(entity);
+    setActiveTableTab(String(entId));
+  };
+
+  const handleAddTableToReport = (entity) => {
+    if (!entity) return;
+    const entId = entity.entityId;
+    setSelectedEntityIds((prev) => (prev.includes(entId) ? prev : [...prev, entId]));
+    setSelectedEntity(entity);
+    setActiveTableTab(String(entId));
+
+    if (!entityFieldsCache[entId]) {
+      reportBuilderService.getFields(entId).then((res) => {
+        if (res.success && res.data) {
+          setEntityFieldsCache((c) => ({ ...c, [entId]: res.data }));
+        }
+      });
+    }
+  };
+
+  const handleRemoveTableFromReport = (entityId) => {
+    const ent = entities.find((e) => e.entityId === entityId);
+    if (!ent) return;
+    setSelectedEntityIds((prev) => {
+      if (prev.length <= 1) return prev;
+      setSelectedColumns((cols) =>
+        cols.filter(
+          (c) => c.physicalTable?.toLowerCase() !== ent.physicalTableName?.toLowerCase()
+        )
+      );
+      return prev.filter((id) => id !== entityId);
+    });
+  };
+
   // -------------------------------------------------------------------------
   // 1-Click Template Launch Handler
   // -------------------------------------------------------------------------
@@ -442,21 +633,81 @@ const ReportBuilderStudio = () => {
     setCategory(tpl.badge);
     setSelectedEntity(targetEnt);
 
+    const initialEntityIds = tpl.multiEntityIds || [tpl.entityId];
+    setSelectedEntityIds(initialEntityIds);
+
+    if (tpl.id === "tpl_container_jobcard") {
+      setViewStyle("tree");
+      setGroupByColumn("Container Number");
+    }
+
     try {
       setLoadingMetadata(true);
-      const fieldsRes = await reportBuilderService.getFields(targetEnt.entityId);
-      if (fieldsRes.success && fieldsRes.data) {
-        const allFields = fieldsRes.data;
-        setFields(allFields);
 
+      // Fetch fields for all entities in initialEntityIds
+      const fieldsPromises = initialEntityIds.map((id) => reportBuilderService.getFields(id));
+      const results = await Promise.all(fieldsPromises);
+      const cacheUpdates = {};
+      results.forEach((res, i) => {
+        if (res.success && res.data) {
+          cacheUpdates[initialEntityIds[i]] = res.data;
+        }
+      });
+      setEntityFieldsCache((prev) => ({ ...prev, ...cacheUpdates }));
+
+      // Also get join path
+      let tplJoinPath = [];
+      if (initialEntityIds.length > 1) {
+        const pathRes = await reportBuilderService.getJoinPath(initialEntityIds);
+        if (pathRes.success && pathRes.data) {
+          tplJoinPath = pathRes.data;
+          setJoinPath(tplJoinPath);
+
+          // Find bridge entities
+          const tablesInPath = new Set();
+          tplJoinPath.forEach((s) => {
+            if (s.fromTable) tablesInPath.add(s.fromTable.toLowerCase());
+            if (s.toTable) tablesInPath.add(s.toTable.toLowerCase());
+          });
+          const pathEntities = entities.filter((e) =>
+            tablesInPath.has(e.physicalTableName?.toLowerCase())
+          );
+          const bridges = pathEntities.filter((e) => !initialEntityIds.includes(e.entityId));
+          setBridgeEntities(bridges);
+
+          // Fetch bridge fields into cache
+          bridges.forEach(async (b) => {
+            if (!cacheUpdates[b.entityId]) {
+              const bRes = await reportBuilderService.getFields(b.entityId);
+              if (bRes.success && bRes.data) {
+                setEntityFieldsCache((prev) => ({ ...prev, [b.entityId]: bRes.data }));
+              }
+            }
+          });
+        }
+      }
+
+      // Build cols
+      let cols = [];
+      if (tpl.id === "tpl_container_jobcard") {
+        cols = tpl.defaultColumns.map((c, idx) => ({
+          fieldId: 0,
+          physicalTable: c.physicalTable,
+          physicalColumn: c.physicalColumn,
+          displayLabel: c.displayLabel,
+          dataType: "String",
+          aggregation: null,
+          sortOrder: idx + 1,
+          isVisible: true
+        }));
+      } else {
+        const allFields = cacheUpdates[targetEnt.entityId] || [];
+        setFields(allFields);
         let matched = allFields.filter((f) =>
           tpl.defaultColumns.some((dc) => dc.toLowerCase() === f.physicalColumnName.toLowerCase())
         );
-        if (matched.length === 0) {
-          matched = allFields.slice(0, 6);
-        }
-
-        const cols = matched.map((f, idx) => ({
+        if (matched.length === 0) matched = allFields.slice(0, 6);
+        cols = matched.map((f, idx) => ({
           fieldId: f.fieldId,
           physicalTable: f.physicalTableName,
           physicalColumn: f.physicalColumnName,
@@ -466,35 +717,233 @@ const ReportBuilderStudio = () => {
           sortOrder: idx + 1,
           isVisible: true
         }));
+      }
 
-        setSelectedColumns(cols);
-        setFilters([]);
+      setSelectedColumns(cols);
+      setFilters([]);
 
-        const config = {
-          reportTitle: tpl.title,
-          primaryEntity: targetEnt.physicalTableName,
-          selectedColumns: cols,
-          customFormulas: [],
-          filters: [],
-          orderBy: [],
-          joinPath: [],
-          pagination: { defaultPageSize: pageSize, maxRows: 1000 }
-        };
+      const config = {
+        reportTitle: tpl.title,
+        primaryEntity: targetEnt.physicalTableName,
+        selectedColumns: cols,
+        customFormulas: [],
+        filters: [],
+        orderBy: [],
+        joinPath: tplJoinPath,
+        pagination: { defaultPageSize: pageSize, maxRows: 1000 }
+      };
 
-        setLoadingQuery(true);
-        const execRes = await reportBuilderService.executeQuery(config, 1, pageSize);
-        if (execRes.success) {
-          setPreviewData(execRes.data || []);
-          setColumnHeaders(execRes.columnHeaders || []);
-          setTotalRows(execRes.totalRows || 0);
-          setExecutionTimeMs(execRes.executionTimeMs || 0);
-        }
+      setLoadingQuery(true);
+      const execRes = await reportBuilderService.executeQuery(config, 1, pageSize);
+      if (execRes.success) {
+        setPreviewData(execRes.data || []);
+        setColumnHeaders(execRes.columnHeaders || []);
+        setTotalRows(execRes.totalRows || 0);
+        setExecutionTimeMs(execRes.executionTimeMs || 0);
       }
     } catch (err) {
       console.error("Error launching template:", err);
     } finally {
       setLoadingMetadata(false);
       setLoadingQuery(false);
+    }
+  };
+
+  // -------------------------------------------------------------------------
+  // Gemini AI Prompt-to-Report Handlers
+  // -------------------------------------------------------------------------
+  const handleApplyAiGeneratedConfig = async (aiData) => {
+    if (!aiData) return;
+
+    try {
+      setLoadingQuery(true);
+      setAiRejectionMsg("");
+      setAiExplanation(aiData.explanation || "Report configuration generated and loaded successfully.");
+
+      // 1. Title & Description
+      if (aiData.suggestedTitle) setReportTitle(aiData.suggestedTitle);
+      if (aiData.description) setDescription(aiData.description);
+
+      // 2. Resolve entities
+      const targetEntityId = aiData.primaryEntityId || (aiData.selectedEntityIds && aiData.selectedEntityIds[0]);
+      const allSelectedEntityIds = aiData.selectedEntityIds && aiData.selectedEntityIds.length > 0
+        ? aiData.selectedEntityIds
+        : (targetEntityId ? [targetEntityId] : [1]);
+
+      setSelectedEntityIds(allSelectedEntityIds);
+
+      let primaryEnt = entities.find((e) => e.entityId === targetEntityId);
+      if (!primaryEnt && entities.length > 0) {
+        primaryEnt = entities.find((e) => e.entityId === allSelectedEntityIds[0]) || entities[0];
+      }
+      if (primaryEnt) {
+        setSelectedEntity(primaryEnt);
+        setActiveTableTab(String(primaryEnt.entityId));
+      }
+
+      // 3. Ensure fields for all selected entities are in cache
+      const fieldPromises = allSelectedEntityIds.map(async (eid) => {
+        if (!entityFieldsCache[eid]) {
+          try {
+            const res = await reportBuilderService.getFields(eid);
+            return { eid, fields: res && res.success && res.data ? res.data : [] };
+          } catch {
+            return { eid, fields: [] };
+          }
+        }
+        return { eid, fields: entityFieldsCache[eid] };
+      });
+
+      const resolvedFieldResults = await Promise.all(fieldPromises);
+      const newCache = { ...entityFieldsCache };
+      const allResolvedFields = [];
+      resolvedFieldResults.forEach((r) => {
+        newCache[r.eid] = r.fields;
+        allResolvedFields.push(...r.fields);
+      });
+      setEntityFieldsCache(newCache);
+
+      if (primaryEnt && newCache[primaryEnt.entityId]) {
+        setFields(newCache[primaryEnt.entityId]);
+      }
+
+      // 4. Calculate Join Path if multi-entity
+      let computedJoinPath = [];
+      if (allSelectedEntityIds.length > 1) {
+        try {
+          const pathRes = await reportBuilderService.getJoinPath(allSelectedEntityIds);
+          if (pathRes.success && pathRes.data) {
+            computedJoinPath = pathRes.data;
+            setJoinPath(computedJoinPath);
+
+            const tablesInPath = new Set();
+            computedJoinPath.forEach((s) => {
+              if (s.fromTable) tablesInPath.add(s.fromTable.toLowerCase());
+              if (s.toTable) tablesInPath.add(s.toTable.toLowerCase());
+            });
+            const pathEntities = entities.filter((e) =>
+              tablesInPath.has(e.physicalTableName?.toLowerCase())
+            );
+            const bridges = pathEntities.filter((e) => !allSelectedEntityIds.includes(e.entityId));
+            setBridgeEntities(bridges);
+          }
+        } catch (pathErr) {
+          console.warn("Failed to get join path for AI config:", pathErr);
+        }
+      } else {
+        setJoinPath([]);
+        setBridgeEntities([]);
+      }
+
+      // 5. Select Columns matching Field IDs in exact requested order
+      let matchedCols = [];
+      if (aiData.selectedFieldIds && aiData.selectedFieldIds.length > 0) {
+        aiData.selectedFieldIds.forEach((fid) => {
+          const found = allResolvedFields.find((f) => f.fieldId === fid);
+          if (found && !matchedCols.some((mc) => mc.fieldId === fid)) {
+            matchedCols.push(found);
+          }
+        });
+      }
+      if (matchedCols.length === 0) {
+        matchedCols = allResolvedFields.slice(0, 8);
+      }
+
+      const cols = matchedCols.map((f, idx) => ({
+        fieldId: f.fieldId,
+        physicalTable: f.physicalTableName,
+        physicalColumn: f.physicalColumnName,
+        displayLabel: f.displayName || f.physicalColumnName,
+        dataType: f.dataType || "String",
+        aggregation: null,
+        sortOrder: idx + 1,
+        isVisible: true
+      }));
+      setSelectedColumns(cols);
+
+      // 6. Map Filters
+      let mappedFilters = [];
+      if (aiData.filters && Array.isArray(aiData.filters)) {
+        mappedFilters = aiData.filters.map((flt) => {
+          const fieldObj = allResolvedFields.find((f) => f.fieldId === flt.fieldId);
+          return {
+            fieldId: flt.fieldId,
+            physicalTable: flt.physicalTable || fieldObj?.physicalTableName || "",
+            physicalColumn: flt.physicalColumn || fieldObj?.physicalColumnName || "",
+            operator: flt.operator || "EQ",
+            value1: flt.value1,
+            value2: flt.value2,
+            dataType: flt.dataType || fieldObj?.dataType || "String",
+            isUserEditable: true,
+            uiLabel: flt.uiLabel || (fieldObj ? `${fieldObj.displayName} ${flt.operator}` : "")
+          };
+        });
+      }
+      setFilters(mappedFilters);
+
+      // 7. Date Preset
+      if (aiData.datePreset) {
+        setDatePreset(aiData.datePreset);
+      }
+
+      // 8. Execute Preview Query immediately!
+      const config = {
+        reportTitle: aiData.suggestedTitle || "AI Custom Report",
+        primaryEntity: primaryEnt ? primaryEnt.physicalTableName : (cols[0]?.physicalTable || "ContainerMaster"),
+        selectedColumns: cols,
+        customFormulas: [],
+        filters: mappedFilters,
+        orderBy: [],
+        joinPath: computedJoinPath,
+        pagination: { defaultPageSize: pageSize, maxRows: 1000 }
+      };
+
+      const execRes = await reportBuilderService.executeQuery(config, 1, pageSize);
+      if (execRes && execRes.success) {
+        setPreviewData(execRes.data || []);
+        setColumnHeaders(execRes.columnHeaders || []);
+        setTotalRows(execRes.totalRows || 0);
+        setExecutionTimeMs(execRes.executionTimeMs || 0);
+      }
+    } catch (err) {
+      console.error("Error applying AI generated config:", err);
+      setAiRejectionMsg("Error applying report configuration: " + (err.message || "Unknown error"));
+    } finally {
+      setLoadingQuery(false);
+    }
+  };
+
+  const handleGenerateAiReport = async (overridePrompt = null) => {
+    const promptToSend = (overridePrompt || aiPrompt || "").trim();
+    if (!promptToSend) return;
+
+    setLoadingAi(true);
+    setAiRejectionMsg("");
+    setAiExplanation("");
+
+    try {
+      const res = await reportBuilderService.generateFromPrompt(promptToSend);
+      if (!res || !res.success) {
+        if (res && res.isReportingIntent === false) {
+          setAiRejectionMsg(res.rejectionReason || res.message || "This assistant only generates Factory and ERP operational reports.");
+        } else {
+          setAiRejectionMsg(res?.message || "Failed to generate report. Please try again.");
+        }
+        return;
+      }
+
+      const aiData = res.data;
+      if (!aiData || !aiData.isReportingIntent) {
+        setAiRejectionMsg(aiData?.rejectionReason || "Please enter a valid factory or ERP reporting prompt.");
+        return;
+      }
+
+      await handleApplyAiGeneratedConfig(aiData);
+    } catch (err) {
+      console.error("AI Generation error:", err);
+      setAiRejectionMsg("Unable to connect to AI service. Please verify your connection or API key.");
+    } finally {
+      setLoadingAi(false);
     }
   };
 
@@ -639,18 +1088,20 @@ const ReportBuilderStudio = () => {
   };
 
   // -------------------------------------------------------------------------
-  // Dynamic BFS Path Computation
+  // Dynamic Dijkstra Path & Intermediate Bridge Table Computation
   // -------------------------------------------------------------------------
   useEffect(() => {
-    const updateJoinPath = async () => {
-      const tablesInUse = Array.from(new Set(selectedColumns.map((c) => c.physicalTable)));
-      if (tablesInUse.length <= 1) {
-        setJoinPath([]);
-        return;
-      }
+    const updateJoinPathAndBridges = async () => {
+      const tablesFromCols = selectedColumns.map((c) => c.physicalTable?.toLowerCase());
+      const tablesFromIds = selectedEntityIds.map((id) => {
+        const ent = entities.find((e) => e.entityId === id);
+        return ent ? ent.physicalTableName?.toLowerCase() : null;
+      }).filter(Boolean);
 
-      const entityIds = tablesInUse
-        .map((tbl) => entities.find((e) => e.physicalTableName?.toLowerCase() === tbl.toLowerCase())?.entityId)
+      const allTableNames = Array.from(new Set([...tablesFromCols, ...tablesFromIds].filter(Boolean)));
+
+      const entityIds = allTableNames
+        .map((tbl) => entities.find((e) => e.physicalTableName?.toLowerCase() === tbl)?.entityId)
         .filter(Boolean);
 
       if (entityIds.length > 1) {
@@ -658,14 +1109,43 @@ const ReportBuilderStudio = () => {
           const pathRes = await reportBuilderService.getJoinPath(entityIds);
           if (pathRes.success && pathRes.data) {
             setJoinPath(pathRes.data);
+
+            const tablesInPath = new Set();
+            pathRes.data.forEach((s) => {
+              if (s.fromTable) tablesInPath.add(s.fromTable.toLowerCase());
+              if (s.toTable) tablesInPath.add(s.toTable.toLowerCase());
+            });
+
+            const bridges = entities.filter(
+              (e) =>
+                tablesInPath.has(e.physicalTableName?.toLowerCase()) &&
+                !selectedEntityIds.includes(e.entityId)
+            );
+            setBridgeEntities(bridges);
+
+            // Pre-fetch fields for any newly identified bridge entities
+            bridges.forEach(async (b) => {
+              if (!entityFieldsCache[b.entityId]) {
+                const bRes = await reportBuilderService.getFields(b.entityId);
+                if (bRes.success && bRes.data) {
+                  setEntityFieldsCache((prev) => ({ ...prev, [b.entityId]: bRes.data }));
+                }
+              }
+            });
           }
         } catch (err) {
-          console.error("Join path error:", err);
+          console.error("Join path resolution error:", err);
         }
+      } else {
+        setJoinPath([]);
+        setBridgeEntities([]);
       }
     };
-    updateJoinPath();
-  }, [selectedColumns, entities]);
+
+    if (entities.length > 0) {
+      updateJoinPathAndBridges();
+    }
+  }, [selectedEntityIds, selectedColumns, entities]);
 
   // -------------------------------------------------------------------------
   // Query Execution Handler
@@ -814,6 +1294,393 @@ const ReportBuilderStudio = () => {
   };
 
   // -------------------------------------------------------------------------
+  // Dynamic Computations, Grouping, & Presentation Memos
+  // -------------------------------------------------------------------------
+
+  // 1. Client-side quick filter on preview rows
+  const displayedPreviewData = useMemo(() => {
+    if (!tableSearch.trim()) return previewData;
+    const q = tableSearch.toLowerCase();
+    return previewData.filter((row) =>
+      Object.values(row).some((val) => val !== null && val !== undefined && String(val).toLowerCase().includes(q))
+    );
+  }, [previewData, tableSearch]);
+
+  // 2. Dynamic Group-By Column Resolution
+  const effectiveGroupByColumn = useMemo(() => {
+    if (groupByColumn && columnHeaders.includes(groupByColumn)) return groupByColumn;
+    const match = columnHeaders.find((c) =>
+      /container.*no|container.*number|contract.*no|batch.*no|jobcard.*no|job.*card/i.test(c)
+    );
+    return match || columnHeaders[0] || "";
+  }, [groupByColumn, columnHeaders]);
+
+  // 3. Hierarchical Data Grouping (1-to-Many Master-Detail)
+  const groupedData = useMemo(() => {
+    if (!effectiveGroupByColumn || displayedPreviewData.length === 0) return [];
+    const groupsMap = new Map();
+    displayedPreviewData.forEach((row) => {
+      const rawVal = row[effectiveGroupByColumn];
+      const keyVal =
+        rawVal !== null && rawVal !== undefined && String(rawVal).trim() !== ""
+          ? String(rawVal)
+          : "Unassigned";
+
+      if (!groupsMap.has(keyVal)) {
+        groupsMap.set(keyVal, {
+          groupKey: keyVal,
+          parentRow: row,
+          items: [],
+          itemCount: 0
+        });
+      }
+      const g = groupsMap.get(keyVal);
+      g.items.push(row);
+      g.itemCount++;
+    });
+    return Array.from(groupsMap.values());
+  }, [displayedPreviewData, effectiveGroupByColumn]);
+
+  // 4. Group Accordion Expand / Collapse Handlers
+  const toggleGroup = (groupKey) => {
+    setExpandedGroups((prev) => {
+      const next = new Set(prev);
+      if (next.has(groupKey)) next.delete(groupKey);
+      else next.add(groupKey);
+      return next;
+    });
+  };
+
+  const toggleAllGroups = (expand) => {
+    if (expand) {
+      setExpandedGroups(new Set(groupedData.map((g) => g.groupKey)));
+    } else {
+      setExpandedGroups(new Set());
+    }
+  };
+
+  // Initially auto-expand first 5 master groups
+  useEffect(() => {
+    if (groupedData.length > 0 && expandedGroups.size === 0) {
+      setExpandedGroups(new Set(groupedData.slice(0, 5).map((g) => g.groupKey)));
+    }
+  }, [groupedData]);
+
+  // 5. Active Entities (Selected + Intermediate Bridges)
+  const activeEntities = useMemo(() => {
+    const list = [];
+    selectedEntityIds.forEach((id) => {
+      const e = entities.find((ent) => ent.entityId === id);
+      if (e && !list.some((item) => item.entityId === e.entityId)) list.push(e);
+    });
+    bridgeEntities.forEach((b) => {
+      if (!list.some((item) => item.entityId === b.entityId)) list.push(b);
+    });
+    return list;
+  }, [selectedEntityIds, bridgeEntities, entities]);
+
+  // 6. Combined Fields for Active Tab in Step 2
+  const displayedActiveFields = useMemo(() => {
+    let pool = [];
+    if (activeTableTab === "ALL") {
+      activeEntities.forEach((ent) => {
+        const entFields = entityFieldsCache[ent.entityId] || (selectedEntity?.entityId === ent.entityId ? fields : []);
+        entFields.forEach((f) => {
+          pool.push({
+            ...f,
+            entityDisplayName: ent.displayName,
+            isBridgeField: bridgeEntities.some((b) => b.entityId === ent.entityId)
+          });
+        });
+      });
+    } else {
+      const entId = parseInt(activeTableTab);
+      const ent = entities.find((e) => e.entityId === entId);
+      const entFields = entityFieldsCache[entId] || (selectedEntity?.entityId === entId ? fields : []);
+      pool = entFields.map((f) => ({
+        ...f,
+        entityDisplayName: ent?.displayName || f.physicalTableName,
+        isBridgeField: bridgeEntities.some((b) => b.entityId === entId)
+      }));
+    }
+
+    if (!fieldSearch.trim()) return pool;
+    const q = fieldSearch.toLowerCase();
+    return pool.filter(
+      (f) =>
+        f.displayName?.toLowerCase().includes(q) ||
+        f.physicalColumnName?.toLowerCase().includes(q) ||
+        f.entityDisplayName?.toLowerCase().includes(q)
+    );
+  }, [activeTableTab, activeEntities, entityFieldsCache, selectedEntity, fields, bridgeEntities, fieldSearch]);
+
+  // 7. Combined list of filterable columns (across selected columns, active tables, and bridge tables)
+  const availableFilterColumns = useMemo(() => {
+    const list = [...selectedColumns];
+    activeEntities.forEach((ent) => {
+      const entFields = entityFieldsCache[ent.entityId] || (selectedEntity?.entityId === ent.entityId ? fields : []);
+      entFields.forEach((f) => {
+        if (
+          !list.some(
+            (c) =>
+              c.physicalTable?.toLowerCase() === f.physicalTableName?.toLowerCase() &&
+              c.physicalColumn?.toLowerCase() === f.physicalColumnName?.toLowerCase()
+          )
+        ) {
+          list.push({
+            fieldId: f.fieldId,
+            physicalTable: f.physicalTableName,
+            physicalColumn: f.physicalColumnName,
+            displayLabel: `${f.displayName} (${f.physicalTableName})`,
+            dataType: f.dataType || "String"
+          });
+        }
+      });
+    });
+    return list;
+  }, [selectedColumns, activeEntities, entityFieldsCache, selectedEntity, fields]);
+
+  // 8. Advanced Mode entity grouping
+  const groupedEntities = useMemo(() => {
+    const filtered = entities.filter((e) => {
+      const q = searchQuery.toLowerCase();
+      return e.displayName?.toLowerCase().includes(q) || e.physicalTableName?.toLowerCase().includes(q);
+    });
+
+    const groups = {};
+    filtered.forEach((e) => {
+      const domain = e.domainName || "General Modules";
+      if (!groups[domain]) groups[domain] = [];
+      groups[domain].push(e);
+    });
+    return groups;
+  }, [entities, searchQuery]);
+
+  // 9. Unique tables currently in use
+  const tablesInUse = useMemo(() => {
+    return Array.from(new Set(selectedColumns.map((c) => c.physicalTable)));
+  }, [selectedColumns]);
+
+  // 10. Filter saved reports by title/category
+  const filteredSavedReports = useMemo(() => {
+    if (!reportsListSearch.trim()) return savedReportsList;
+    const q = reportsListSearch.toLowerCase();
+    return savedReportsList.filter(
+      (r) =>
+        r.reportTitle?.toLowerCase().includes(q) ||
+        r.category?.toLowerCase().includes(q) ||
+        r.createdByName?.toLowerCase().includes(q)
+    );
+  }, [savedReportsList, reportsListSearch]);
+
+  // 11. High-Level Dynamic Results Renderer (Tree / Merged / Flat)
+  const renderPreviewContent = () => {
+    if (displayedPreviewData.length === 0) {
+      return (
+        <div className="text-center py-5 text-muted">
+          <FaTable size={36} color="#cbd5e1" className="mb-2" />
+          <div style={{ fontWeight: 600 }}>No records found for current selection.</div>
+          <div style={{ fontSize: "0.8rem", color: "#94a3b8" }}>
+            Select columns above or click a Ready-Made Template to load data.
+          </div>
+        </div>
+      );
+    }
+
+    // 1. MASTER-DETAIL ACCORDION TREE VIEW
+    if (viewStyle === "tree") {
+      const childCols = columnHeaders.filter((c) => c !== effectiveGroupByColumn);
+
+      return (
+        <div className="rb-tree-container">
+          {groupedData.map((group, gIdx) => {
+            const isExpanded = expandedGroups.has(group.groupKey);
+            const metaCols = columnHeaders
+              .filter((c) => c !== effectiveGroupByColumn)
+              .slice(0, 3);
+
+            return (
+              <div key={gIdx} className="rb-master-group-card">
+                <div
+                  className="rb-master-group-header"
+                  onClick={() => toggleGroup(group.groupKey)}
+                >
+                  <div className="d-flex align-items-center gap-2">
+                    <span className="rb-master-toggle-icon">
+                      {isExpanded ? <FaChevronDown size={12} /> : <FaChevronRight size={12} />}
+                    </span>
+                    <span className="rb-master-key-badge">
+                      {effectiveGroupByColumn}: <strong>{group.groupKey}</strong>
+                    </span>
+                    <span className="rb-master-count-badge">
+                      {group.itemCount} {group.itemCount === 1 ? "Row" : "Linked Rows"}
+                    </span>
+                  </div>
+
+                  <div className="d-flex align-items-center gap-2">
+                    {metaCols.map((mc, mIdx) => {
+                      const val = group.parentRow[mc];
+                      if (val === null || val === undefined || val === "") return null;
+                      return (
+                        <span key={mIdx} className="rb-master-meta-tag">
+                          {mc}: <strong>{String(val)}</strong>
+                        </span>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {isExpanded && (
+                  <div className="rb-child-grid">
+                    <table className="rb-table mb-0">
+                      <thead>
+                        <tr>
+                          <th style={{ width: "40px" }}>#</th>
+                          {childCols.map((col, cIdx) => (
+                            <th key={cIdx}>{col}</th>
+                          ))}
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {group.items.map((item, itemIdx) => (
+                          <tr key={itemIdx}>
+                            <td className="text-muted" style={{ fontSize: "0.75rem" }}>
+                              {itemIdx + 1}
+                            </td>
+                            {childCols.map((col, cIdx) => (
+                              <td key={cIdx}>
+                                {item[col] !== null && item[col] !== undefined ? String(item[col]) : "-"}
+                              </td>
+                            ))}
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      );
+    }
+
+    // 2. SMART ROW-MERGED VIEW WITH GROUP SUB-TOTALS
+    if (viewStyle === "smart") {
+      const numericCols = columnHeaders.filter((col) => {
+        return displayedPreviewData.some((r) => {
+          const v = r[col];
+          return v !== null && v !== undefined && !isNaN(Number(v)) && typeof v !== "boolean";
+        });
+      });
+
+      return (
+        <table className="rb-table">
+          <thead>
+            <tr>
+              {columnHeaders.map((col, idx) => (
+                <th key={idx}>{col}</th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {groupedData.map((group, gIdx) => {
+              const groupTotals = {};
+              numericCols.forEach((col) => {
+                const sum = group.items.reduce((acc, row) => {
+                  const val = parseFloat(row[col]);
+                  return isNaN(val) ? acc : acc + val;
+                }, 0);
+                groupTotals[col] = sum;
+              });
+
+              return (
+                <React.Fragment key={gIdx}>
+                  {group.items.map((row, rIdx) => (
+                    <tr key={`${gIdx}_${rIdx}`}>
+                      {columnHeaders.map((col, cIdx) => {
+                        if (col === effectiveGroupByColumn) {
+                          if (rIdx === 0) {
+                            return (
+                              <td
+                                key={cIdx}
+                                rowSpan={group.items.length}
+                                className="rb-merged-cell"
+                              >
+                                <span className="rb-merged-pill">
+                                  {row[col] !== null && row[col] !== undefined ? String(row[col]) : "-"}
+                                </span>
+                                <div style={{ fontSize: "0.7rem", color: "#64748b", marginTop: "3px" }}>
+                                  ({group.itemCount} records)
+                                </div>
+                              </td>
+                            );
+                          }
+                          return null;
+                        }
+                        return (
+                          <td key={cIdx}>
+                            {row[col] !== null && row[col] !== undefined ? String(row[col]) : "-"}
+                          </td>
+                        );
+                      })}
+                    </tr>
+                  ))}
+                  {group.items.length > 1 && numericCols.length > 0 && (
+                    <tr className="rb-subtotal-row">
+                      {columnHeaders.map((col, cIdx) => {
+                        if (cIdx === 0 || col === effectiveGroupByColumn) {
+                          return (
+                            <td key={cIdx} style={{ fontWeight: 700, color: "#1e293b" }}>
+                              Total for {group.groupKey}:
+                            </td>
+                          );
+                        }
+                        if (numericCols.includes(col)) {
+                          return (
+                            <td key={cIdx} style={{ fontWeight: 700, color: "#2563eb" }}>
+                              {Number(groupTotals[col]).toLocaleString()}
+                            </td>
+                          );
+                        }
+                        return <td key={cIdx}>-</td>;
+                      })}
+                    </tr>
+                  )}
+                </React.Fragment>
+              );
+            })}
+          </tbody>
+        </table>
+      );
+    }
+
+    // 3. FLAT GRID VIEW (DEFAULT)
+    return (
+      <table className="rb-table">
+        <thead>
+          <tr>
+            {columnHeaders.map((col, idx) => (
+              <th key={idx}>{col}</th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {displayedPreviewData.map((row, rIdx) => (
+            <tr key={rIdx}>
+              {columnHeaders.map((col, cIdx) => (
+                <td key={cIdx}>
+                  {row[col] !== null && row[col] !== undefined ? String(row[col]) : "-"}
+                </td>
+              ))}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    );
+  };
+
+  // -------------------------------------------------------------------------
   // Save / Update Report
   // -------------------------------------------------------------------------
   const handleSaveReport = async () => {
@@ -834,6 +1701,9 @@ const ReportBuilderStudio = () => {
       filters,
       orderBy,
       joinPath,
+      viewStyle,
+      groupByColumn: effectiveGroupByColumn,
+      selectedEntityIds,
       pagination: { defaultPageSize: pageSize, maxRows: 1000 },
       sharing: {
         showInReportsMenu: showInMenu,
@@ -875,13 +1745,30 @@ const ReportBuilderStudio = () => {
     try {
       const dataToExport = tableSearch && displayedPreviewData.length > 0 ? displayedPreviewData : previewData;
 
-      const excelRows = dataToExport.map((row, idx) => {
-        const rowObj = { "S.No": idx + 1 };
-        columnHeaders.forEach((col) => {
-          rowObj[col] = row[col] !== null && row[col] !== undefined ? row[col] : "";
+      let excelRows = [];
+      if (viewStyle === "tree" && groupedData.length > 0) {
+        groupedData.forEach((group) => {
+          excelRows.push({
+            "S.No": `>> ${effectiveGroupByColumn}: ${group.groupKey} (${group.itemCount} records)`
+          });
+          group.items.forEach((item, idx) => {
+            const rowObj = { "S.No": `   ${idx + 1}` };
+            columnHeaders.forEach((col) => {
+              rowObj[col] = item[col] !== null && item[col] !== undefined ? item[col] : "";
+            });
+            excelRows.push(rowObj);
+          });
+          excelRows.push({});
         });
-        return rowObj;
-      });
+      } else {
+        excelRows = dataToExport.map((row, idx) => {
+          const rowObj = { "S.No": idx + 1 };
+          columnHeaders.forEach((col) => {
+            rowObj[col] = row[col] !== null && row[col] !== undefined ? row[col] : "";
+          });
+          return rowObj;
+        });
+      }
 
       const worksheet = XLSX.utils.json_to_sheet(excelRows);
 
@@ -987,74 +1874,6 @@ const ReportBuilderStudio = () => {
       alert("Failed to export PDF file: " + err.message);
     }
   };
-
-  // Filter fields in Step 2 by search query
-  const filteredFields = useMemo(() => {
-    if (!fieldSearch.trim()) return fields;
-    const q = fieldSearch.toLowerCase();
-    return fields.filter(
-      (f) => f.displayName?.toLowerCase().includes(q) || f.physicalColumnName?.toLowerCase().includes(q)
-    );
-  }, [fields, fieldSearch]);
-
-  // Combined list of filterable columns
-  const availableFilterColumns = useMemo(() => {
-    const list = [...selectedColumns];
-    fields.forEach((f) => {
-      if (!list.some((c) => c.physicalTable === f.physicalTableName && c.physicalColumn === f.physicalColumnName)) {
-        list.push({
-          fieldId: f.fieldId,
-          physicalTable: f.physicalTableName,
-          physicalColumn: f.physicalColumnName,
-          displayLabel: `${f.displayName} (${f.physicalTableName})`,
-          dataType: f.dataType || "String"
-        });
-      }
-    });
-    return list;
-  }, [selectedColumns, fields]);
-
-  // Client-side quick filter on preview rows
-  const displayedPreviewData = useMemo(() => {
-    if (!tableSearch.trim()) return previewData;
-    const q = tableSearch.toLowerCase();
-    return previewData.filter((row) =>
-      Object.values(row).some((val) => val !== null && val !== undefined && String(val).toLowerCase().includes(q))
-    );
-  }, [previewData, tableSearch]);
-
-  // Advanced Mode entity grouping
-  const groupedEntities = useMemo(() => {
-    const filtered = entities.filter((e) => {
-      const q = searchQuery.toLowerCase();
-      return e.displayName?.toLowerCase().includes(q) || e.physicalTableName?.toLowerCase().includes(q);
-    });
-
-    const groups = {};
-    filtered.forEach((e) => {
-      const domain = e.domainName || "General Modules";
-      if (!groups[domain]) groups[domain] = [];
-      groups[domain].push(e);
-    });
-    return groups;
-  }, [entities, searchQuery]);
-
-  // Unique tables currently in use
-  const tablesInUse = useMemo(() => {
-    return Array.from(new Set(selectedColumns.map((c) => c.physicalTable)));
-  }, [selectedColumns]);
-
-  // Filter saved reports by title/category
-  const filteredSavedReports = useMemo(() => {
-    if (!reportsListSearch.trim()) return savedReportsList;
-    const q = reportsListSearch.toLowerCase();
-    return savedReportsList.filter(
-      (r) =>
-        r.reportTitle?.toLowerCase().includes(q) ||
-        r.category?.toLowerCase().includes(q) ||
-        r.createdByName?.toLowerCase().includes(q)
-    );
-  }, [savedReportsList, reportsListSearch]);
 
   // -------------------------------------------------------------------------
   // Pagination Calculations & Helper
@@ -1253,6 +2072,152 @@ const ReportBuilderStudio = () => {
         </div>
       </div>
 
+      {/* --------------------------------------------------------------------
+          GEMINI AI PROMPT-TO-REPORT ASSISTANT BAR
+          -------------------------------------------------------------------- */}
+      <div className="rb-ai-assistant-wrapper">
+        <div className="rb-ai-assistant-card">
+          <div className="rb-ai-header">
+            <div className="rb-ai-title-wrap">
+              <span className="rb-ai-badge">
+                <FaMagic className="rb-ai-sparkle-icon" /> AI Reporting Assistant
+              </span>
+              <span className="rb-ai-subtitle">
+                Instantly create custom ERP reports using natural language commands
+              </span>
+            </div>
+            <div className="rb-ai-guardrail-tag">
+              <FaLock size={10} style={{ marginRight: 4 }} /> Factory & ERP Guardrails Active
+            </div>
+          </div>
+
+          <div className="rb-ai-input-row">
+            <div className="rb-ai-input-wrap">
+              <FaSearch className="rb-ai-search-icon" />
+              <input
+                type="text"
+                className="rb-ai-input"
+                placeholder='Enter a reporting command... E.g., "Show paused machines from last month with downtime > 15 mins" or "Container shipment tracking summary"'
+                value={aiPrompt}
+                onChange={(e) => setAiPrompt(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && !loadingAi) {
+                    handleGenerateAiReport();
+                  }
+                }}
+                disabled={loadingAi}
+              />
+              {aiPrompt && (
+                <button
+                  type="button"
+                  className="rb-ai-clear-btn"
+                  onClick={() => setAiPrompt("")}
+                  title="Clear text"
+                >
+                  <FaTimes size={12} />
+                </button>
+              )}
+            </div>
+
+            <button
+              type="button"
+              className="rb-ai-generate-btn"
+              onClick={() => handleGenerateAiReport()}
+              disabled={loadingAi || !aiPrompt.trim()}
+            >
+              {loadingAi ? (
+                <>
+                  <Spinner animation="border" size="sm" className="me-2" />
+                  Building Report...
+                </>
+              ) : (
+                <>
+                  <FaMagic className="me-2" /> Generate Report ✨
+                </>
+              )}
+            </button>
+          </div>
+
+          {/* Quick Prompt Suggestion Pills */}
+          <div className="rb-ai-chips-row">
+            <span className="rb-ai-chips-label">Quick Prompts:</span>
+            {AI_SAMPLE_PROMPTS.map((item, idx) => (
+              <button
+                key={idx}
+                type="button"
+                className="rb-ai-chip-btn"
+                onClick={() => {
+                  setAiPrompt(item.prompt);
+                  handleGenerateAiReport(item.prompt);
+                }}
+                disabled={loadingAi}
+              >
+                {item.label}
+              </button>
+            ))}
+          </div>
+
+          {/* Rejection / Scope Alert Banner (When Guardrail triggers) */}
+          {aiRejectionMsg && (
+            <div className="rb-ai-alert rb-ai-alert-warning">
+              <div className="d-flex align-items-center justify-content-between">
+                <div className="d-flex align-items-center">
+                  <span className="rb-ai-alert-icon">⚠️</span>
+                  <div>
+                    <strong>ERP Reporting Scope Restriction:</strong>
+                    <div style={{ fontSize: "0.83rem", marginTop: 2 }}>{aiRejectionMsg}</div>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  className="btn btn-sm text-muted p-0"
+                  onClick={() => setAiRejectionMsg("")}
+                  title="Dismiss"
+                >
+                  <FaTimes />
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* Success Explanation Banner */}
+          {aiExplanation && (
+            <div className="rb-ai-alert rb-ai-alert-success">
+              <div className="d-flex align-items-center justify-content-between flex-wrap gap-2">
+                <div className="d-flex align-items-center">
+                  <span className="rb-ai-alert-icon">✨</span>
+                  <div>
+                    <strong>AI Report Configured & Loaded:</strong>
+                    <div style={{ fontSize: "0.83rem", marginTop: 2 }}>{aiExplanation}</div>
+                  </div>
+                </div>
+                <div className="d-flex align-items-center gap-2">
+                  {previewData.length > 0 && (
+                    <button
+                      type="button"
+                      className="btn btn-sm btn-success"
+                      style={{ fontSize: "0.78rem", fontWeight: "600", padding: "5px 12px", borderRadius: "6px" }}
+                      onClick={handleExportExcel}
+                      title="Download formatted Excel spreadsheet now"
+                    >
+                      <FaFileExcel className="me-1" /> Download Excel ({totalRows || previewData.length} rows)
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    className="btn btn-sm text-muted p-0"
+                    onClick={() => setAiExplanation("")}
+                    title="Dismiss"
+                  >
+                    <FaTimes />
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+
       {/* ====================================================================
           MODE 1: SIMPLE GUIDED WIZARD (DEFAULT USER-FRIENDLY VIEW)
           ==================================================================== */}
@@ -1301,13 +2266,84 @@ const ReportBuilderStudio = () => {
                 <div className="rb-step-num">1</div>
                 <div>
                   <h6 className="rb-step-title">Choose Business Area / Module</h6>
-                  <p className="rb-step-subtitle">What part of the factory would you like to report on?</p>
+                  <p className="rb-step-subtitle">What part of the factory would you like to report on? Select multiple modules to link tables across departments.</p>
                 </div>
+              </div>
+
+              {/* Active Multi-Table Data Sources & Auto Bridge Flow */}
+              <div className="rb-multi-table-panel mb-3">
+                <div className="d-flex justify-content-between align-items-center mb-2">
+                  <div className="d-flex align-items-center gap-2">
+                    <span className="rb-multi-table-title">
+                      <FaProjectDiagram color="#2563eb" /> Active Tables ({selectedEntityIds.length} Selected)
+                    </span>
+                    {bridgeEntities.length > 0 && (
+                      <span className="rb-bridge-table-pill" title="Intermediate join bridge table automatically discovered">
+                        ⚡ {bridgeEntities.map((b) => b.displayName).join(", ")} (Auto-Bridge)
+                      </span>
+                    )}
+                  </div>
+                  <span className="text-muted" style={{ fontSize: "0.76rem" }}>
+                    Tip: Click multiple module cards below to combine tables
+                  </span>
+                </div>
+
+                {/* Pills of currently selected tables */}
+                <div className="d-flex flex-wrap align-items-center gap-2 mb-2">
+                  {selectedEntityIds.map((id) => {
+                    const ent = entities.find((e) => e.entityId === id);
+                    if (!ent) return null;
+                    return (
+                      <span key={id} className="rb-active-table-pill">
+                        <span>{ent.displayName}</span>
+                        {selectedEntityIds.length > 1 && (
+                          <button
+                            type="button"
+                            className="rb-remove-table-btn"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleRemoveTableFromReport(id);
+                            }}
+                            title="Remove table from report"
+                          >
+                            ✕
+                          </button>
+                        )}
+                      </span>
+                    );
+                  })}
+
+                  {bridgeEntities.map((b) => (
+                    <span key={`bridge_${b.entityId}`} className="rb-bridge-table-pill">
+                      ⚡ {b.displayName} (Auto-Bridge)
+                    </span>
+                  ))}
+                </div>
+
+                {/* Dynamic Join Route Flow Trail */}
+                {joinPath && joinPath.length > 0 && (
+                  <div className="rb-route-flow-box">
+                    <span className="rb-route-step">
+                      {joinPath[0]?.fromTable}
+                    </span>
+                    {joinPath.map((step, sIdx) => (
+                      <React.Fragment key={sIdx}>
+                        <span className="rb-route-arrow">➔</span>
+                        <span className={`rb-route-step ${bridgeEntities.some((b) => b.physicalTableName?.toLowerCase() === step.toTable?.toLowerCase()) ? "bridge" : ""}`}>
+                          {step.toTable}
+                        </span>
+                      </React.Fragment>
+                    ))}
+                    <span className="text-muted ms-auto" style={{ fontSize: "0.72rem" }}>
+                      Canonical Route ({joinPath.length} hops)
+                    </span>
+                  </div>
+                )}
               </div>
 
               <div className="rb-module-grid">
                 {BUSINESS_MODULES.map((mod) => {
-                  const isSelected = selectedEntity?.entityId === mod.id;
+                  const isSelected = selectedEntityIds.includes(mod.id);
                   const entObj = entities.find((e) => e.entityId === mod.id);
                   const selectedCountFromMod = selectedColumns.filter(
                     (c) => c.physicalTable?.toLowerCase() === entObj?.physicalTableName?.toLowerCase()
@@ -1319,11 +2355,8 @@ const ReportBuilderStudio = () => {
                       className={`rb-module-card ${isSelected ? "selected" : ""}`}
                       onClick={() => {
                         if (entObj) {
-                          handleSelectEntity(entObj, selectedColumns.length === 0);
+                          handleToggleTableSelection(entObj);
                           setCategory(mod.badge);
-                          if (selectedColumns.length === 0) {
-                            setReportTitle(`${mod.name} Report`);
-                          }
                         }
                       }}
                     >
@@ -1370,35 +2403,42 @@ const ReportBuilderStudio = () => {
                 </div>
               </div>
 
-              {/* Module Switcher Bar inside Step 2 */}
-              <div className="rb-step2-module-switcher">
-                <span className="rb-switcher-label">
-                  <FaLayerGroup /> Choose Table/Module to add fields from:
-                </span>
-                <div className="rb-switcher-pills">
-                  {BUSINESS_MODULES.map((mod) => {
-                    const isCurrent = selectedEntity?.entityId === mod.id;
-                    const entObj = entities.find((e) => e.entityId === mod.id);
-                    const selCount = selectedColumns.filter(
-                      (c) => c.physicalTable?.toLowerCase() === entObj?.physicalTableName?.toLowerCase()
-                    ).length;
+              {/* Table Tabs Bar for Cross-Table Field Selection */}
+              <div className="rb-table-tabs-bar mb-3">
+                <button
+                  type="button"
+                  className={`rb-table-tab-btn ${activeTableTab === "ALL" ? "active" : ""}`}
+                  onClick={() => setActiveTableTab("ALL")}
+                >
+                  <FaLayerGroup /> All Selected Tables
+                  <span className="rb-table-tab-badge">{selectedColumns.length}</span>
+                </button>
 
-                    return (
-                      <button
-                        key={mod.id}
-                        className={`rb-switcher-chip ${isCurrent ? "active" : ""}`}
-                        onClick={() => {
-                          if (entObj) handleSelectEntity(entObj, false);
-                        }}
-                        type="button"
-                      >
-                        <span>{mod.icon}</span>
-                        <span>{mod.name}</span>
-                        {selCount > 0 && <span className="rb-switcher-badge">{selCount}</span>}
-                      </button>
-                    );
-                  })}
-                </div>
+                {activeEntities.map((ent) => {
+                  const isBridge = bridgeEntities.some((b) => b.entityId === ent.entityId);
+                  const isTabActive = activeTableTab === String(ent.entityId);
+                  const colsInThisTable = selectedColumns.filter(
+                    (c) => c.physicalTable?.toLowerCase() === ent.physicalTableName?.toLowerCase()
+                  ).length;
+
+                  return (
+                    <button
+                      key={ent.entityId}
+                      type="button"
+                      className={`rb-table-tab-btn ${isTabActive ? "active" : ""}`}
+                      onClick={() => {
+                        setActiveTableTab(String(ent.entityId));
+                        setSelectedEntity(ent);
+                      }}
+                    >
+                      {isBridge ? "⚡ " : ""}{ent.displayName}
+                      {isBridge && <span style={{ fontSize: "0.68rem", opacity: 0.8 }}>(Bridge)</span>}
+                      {colsInThisTable > 0 && (
+                        <span className="rb-table-tab-badge">{colsInThisTable}</span>
+                      )}
+                    </button>
+                  );
+                })}
               </div>
 
               {/* Selected Columns Summary Shelf */}
@@ -1465,7 +2505,7 @@ const ReportBuilderStudio = () => {
                 <FaSearch className="rb-field-search-icon" />
                 <input
                   type="text"
-                  placeholder={`Search fields in ${selectedEntity?.displayName || "current table"} (e.g. date, qty, item, code)...`}
+                  placeholder={`Search fields in ${activeTableTab === "ALL" ? "all selected tables" : selectedEntity?.displayName || "current table"} (e.g. date, qty, item, code)...`}
                   value={fieldSearch}
                   onChange={(e) => setFieldSearch(e.target.value)}
                 />
@@ -1473,18 +2513,25 @@ const ReportBuilderStudio = () => {
 
               {/* Column Pills Grid */}
               <div className="rb-pills-shelf">
-                {filteredFields.map((f) => {
+                {displayedActiveFields.map((f) => {
                   const isChecked = selectedColumns.some(
-                    (c) => c.physicalTable === f.physicalTableName && c.physicalColumn === f.physicalColumnName
+                    (c) =>
+                      c.physicalTable?.toLowerCase() === f.physicalTableName?.toLowerCase() &&
+                      c.physicalColumn?.toLowerCase() === f.physicalColumnName?.toLowerCase()
                   );
                   return (
                     <div
-                      key={f.fieldId}
+                      key={`${f.physicalTableName}_${f.physicalColumnName}`}
                       className={`rb-field-pill ${isChecked ? "active" : ""}`}
                       onClick={() => handleToggleColumn(f)}
                     >
                       {isChecked ? <FaCheck size={11} /> : <span className="rb-pill-plus">+</span>}
                       <span>{f.displayName}</span>
+                      {activeTableTab === "ALL" && (
+                        <span className="badge bg-light text-secondary ms-1" style={{ fontSize: "0.65rem" }}>
+                          {f.entityDisplayName || f.physicalTableName}
+                        </span>
+                      )}
                       <span className="rb-pill-type">{f.dataType}</span>
                     </div>
                   );
@@ -1574,6 +2621,70 @@ const ReportBuilderStudio = () => {
                 {loadingQuery && <Spinner animation="border" size="sm" variant="primary" />}
               </div>
 
+              {/* View Style Switcher & Group By */}
+              <div className="d-flex align-items-center gap-2 flex-wrap">
+                <div className="rb-view-style-switcher">
+                  <button
+                    className={`rb-view-btn ${viewStyle === "tree" ? "active" : ""}`}
+                    onClick={() => setViewStyle("tree")}
+                    title="Master-Detail Hierarchical Tree (e.g. 1 Container -> Multiple Job Cards)"
+                  >
+                    <FaSitemap /> Tree View
+                  </button>
+                  <button
+                    className={`rb-view-btn ${viewStyle === "smart" ? "active" : ""}`}
+                    onClick={() => setViewStyle("smart")}
+                    title="Smart Row-Merged Table with Subtotals"
+                  >
+                    <FaLayerGroup /> Merged Rows
+                  </button>
+                  <button
+                    className={`rb-view-btn ${viewStyle === "flat" ? "active" : ""}`}
+                    onClick={() => setViewStyle("flat")}
+                    title="Standard Flat Data Grid"
+                  >
+                    <FaTable /> Flat Grid
+                  </button>
+                </div>
+
+                {columnHeaders.length > 1 && (
+                  <div className="d-flex align-items-center gap-1" style={{ fontSize: "0.78rem" }}>
+                    <span className="text-muted fw-semibold">Group By:</span>
+                    <Form.Select
+                      size="sm"
+                      style={{ width: "160px", fontSize: "0.75rem", padding: "2px 6px" }}
+                      value={effectiveGroupByColumn}
+                      onChange={(e) => setGroupByColumn(e.target.value)}
+                    >
+                      {columnHeaders.map((col, idx) => (
+                        <option key={idx} value={col}>
+                          {col}
+                        </option>
+                      ))}
+                    </Form.Select>
+                  </div>
+                )}
+
+                {viewStyle === "tree" && groupedData.length > 0 && (
+                  <div className="d-flex align-items-center gap-1">
+                    <button
+                      className="rb-btn-xs"
+                      onClick={() => toggleAllGroups(true)}
+                      title="Expand All Master Groups"
+                    >
+                      Expand All
+                    </button>
+                    <button
+                      className="rb-btn-xs"
+                      onClick={() => toggleAllGroups(false)}
+                      title="Collapse All Master Groups"
+                    >
+                      Collapse All
+                    </button>
+                  </div>
+                )}
+              </div>
+
               <div className="d-flex align-items-center gap-2">
                 <button
                   className="rb-btn-export-pill excel"
@@ -1623,36 +2734,7 @@ const ReportBuilderStudio = () => {
             </div>
 
             <div className="rb-grid-container">
-              {displayedPreviewData.length === 0 ? (
-                <div className="text-center py-5 text-muted">
-                  <FaTable size={36} color="#cbd5e1" className="mb-2" />
-                  <div style={{ fontWeight: 600 }}>No records found for current selection.</div>
-                  <div style={{ fontSize: "0.8rem", color: "#94a3b8" }}>
-                    Select columns above or click a Ready-Made Template to load data.
-                  </div>
-                </div>
-              ) : (
-                <table className="rb-table">
-                  <thead>
-                    <tr>
-                      {columnHeaders.map((col, idx) => (
-                        <th key={idx}>{col}</th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {displayedPreviewData.map((row, rIdx) => (
-                      <tr key={rIdx}>
-                        {columnHeaders.map((col, cIdx) => (
-                          <td key={cIdx}>
-                            {row[col] !== null && row[col] !== undefined ? String(row[col]) : "-"}
-                          </td>
-                        ))}
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              )}
+              {renderPreviewContent()}
             </div>
 
             {/* Pagination Controls */}
@@ -2098,6 +3180,32 @@ const ReportBuilderStudio = () => {
                       />
                     </div>
 
+                    {viewMode === "table" && (
+                      <div className="rb-view-style-switcher me-1">
+                        <button
+                          className={`rb-view-btn ${viewStyle === "tree" ? "active" : ""}`}
+                          onClick={() => setViewStyle("tree")}
+                          title="Master-Detail Tree"
+                        >
+                          <FaSitemap /> Tree
+                        </button>
+                        <button
+                          className={`rb-view-btn ${viewStyle === "smart" ? "active" : ""}`}
+                          onClick={() => setViewStyle("smart")}
+                          title="Merged Rows"
+                        >
+                          <FaLayerGroup /> Merged
+                        </button>
+                        <button
+                          className={`rb-view-btn ${viewStyle === "flat" ? "active" : ""}`}
+                          onClick={() => setViewStyle("flat")}
+                          title="Flat Grid"
+                        >
+                          <FaTable /> Flat
+                        </button>
+                      </div>
+                    )}
+
                     <Button
                       variant={viewMode === "table" ? "primary" : "outline-secondary"}
                       size="sm"
@@ -2133,33 +3241,7 @@ const ReportBuilderStudio = () => {
                   <div className="rb-adv-card-body p-0">
                     <div className="rb-grid-container" style={{ maxHeight: "420px" }}>
                       {viewMode === "table" ? (
-                        displayedPreviewData.length === 0 ? (
-                          <div className="text-center py-5 text-muted">
-                            <FaTable size={36} color="#cbd5e1" className="mb-2" />
-                            <div>No data to display. Add columns or adjust filters to view live results.</div>
-                          </div>
-                        ) : (
-                          <table className="rb-table">
-                            <thead>
-                              <tr>
-                                {columnHeaders.map((col, idx) => (
-                                  <th key={idx}>{col}</th>
-                                ))}
-                              </tr>
-                            </thead>
-                            <tbody>
-                              {displayedPreviewData.map((row, rIdx) => (
-                                <tr key={rIdx}>
-                                  {columnHeaders.map((col, cIdx) => (
-                                    <td key={cIdx}>
-                                      {row[col] !== null && row[col] !== undefined ? String(row[col]) : "-"}
-                                    </td>
-                                  ))}
-                                </tr>
-                              ))}
-                            </tbody>
-                          </table>
-                        )
+                        renderPreviewContent()
                       ) : (
                         <div className="p-4 text-center">
                           <h6 className="text-muted">Data Distribution Chart</h6>

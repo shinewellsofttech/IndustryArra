@@ -5,7 +5,7 @@ import XLSX from "xlsx";
 import { 
     FaChevronDown, FaChevronRight, FaPrint, FaFileExcel, FaSync, 
     FaSearch, FaCogs, FaClock, FaCheckCircle, FaSpinner, 
-    FaBoxes, FaIndustry, FaListUl, FaLayerGroup 
+    FaBoxes, FaIndustry, FaListUl, FaLayerGroup, FaTimes
 } from "react-icons/fa";
 import { API_WEB_URLS } from "../../constants/constAPI";
 
@@ -47,10 +47,20 @@ const formatDateTime = (ts) => {
     }
 };
 
+// Date formatter using local time (avoids UTC timezone shift)
+const formatDateToISO = (d) => {
+    if (!d) return "";
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, "0");
+    const day = String(d.getDate()).padStart(2, "0");
+    return `${year}-${month}-${day}`;
+};
+
 const ItemMachiningTimeReport = () => {
-    // Filters state
+    // Filters state - Default to ALL so data loads immediately
     const [fromDate, setFromDate] = useState("");
     const [toDate, setToDate] = useState("");
+    const [quickRange, setQuickRange] = useState("ALL");
     const [itemCodeQuery, setItemCodeQuery] = useState("");
     const [selectedContainerId, setSelectedContainerId] = useState("");
     const [contractNoQuery, setContractNoQuery] = useState("");
@@ -81,7 +91,7 @@ const ItemMachiningTimeReport = () => {
         setLoading(true);
         try {
             const { userId, token } = getAuth();
-            let url = `${API_WEB_URLS.BASE}${API_WEB_URLS.ITEM_MACHINING_TIME_REPORT}/${userId}/${token}?`;
+            let url = `${API_WEB_URLS.BASE}${API_WEB_URLS.ITEM_MACHINING_TIME_REPORT}/${userId}/token?`;
             const params = [];
             if (fromDate) params.push(`fromDate=${fromDate}`);
             if (toDate) params.push(`toDate=${toDate}`);
@@ -122,12 +132,51 @@ const ItemMachiningTimeReport = () => {
         fetchReport();
     }, [fromDate, toDate, selectedContainerId, machineTypeId, statusFilter]);
 
+    // Quick Date Handler
+    const handleQuickRange = (type) => {
+        setQuickRange(type);
+        const today = new Date();
+        if (type === "TODAY") {
+            const str = formatDateToISO(today);
+            setFromDate(str);
+            setToDate(str);
+        } else if (type === "LAST7") {
+            const d = new Date();
+            d.setDate(d.getDate() - 7);
+            setFromDate(formatDateToISO(d));
+            setToDate(formatDateToISO(today));
+        } else if (type === "LAST30") {
+            const d = new Date();
+            d.setDate(d.getDate() - 30);
+            setFromDate(formatDateToISO(d));
+            setToDate(formatDateToISO(today));
+        } else if (type === "THISMONTH") {
+            const d = new Date(today.getFullYear(), today.getMonth(), 1);
+            setFromDate(formatDateToISO(d));
+            setToDate(formatDateToISO(today));
+        } else if (type === "ALL") {
+            setFromDate("");
+            setToDate("");
+        }
+    };
+
+    const handleResetAllFilters = () => {
+        setFromDate("");
+        setToDate("");
+        setQuickRange("ALL");
+        setItemCodeQuery("");
+        setSelectedContainerId("");
+        setContractNoQuery("");
+        setMachineTypeId("");
+        setStatusFilter("ALL");
+        setSearchQuery("");
+    };
+
     // Fetch child breakdown for an expanded row
     const toggleExpandRow = async (row) => {
         const rowKey = `${row.ItemCode}_${row.ContainerNumber}_${row.ContractNo}`;
         
         if (expandedRows[rowKey]) {
-            // Already expanded, toggle off
             setExpandedRows(prev => {
                 const next = { ...prev };
                 delete next[rowKey];
@@ -136,7 +185,6 @@ const ItemMachiningTimeReport = () => {
             return;
         }
 
-        // Set loading state for this row
         setExpandedRows(prev => ({
             ...prev,
             [rowKey]: { loading: true, data: null, activeTab: "machines" }
@@ -144,7 +192,7 @@ const ItemMachiningTimeReport = () => {
 
         try {
             const { userId, token } = getAuth();
-            let url = `${API_WEB_URLS.BASE}${API_WEB_URLS.ITEM_MACHINING_TIME_REPORT}/Breakdown/${userId}/${token}?itemMasterId=${row.ItemMasterId}&itemCode=${encodeURIComponent(row.ItemCode)}`;
+            let url = `${API_WEB_URLS.BASE}${API_WEB_URLS.ITEM_MACHINING_TIME_REPORT}/Breakdown/${userId}/token?itemMasterId=${row.ItemMasterId}&itemCode=${encodeURIComponent(row.ItemCode)}`;
             if (row.ContainerId) url += `&containerId=${row.ContainerId}`;
             if (row.ContainerNumber && row.ContainerNumber !== "-") url += `&containerNumber=${encodeURIComponent(row.ContainerNumber)}`;
             if (row.ContractNo && row.ContractNo !== "-") url += `&contractNo=${encodeURIComponent(row.ContractNo)}`;
@@ -163,10 +211,7 @@ const ItemMachiningTimeReport = () => {
                     ...prev,
                     [rowKey]: {
                         loading: false,
-                        data: {
-                            machines: machines,
-                            steps: steps
-                        },
+                        data: { machines, steps },
                         activeTab: "machines"
                     }
                 }));
@@ -197,7 +242,7 @@ const ItemMachiningTimeReport = () => {
         );
     }, [rows, searchQuery]);
 
-    // Optional Grouping by Item Code (All-time Item aggregation)
+    // Grouping by Item Code (All-time Item aggregation)
     const groupedItemData = useMemo(() => {
         if (!groupByItem) return null;
 
@@ -264,7 +309,7 @@ const ItemMachiningTimeReport = () => {
         };
     }, [filteredRows]);
 
-    // Export to Excel
+    // Export to Excel matching the report sheet
     const handleExportExcel = () => {
         if (!filteredRows || filteredRows.length === 0) return;
 
@@ -288,123 +333,106 @@ const ItemMachiningTimeReport = () => {
         const ws = XLSX.utils.json_to_sheet(excelData);
         const wb = XLSX.utils.book_new();
         XLSX.utils.book_append_sheet(wb, ws, "Item Machining Lead Time");
-        XLSX.writeFile(wb, `Item_Machining_Lead_Time_${fromDate}_to_${toDate}.xlsx`);
-    };
-
-    // Quick Date Helpers
-    const setQuickDate = (type) => {
-        const today = new Date();
-        if (type === "TODAY") {
-            const str = today.toISOString().split("T")[0];
-            setFromDate(str);
-            setToDate(str);
-        } else if (type === "LAST7") {
-            const d = new Date();
-            d.setDate(d.getDate() - 7);
-            setFromDate(d.toISOString().split("T")[0]);
-            setToDate(today.toISOString().split("T")[0]);
-        } else if (type === "THISMONTH") {
-            const d = new Date(today.getFullYear(), today.getMonth(), 1);
-            setFromDate(d.toISOString().split("T")[0]);
-            setToDate(today.toISOString().split("T")[0]);
-        } else if (type === "ALL") {
-            setFromDate("");
-            setToDate("");
-        }
+        const dateTag = fromDate && toDate ? `${fromDate}_to_${toDate}` : "All_Dates";
+        XLSX.writeFile(wb, `Item_Machining_Lead_Time_${dateTag}.xlsx`);
     };
 
     return (
-        <div className="container-fluid item-machining-report p-3">
-            {/* Custom Styles */}
+        <div className="container-fluid item-machining-report-container p-3">
+            {/* Embedded Print & Utility Stylesheet */}
             <style>
                 {`
                 @media print {
-                    body * { visibility: hidden; }
-                    .printable-area, .printable-area * { visibility: visible; }
-                    .printable-area { position: absolute; left: 0; top: 0; width: 100%; }
-                    .no-print { display: none !important; }
-                    .table-bordered th, .table-bordered td { border: 1px solid #333 !important; }
+                    body * {
+                        visibility: hidden;
+                    }
+                    .printable-report-area, .printable-report-area * {
+                        visibility: visible;
+                    }
+                    .printable-report-area {
+                        position: absolute;
+                        left: 0;
+                        top: 0;
+                        width: 100%;
+                    }
+                    .no-print {
+                        display: none !important;
+                    }
+                    .table-bordered th, .table-bordered td {
+                        border: 1px solid #222 !important;
+                    }
+                    .card {
+                        border: none !important;
+                        box-shadow: none !important;
+                    }
                 }
-                .cursor-pointer { cursor: pointer; }
-                .expand-btn {
-                    border: none;
-                    background: transparent;
-                    color: #495057;
-                    font-size: 1rem;
-                    padding: 2px 6px;
-                    border-radius: 4px;
-                    transition: all 0.2s;
+                .cursor-pointer {
+                    cursor: pointer;
                 }
-                .expand-btn:hover {
-                    background: #e9ecef;
-                    color: #0d6efd;
-                }
-                .nested-breakdown-card {
-                    background-color: #f8fafc;
-                    border: 1px solid #cbd5e1;
-                    border-radius: 8px;
-                    box-shadow: inset 0 2px 4px rgba(0,0,0,0.03);
-                }
-                .table-parent-row:hover {
-                    background-color: #f1f5f9 !important;
-                }
-                .active-time-badge {
-                    background-color: #e0f2fe;
-                    color: #0369a1;
-                    font-weight: 700;
-                    padding: 4px 8px;
-                    border-radius: 6px;
-                    display: inline-block;
+                .hover-shadow:hover {
+                    box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+                    transition: all 0.2s ease-in-out;
                 }
                 `}
             </style>
 
-            {/* Filter Card (hidden on print) */}
-            <Card className="no-print mb-4 shadow-sm border-0">
-                <Card.Header className="bg-white border-bottom py-3 d-flex flex-wrap justify-content-between align-items-center gap-2">
-                    <div>
-                        <h4 className="fw-bold mb-0 text-dark d-flex align-items-center gap-2">
-                            <FaIndustry className="text-primary" />
-                            <span>ITEM MACHINING LEAD TIME & MACHINE BREAKDOWN REPORT</span>
-                        </h4>
-                        <small className="text-muted">
-                            Track complete machining lead times, active machine hours, and exact step breakdown per Item, Container & Contract.
-                        </small>
-                    </div>
-                    <div className="d-flex gap-2 align-items-center">
-                        <Button
-                            variant={groupByItem ? "primary" : "outline-primary"}
-                            size="sm"
-                            className="d-flex align-items-center gap-1 fw-bold"
-                            onClick={() => setGroupByItem(!groupByItem)}
-                        >
-                            <FaLayerGroup /> {groupByItem ? "Grouped By Item" : "Production Batch View"}
-                        </Button>
-                        <Button
-                            variant="outline-success"
-                            size="sm"
-                            className="d-flex align-items-center gap-1 fw-bold"
-                            onClick={handleExportExcel}
-                            disabled={filteredRows.length === 0}
-                        >
-                            <FaFileExcel /> Export Excel
-                        </Button>
-                        <Button
-                            variant="dark"
-                            size="sm"
-                            className="d-flex align-items-center gap-1 fw-bold"
-                            onClick={() => window.print()}
-                            disabled={filteredRows.length === 0}
-                        >
-                            <FaPrint /> Print
-                        </Button>
-                    </div>
-                </Card.Header>
+            {/* 1. Header Toolbar (matching MachineDelayDashboard & MachineRunningStatusReport) */}
+            <div className="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2 no-print">
+                <div>
+                    <h4 className="mb-0 fw-bold text-dark d-flex align-items-center gap-2">
+                        <FaIndustry className="text-primary" />
+                        <span>Item Machining Lead Time & Breakdown</span>
+                    </h4>
+                    <span className="text-muted small">
+                        Real-time machine cycle times, active work hours, and component lead time progression
+                    </span>
+                </div>
 
+                <div className="d-flex align-items-center gap-2 flex-wrap">
+                    <Button
+                        variant={groupByItem ? "primary" : "outline-secondary"}
+                        size="sm"
+                        className="shadow-sm d-flex align-items-center gap-1 fw-bold"
+                        onClick={() => setGroupByItem(!groupByItem)}
+                    >
+                        <FaLayerGroup /> {groupByItem ? "Grouped By Item" : "Production Batch View"}
+                    </Button>
+                    <Button
+                        variant="outline-dark"
+                        size="sm"
+                        className="shadow-sm d-flex align-items-center gap-1"
+                        onClick={fetchReport}
+                        disabled={loading}
+                    >
+                        <FaSync className={loading ? "fa-spin" : ""} /> Refresh
+                    </Button>
+                    <Button
+                        variant="outline-success"
+                        size="sm"
+                        className="shadow-sm d-flex align-items-center gap-1 fw-bold"
+                        onClick={handleExportExcel}
+                        disabled={filteredRows.length === 0}
+                    >
+                        <FaFileExcel /> Export Excel
+                    </Button>
+                    <Button
+                        variant="dark"
+                        size="sm"
+                        className="shadow-sm d-flex align-items-center gap-1 fw-bold"
+                        onClick={() => window.print()}
+                        disabled={filteredRows.length === 0}
+                    >
+                        <FaPrint /> Print Report
+                    </Button>
+                </div>
+            </div>
+
+            {/* 2. Compact Clean Filter Toolbar */}
+            <Card className="no-print mb-4 shadow-sm border-0">
                 <Card.Body className="p-3">
-                    <Row className="g-2 align-items-end">
+                    <Row className="align-items-end g-2">
                         {/* From Date */}
-                        <Col lg={2} md={3} sm={6}>
+                        <Col lg={2} md={4} sm={6}>
                             <Form.Group className="mb-0">
                                 <Form.Label className="fw-bold mb-1 text-dark" style={{ fontSize: "0.85rem" }}>
                                     📅 From Date
@@ -413,14 +441,17 @@ const ItemMachiningTimeReport = () => {
                                     type="date"
                                     size="sm"
                                     value={fromDate}
-                                    onChange={(e) => setFromDate(e.target.value)}
-                                    className="fw-bold"
+                                    onChange={(e) => {
+                                        setFromDate(e.target.value);
+                                        setQuickRange("CUSTOM");
+                                    }}
+                                    className="form-control-sm fw-bold"
                                 />
                             </Form.Group>
                         </Col>
 
                         {/* To Date */}
-                        <Col lg={2} md={3} sm={6}>
+                        <Col lg={2} md={4} sm={6}>
                             <Form.Group className="mb-0">
                                 <Form.Label className="fw-bold mb-1 text-dark" style={{ fontSize: "0.85rem" }}>
                                     📅 To Date
@@ -429,46 +460,39 @@ const ItemMachiningTimeReport = () => {
                                     type="date"
                                     size="sm"
                                     value={toDate}
-                                    onChange={(e) => setToDate(e.target.value)}
-                                    className="fw-bold"
+                                    onChange={(e) => {
+                                        setToDate(e.target.value);
+                                        setQuickRange("CUSTOM");
+                                    }}
+                                    className="form-control-sm fw-bold"
                                 />
                             </Form.Group>
                         </Col>
 
-                        {/* Quick Dates */}
-                        <Col lg={2} md={3} sm={6}>
-                            <Form.Label className="fw-bold mb-1 text-muted" style={{ fontSize: "0.8rem" }}>
-                                Quick Range
-                            </Form.Label>
-                            <div className="d-flex gap-1">
-                                <Button variant="outline-secondary" size="sm" className="py-1 px-2" style={{ fontSize: "0.75rem" }} onClick={() => setQuickDate("TODAY")}>Today</Button>
-                                <Button variant="outline-secondary" size="sm" className="py-1 px-2" style={{ fontSize: "0.75rem" }} onClick={() => setQuickDate("LAST7")}>7 Days</Button>
-                                <Button variant="outline-secondary" size="sm" className="py-1 px-2" style={{ fontSize: "0.75rem" }} onClick={() => setQuickDate("THISMONTH")}>Month</Button>
-                                <Button variant="outline-secondary" size="sm" className="py-1 px-2" style={{ fontSize: "0.75rem" }} onClick={() => setQuickDate("ALL")}>All</Button>
-                            </div>
-                        </Col>
-
-                        {/* Shipment / Container Dropdown */}
-                        <Col lg={2} md={3} sm={6}>
+                        {/* Container / Shipment */}
+                        <Col lg={2} md={4} sm={6}>
                             <Form.Group className="mb-0">
                                 <Form.Label className="fw-bold mb-1 text-dark" style={{ fontSize: "0.85rem" }}>
-                                    📦 Container / Shipment
+                                    📦 Shipment / Container
                                 </Form.Label>
                                 <Form.Select
                                     size="sm"
                                     value={selectedContainerId}
                                     onChange={(e) => setSelectedContainerId(e.target.value)}
+                                    className="form-select-sm"
                                 >
                                     <option value="">All Shipments</option>
-                                    {containersList.map(c => (
-                                        <option key={c.Id} value={c.Id}>{c.ContainerNumber}</option>
+                                    {containersList.map((c) => (
+                                        <option key={c.Id} value={c.Id}>
+                                            {c.ContainerNumber}
+                                        </option>
                                     ))}
                                 </Form.Select>
                             </Form.Group>
                         </Col>
 
-                        {/* Machine Type Filter */}
-                        <Col lg={2} md={3} sm={6}>
+                        {/* Machine Type */}
+                        <Col lg={2} md={4} sm={6}>
                             <Form.Group className="mb-0">
                                 <Form.Label className="fw-bold mb-1 text-dark" style={{ fontSize: "0.85rem" }}>
                                     🏭 Machine Type
@@ -477,17 +501,20 @@ const ItemMachiningTimeReport = () => {
                                     size="sm"
                                     value={machineTypeId}
                                     onChange={(e) => setMachineTypeId(e.target.value)}
+                                    className="form-select-sm"
                                 >
                                     <option value="">All Types (Wood & Metal)</option>
-                                    {categoriesList.map(cat => (
-                                        <option key={cat.Id} value={cat.Id}>{cat.FullName || cat.Name}</option>
+                                    {categoriesList.map((cat) => (
+                                        <option key={cat.Id} value={cat.Id}>
+                                            {cat.FullName || cat.Name}
+                                        </option>
                                     ))}
                                 </Form.Select>
                             </Form.Group>
                         </Col>
 
-                        {/* Status Filter */}
-                        <Col lg={2} md={3} sm={6}>
+                        {/* Status */}
+                        <Col lg={2} md={4} sm={6}>
                             <Form.Group className="mb-0">
                                 <Form.Label className="fw-bold mb-1 text-dark" style={{ fontSize: "0.85rem" }}>
                                     ⚡ Status
@@ -496,160 +523,279 @@ const ItemMachiningTimeReport = () => {
                                     size="sm"
                                     value={statusFilter}
                                     onChange={(e) => setStatusFilter(e.target.value)}
+                                    className="form-select-sm"
                                 >
-                                    <option value="ALL">All Statuses</option>
+                                    <option value="ALL">All Status</option>
                                     <option value="COMPLETED">Completed Only</option>
                                     <option value="IN_PROGRESS">In Progress Only</option>
                                 </Form.Select>
                             </Form.Group>
                         </Col>
+
+                        {/* Contract No */}
+                        <Col lg={2} md={4} sm={6}>
+                            <Form.Group className="mb-0">
+                                <Form.Label className="fw-bold mb-1 text-dark" style={{ fontSize: "0.85rem" }}>
+                                    Contract #
+                                </Form.Label>
+                                <div className="input-group input-group-sm">
+                                    <Form.Control
+                                        type="text"
+                                        placeholder="Filter contract..."
+                                        value={contractNoQuery}
+                                        onChange={(e) => setContractNoQuery(e.target.value)}
+                                        onKeyDown={(e) => e.key === "Enter" && fetchReport()}
+                                        className="form-control-sm"
+                                    />
+                                    <Button variant="outline-primary" size="sm" onClick={fetchReport}>
+                                        Apply
+                                    </Button>
+                                </div>
+                            </Form.Group>
+                        </Col>
                     </Row>
 
-                    {/* Second Row: Search query & Refresh */}
-                    <Row className="g-2 align-items-center mt-2 pt-2 border-top">
-                        <Col md={5} sm={12}>
+                    {/* Second Row: Quick Filter Search & Range buttons */}
+                    <Row className="align-items-center mt-3 pt-2 border-top g-2">
+                        <Col lg={4} md={6} sm={12}>
                             <div className="input-group input-group-sm">
                                 <span className="input-group-text bg-white">
                                     <FaSearch className="text-muted" />
                                 </span>
                                 <Form.Control
                                     type="text"
-                                    placeholder="Search by Item Code, Item Name, Container No, or Contract No..."
+                                    placeholder="Search Item Code, Name, Shipment, Contract..."
                                     value={searchQuery}
                                     onChange={(e) => setSearchQuery(e.target.value)}
+                                    className="border-start-0"
                                 />
                                 {searchQuery && (
-                                    <Button variant="outline-secondary" size="sm" onClick={() => setSearchQuery("")}>✕</Button>
+                                    <Button variant="outline-secondary" size="sm" onClick={() => setSearchQuery("")}>
+                                        ✕
+                                    </Button>
                                 )}
                             </div>
                         </Col>
 
-                        <Col md={4} sm={6}>
-                            <div className="input-group input-group-sm">
-                                <span className="input-group-text bg-white">Contract #</span>
-                                <Form.Control
-                                    type="text"
-                                    placeholder="Filter by Contract No..."
-                                    value={contractNoQuery}
-                                    onChange={(e) => setContractNoQuery(e.target.value)}
-                                    onKeyDown={(e) => e.key === "Enter" && fetchReport()}
-                                />
-                                <Button variant="outline-primary" size="sm" onClick={fetchReport}>Apply</Button>
+                        <Col lg={5} md={6} sm={12}>
+                            <div className="d-flex gap-1 align-items-center">
+                                <span className="text-muted small fw-bold">Date:</span>
+                                <Button
+                                    variant={quickRange === "TODAY" ? "primary" : "outline-secondary"}
+                                    size="sm"
+                                    className="py-1 px-2 text-nowrap"
+                                    style={{ fontSize: "0.75rem" }}
+                                    onClick={() => handleQuickRange("TODAY")}
+                                >
+                                    Today
+                                </Button>
+                                <Button
+                                    variant={quickRange === "LAST7" ? "primary" : "outline-secondary"}
+                                    size="sm"
+                                    className="py-1 px-2 text-nowrap"
+                                    style={{ fontSize: "0.75rem" }}
+                                    onClick={() => handleQuickRange("LAST7")}
+                                >
+                                    7 Days
+                                </Button>
+                                <Button
+                                    variant={quickRange === "LAST30" ? "primary" : "outline-secondary"}
+                                    size="sm"
+                                    className="py-1 px-2 text-nowrap"
+                                    style={{ fontSize: "0.75rem" }}
+                                    onClick={() => handleQuickRange("LAST30")}
+                                >
+                                    30 Days
+                                </Button>
+                                <Button
+                                    variant={quickRange === "ALL" ? "primary" : "outline-secondary"}
+                                    size="sm"
+                                    className="py-1 px-2 text-nowrap"
+                                    style={{ fontSize: "0.75rem" }}
+                                    onClick={() => handleQuickRange("ALL")}
+                                >
+                                    All Data
+                                </Button>
                             </div>
                         </Col>
 
-                        <Col md={3} sm={6} className="text-end">
-                            <Button
-                                variant="outline-dark"
-                                size="sm"
-                                onClick={fetchReport}
-                                disabled={loading}
-                                className="d-inline-flex align-items-center gap-1"
-                            >
-                                <FaSync className={loading ? "fa-spin" : ""} /> Refresh Data
-                            </Button>
+                        <Col lg={3} md={12} className="text-md-end">
+                            {(fromDate || toDate || selectedContainerId || machineTypeId || statusFilter !== "ALL" || searchQuery) && (
+                                <Button
+                                    variant="link"
+                                    size="sm"
+                                    className="text-danger p-0 fw-bold text-decoration-none"
+                                    onClick={handleResetAllFilters}
+                                >
+                                    ✕ Clear Filters
+                                </Button>
+                            )}
                         </Col>
                     </Row>
                 </Card.Body>
             </Card>
 
-            {/* KPI Cards (hidden on print) */}
+            {/* 3. KPI Summary Cards (Matching MachineRunningStatusReport & MachineDelayDashboard exactly) */}
             <Row className="no-print mb-4 g-2">
                 <Col xl={2} md={4} sm={6}>
                     <Card className="border-0 shadow-sm text-center py-2 bg-light">
                         <div className="text-muted text-uppercase fw-bold" style={{ fontSize: "0.75rem" }}>Total Batches</div>
                         <h3 className="mb-0 fw-bold text-dark">{kpiSummary.totalBatches}</h3>
-                        <div className="text-muted" style={{ fontSize: "0.75rem" }}>
-                            {kpiSummary.completedBatches} Done | {kpiSummary.inProgressBatches} Active
-                        </div>
+                        <div className="text-muted" style={{ fontSize: "0.75rem" }}>{kpiSummary.totalUnits} Units Total</div>
                     </Card>
                 </Col>
                 <Col xl={2} md={4} sm={6}>
-                    <Card className="border-0 shadow-sm text-center py-2" style={{ backgroundColor: "#e0f2fe", color: "#0369a1" }}>
-                        <div className="text-uppercase fw-bold" style={{ fontSize: "0.75rem" }}>Total Units Produced</div>
-                        <h3 className="mb-0 fw-bold">{kpiSummary.totalUnits}</h3>
-                        <div style={{ fontSize: "0.75rem" }}>Order Quantity</div>
-                    </Card>
-                </Col>
-                <Col xl={2} md={4} sm={6}>
-                    <Card className="border-0 shadow-sm text-center py-2" style={{ backgroundColor: "#dcfce7", color: "#15803d" }}>
-                        <div className="text-uppercase fw-bold" style={{ fontSize: "0.75rem" }}>Active Machining Time</div>
+                    <Card className="border-0 shadow-sm text-center py-2" style={{ backgroundColor: "#d4edda", color: "#155724" }}>
+                        <div className="text-uppercase fw-bold" style={{ fontSize: "0.75rem" }}>Total Machining</div>
                         <h3 className="mb-0 fw-bold">{kpiSummary.totalActiveHours} <span style={{ fontSize: "0.85rem" }}>hrs</span></h3>
-                        <div style={{ fontSize: "0.75rem" }}>Actual Machine Work</div>
+                        <div style={{ fontSize: "0.75rem" }}>Actual Machine Runtime</div>
                     </Card>
                 </Col>
                 <Col xl={2} md={4} sm={6}>
-                    <Card className="border-0 shadow-sm text-center py-2" style={{ backgroundColor: "#fef3c7", color: "#b45309" }}>
+                    <Card className="border-0 shadow-sm text-center py-2" style={{ backgroundColor: "#d1ecf1", color: "#0c5460" }}>
                         <div className="text-uppercase fw-bold" style={{ fontSize: "0.75rem" }}>Avg Time / Batch</div>
                         <h3 className="mb-0 fw-bold">{kpiSummary.avgHoursPerBatch} <span style={{ fontSize: "0.85rem" }}>hrs</span></h3>
-                        <div style={{ fontSize: "0.75rem" }}>Average Production Run</div>
+                        <div style={{ fontSize: "0.75rem" }}>Mean Batch Duration</div>
                     </Card>
                 </Col>
                 <Col xl={2} md={4} sm={6}>
-                    <Card className="border-0 shadow-sm text-center py-2" style={{ backgroundColor: "#f3e8ff", color: "#7e22ce" }}>
-                        <div className="text-uppercase fw-bold" style={{ fontSize: "0.75rem" }}>Cycle Time / Unit</div>
-                        <h3 className="mb-0 fw-bold">{kpiSummary.avgCycleMinutesPerUnit} <span style={{ fontSize: "0.85rem" }}>min</span></h3>
-                        <div style={{ fontSize: "0.75rem" }}>Machining Per Unit</div>
+                    <Card className="border-0 shadow-sm text-center py-2" style={{ backgroundColor: "#fff3cd", color: "#856404" }}>
+                        <div className="text-uppercase fw-bold" style={{ fontSize: "0.75rem" }}>In Progress</div>
+                        <h3 className="mb-0 fw-bold text-dark">{kpiSummary.inProgressBatches}</h3>
+                        <div style={{ fontSize: "0.75rem" }}>Active Batches</div>
+                    </Card>
+                </Col>
+                <Col xl={2} md={4} sm={6}>
+                    <Card className="border-0 shadow-sm text-center py-2" style={{ backgroundColor: "#e2e3e5", color: "#383d41" }}>
+                        <div className="text-uppercase fw-bold" style={{ fontSize: "0.75rem" }}>Completed</div>
+                        <h3 className="mb-0 fw-bold">{kpiSummary.completedBatches}</h3>
+                        <div style={{ fontSize: "0.75rem" }}>Finished Batches</div>
                     </Card>
                 </Col>
                 <Col xl={2} md={4} sm={6}>
                     <Card className="border-0 shadow-sm text-center py-2 bg-dark text-white">
-                        <div className="text-uppercase fw-bold text-white-50" style={{ fontSize: "0.75rem" }}>Current Status</div>
-                        <h3 className="mb-0 fw-bold text-warning">{kpiSummary.inProgressBatches}</h3>
-                        <div className="text-white-50" style={{ fontSize: "0.75rem" }}>Batches In Machining</div>
+                        <div className="text-uppercase fw-bold text-muted" style={{ fontSize: "0.75rem" }}>Cycle Time / Unit</div>
+                        <h3 className="mb-0 fw-bold text-warning">{kpiSummary.avgCycleMinutesPerUnit} <span style={{ fontSize: "0.85rem" }}>min</span></h3>
+                        <div className="text-warning-50 fw-bold" style={{ fontSize: "0.75rem" }}>Per Item Piece</div>
                     </Card>
                 </Col>
             </Row>
 
-            {/* Printable Report View */}
-            <div className="printable-area">
-                {/* Print Title Header */}
-                <div className="text-center mb-3 p-3 bg-light rounded border">
-                    <h3 className="fw-black mb-1 text-dark text-uppercase" style={{ letterSpacing: "1px" }}>
-                        ITEM MACHINING LEAD TIME & MACHINE BREAKDOWN REPORT
-                    </h3>
-                    <div className="d-flex justify-content-center gap-3 text-muted fw-bold" style={{ fontSize: "0.9rem" }}>
-                        <span>DATE RANGE: {fromDate || "Earliest"} TO {toDate || "Latest"}</span>
-                        <span>•</span>
-                        <span>ITEMS DISPLAYED: {filteredRows.length}</span>
-                        <span>•</span>
-                        <span>TOTAL ACTIVE MACHINING: {kpiSummary.totalActiveHours} HRS</span>
-                    </div>
+            {/* Print Header (Visible ONLY on Paper Print, Hidden on screen) */}
+            <div className="d-none d-print-block mb-3 p-3 bg-light rounded border text-center">
+                <h3 className="fw-bold mb-1 text-dark text-uppercase">
+                    ITEM MACHINING LEAD TIME & MACHINE BREAKDOWN REPORT
+                </h3>
+                <div className="d-flex justify-content-center gap-3 text-muted fw-bold" style={{ fontSize: "0.85rem" }}>
+                    <span>DATE RANGE: {fromDate || "Earliest"} TO {toDate || "Latest"}</span>
+                    <span>•</span>
+                    <span>ITEMS DISPLAYED: {filteredRows.length}</span>
+                    <span>•</span>
+                    <span>TOTAL ACTIVE MACHINING: {kpiSummary.totalActiveHours} HRS</span>
                 </div>
+            </div>
 
-                {/* Main Table */}
+            {/* 4. Main Data Table Card */}
+            <div className="printable-report-area">
                 <Card className="border shadow-sm mb-4">
+                    <Card.Header className="bg-white py-2 px-3 border-bottom d-flex justify-content-between align-items-center">
+                        <h6 className="mb-0 text-dark fw-bold d-flex align-items-center gap-2">
+                            <FaBoxes className="text-primary" />
+                            <span>{groupByItem ? "Grouped By Item Summary" : "Production Batches Machining Lead Times"}</span>
+                            <Badge bg="secondary" className="ms-1">{filteredRows.length} Records</Badge>
+                        </h6>
+                        <span className="text-muted small">
+                            Showing {filteredRows.length} of {rows.length} total batches
+                        </span>
+                    </Card.Header>
                     <Card.Body className="p-0">
                         {loading ? (
                             <div className="text-center py-5">
                                 <Spinner animation="border" variant="primary" />
-                                <p className="mt-2 text-muted fw-bold">Calculating item machining lead times and machine durations...</p>
+                                <p className="mt-2 text-muted fw-bold">Loading machining lead times and machine durations...</p>
                             </div>
                         ) : filteredRows.length === 0 ? (
-                            <div className="text-center py-5">
-                                <FaBoxes size={36} className="text-muted mb-2" />
-                                <h5 className="text-dark fw-bold">No Manufacturing Records Found</h5>
-                                <p className="text-muted">No item machining history matches the selected date range and filters.</p>
+                            <div className="text-center py-5 px-3">
+                                <FaBoxes size={36} className="text-muted mb-2 opacity-50" />
+                                <h5 className="text-dark fw-bold">No Matching Records Found</h5>
+                                <p className="text-muted small mb-3">
+                                    No production batches match the selected date range or filter criteria.
+                                </p>
+                                <Button
+                                    variant="primary"
+                                    size="sm"
+                                    style={{ fontSize: "0.8rem", fontWeight: 600 }}
+                                    onClick={handleResetAllFilters}
+                                >
+                                    Reset Filters to View All Batches
+                                </Button>
+                            </div>
+                        ) : groupByItem ? (
+                            /* Grouped By Item View */
+                            <div className="table-responsive">
+                                <Table bordered hover className="align-middle mb-0 text-center" style={{ borderCollapse: "collapse", fontSize: "0.85rem" }}>
+                                    <thead>
+                                        <tr style={{ backgroundColor: "#f8f9fa", borderBottom: "2px solid #333" }}>
+                                            <th style={{ width: "130px", fontWeight: "800", verticalAlign: "middle" }}>ITEM CODE</th>
+                                            <th style={{ textAlign: "left", fontWeight: "800", verticalAlign: "middle" }}>ITEM NAME</th>
+                                            <th style={{ width: "90px", fontWeight: "800", verticalAlign: "middle" }}>BATCHES</th>
+                                            <th style={{ width: "100px", fontWeight: "800", verticalAlign: "middle" }}>TOTAL QTY</th>
+                                            <th style={{ width: "90px", fontWeight: "800", verticalAlign: "middle" }}>JOB CARDS</th>
+                                            <th style={{ width: "140px", fontWeight: "800", verticalAlign: "middle", backgroundColor: "#eaecef" }}>TOTAL ACTIVE TIME</th>
+                                            <th style={{ width: "130px", fontWeight: "800", verticalAlign: "middle" }}>AVG TIME / BATCH</th>
+                                            <th style={{ width: "130px", fontWeight: "800", verticalAlign: "middle" }}>CYCLE TIME / UNIT</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {groupedItemData?.map((item) => (
+                                            <tr key={item.ItemCode} className="hover-shadow">
+                                                <td>
+                                                    <span className="badge bg-light text-dark border font-monospace" style={{ fontSize: "0.85rem" }}>
+                                                        {item.ItemCode}
+                                                    </span>
+                                                </td>
+                                                <td className="text-start fw-bold text-dark">
+                                                    {item.ItemName}
+                                                </td>
+                                                <td className="fw-bold">{item.TotalBatches}</td>
+                                                <td className="fw-bold text-primary">{item.TotalUnits}</td>
+                                                <td>{item.TotalJobCards}</td>
+                                                <td style={{ backgroundColor: "#f0f4f8" }}>
+                                                    <span className="badge bg-light text-primary border border-primary px-2 py-1 fw-bold" style={{ fontSize: "0.85rem" }}>
+                                                        {formatHours(item.TotalActiveHours)} hrs
+                                                    </span>
+                                                </td>
+                                                <td className="fw-bold text-secondary">
+                                                    {formatHours(item.AvgMachiningHoursPerBatch)} hrs
+                                                </td>
+                                                <td className="fw-bold text-muted">
+                                                    {formatHours(item.AvgMinutesPerUnit)} min
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </Table>
                             </div>
                         ) : (
+                            /* Default Batch View */
                             <div className="table-responsive">
-                                <Table bordered hover className="align-middle mb-0 text-center" style={{ borderCollapse: "collapse" }}>
-                                    <thead className="table-dark">
-                                        <tr style={{ fontSize: "0.85rem" }}>
-                                            <th style={{ width: "45px" }} className="no-print">EXP</th>
-                                            <th style={{ width: "130px" }}>ITEM CODE</th>
-                                            <th style={{ textAlign: "left" }}>ITEM NAME</th>
-                                            <th style={{ width: "110px" }}>SHIPMENT</th>
-                                            <th style={{ width: "120px" }}>CONTRACT #</th>
-                                            <th style={{ width: "80px" }}>QTY</th>
-                                            <th style={{ width: "70px" }}>JOBS</th>
-                                            <th style={{ width: "80px" }}>MACHINES</th>
-                                            <th style={{ width: "150px" }}>FIRST START</th>
-                                            <th style={{ width: "150px" }}>LAST END</th>
-                                            <th style={{ width: "120px" }}>LEAD TIME</th>
-                                            <th style={{ width: "130px", backgroundColor: "#0f172a" }}>ACTIVE TIME</th>
-                                            <th style={{ width: "110px" }}>PER UNIT</th>
-                                            <th style={{ width: "110px" }}>STATUS</th>
+                                <Table bordered hover className="align-middle mb-0 text-center" style={{ borderCollapse: "collapse", fontSize: "0.85rem" }}>
+                                    <thead>
+                                        <tr style={{ backgroundColor: "#f8f9fa", borderBottom: "2px solid #333" }}>
+                                            <th style={{ width: "40px", verticalAlign: "middle" }} className="no-print">EXP</th>
+                                            <th style={{ width: "120px", fontWeight: "800", verticalAlign: "middle" }}>ITEM CODE</th>
+                                            <th style={{ textAlign: "left", fontWeight: "800", verticalAlign: "middle" }}>ITEM NAME</th>
+                                            <th style={{ width: "110px", fontWeight: "800", verticalAlign: "middle" }}>SHIPMENT</th>
+                                            <th style={{ width: "105px", fontWeight: "800", verticalAlign: "middle" }}>CONTRACT #</th>
+                                            <th style={{ width: "75px", fontWeight: "800", verticalAlign: "middle" }}>QTY</th>
+                                            <th style={{ width: "65px", fontWeight: "800", verticalAlign: "middle" }}>JOBS</th>
+                                            <th style={{ width: "65px", fontWeight: "800", verticalAlign: "middle" }}>M/C</th>
+                                            <th style={{ width: "130px", fontWeight: "800", verticalAlign: "middle" }}>FIRST START</th>
+                                            <th style={{ width: "130px", fontWeight: "800", verticalAlign: "middle" }}>LAST END</th>
+                                            <th style={{ width: "110px", fontWeight: "800", verticalAlign: "middle" }}>LEAD TIME</th>
+                                            <th style={{ width: "120px", fontWeight: "800", verticalAlign: "middle", backgroundColor: "#eaecef" }}>MACHINING HRS</th>
+                                            <th style={{ width: "95px", fontWeight: "800", verticalAlign: "middle" }}>PER UNIT</th>
+                                            <th style={{ width: "110px", fontWeight: "800", verticalAlign: "middle" }}>STATUS</th>
                                         </tr>
                                     </thead>
                                     <tbody>
@@ -661,24 +807,26 @@ const ItemMachiningTimeReport = () => {
 
                                             return (
                                                 <React.Fragment key={rowKey || idx}>
-                                                    {/* Parent Summarized Row */}
-                                                    <tr className="table-parent-row">
-                                                        {/* Arrow Button to expand */}
+                                                    <tr className="hover-shadow">
+                                                        {/* Expand Button */}
                                                         <td className="no-print">
-                                                            <button
-                                                                className="expand-btn"
+                                                            <Button
+                                                                variant={isExpanded ? "primary" : "outline-secondary"}
+                                                                size="sm"
+                                                                className="py-0 px-2"
+                                                                style={{ fontSize: "0.72rem" }}
                                                                 onClick={() => toggleExpandRow(r)}
                                                                 title={isExpanded ? "Collapse machine breakdown" : "Expand to view machine breakdown"}
                                                             >
-                                                                {isExpanded ? <FaChevronDown className="text-primary" /> : <FaChevronRight />}
-                                                            </button>
+                                                                {isExpanded ? <FaChevronDown size={10} /> : <FaChevronRight size={10} />}
+                                                            </Button>
                                                         </td>
 
                                                         {/* Item Code */}
-                                                        <td className="fw-bold text-dark cursor-pointer" onClick={() => toggleExpandRow(r)}>
-                                                            <Badge bg="light" text="dark" className="border fw-bold fs-6">
+                                                        <td className="cursor-pointer" onClick={() => toggleExpandRow(r)}>
+                                                            <span className="badge bg-light text-dark border font-monospace" style={{ fontSize: "0.82rem" }}>
                                                                 {r.ItemCode}
-                                                            </Badge>
+                                                            </span>
                                                         </td>
 
                                                         {/* Item Name */}
@@ -688,111 +836,88 @@ const ItemMachiningTimeReport = () => {
 
                                                         {/* Container / Shipment */}
                                                         <td>
-                                                            <Badge bg="secondary" style={{ fontSize: "0.8rem" }}>
+                                                            <span className="badge bg-light text-dark border" style={{ fontSize: "0.75rem" }}>
                                                                 {r.ContainerNumber || "-"}
-                                                            </Badge>
+                                                            </span>
                                                         </td>
 
                                                         {/* Contract No */}
-                                                        <td className="text-muted fw-bold" style={{ fontSize: "0.85rem" }}>
+                                                        <td className="text-muted fw-bold" style={{ fontSize: "0.78rem" }}>
                                                             {r.ContractNo || "-"}
                                                         </td>
 
                                                         {/* Quantity */}
-                                                        <td className="fw-bold fs-6">
-                                                            {r.OrderQty}
-                                                        </td>
+                                                        <td className="fw-bold">{r.OrderQty}</td>
 
                                                         {/* Job Cards Count */}
-                                                        <td>
-                                                            <Badge bg="light" text="dark" className="border">
-                                                                {r.JobCardCount}
-                                                            </Badge>
-                                                        </td>
+                                                        <td>{r.JobCardCount}</td>
 
                                                         {/* Machine Count */}
-                                                        <td>
-                                                            <Badge bg="info" className="text-dark">
-                                                                {r.MachineCount} M/c
-                                                            </Badge>
-                                                        </td>
+                                                        <td>{r.MachineCount}</td>
 
                                                         {/* First Machine Start */}
-                                                        <td style={{ fontSize: "0.8rem" }}>
+                                                        <td style={{ fontSize: "0.76rem" }}>
                                                             {formatDateTime(r.FirstStartTime)}
                                                         </td>
 
                                                         {/* Last Machine End */}
-                                                        <td style={{ fontSize: "0.8rem" }}>
+                                                        <td style={{ fontSize: "0.76rem" }}>
                                                             {isCompleted ? (
                                                                 formatDateTime(r.LastEndTime)
                                                             ) : (
-                                                                <Badge bg="warning" text="dark">In Progress</Badge>
+                                                                <Badge bg="warning" text="dark" className="px-2 py-1 d-inline-flex align-items-center gap-1">
+                                                                    <FaClock size={9} /> In Progress
+                                                                </Badge>
                                                             )}
                                                         </td>
 
-                                                        {/* Elapsed Lead Time (Calendar Duration) */}
-                                                        <td className="fw-bold text-secondary" style={{ fontSize: "0.85rem" }}>
-                                                            <div>{formatDuration(r.ElapsedMinutes)}</div>
-                                                            {r.OffShiftAndWaitHours > 0 && (
-                                                                <span className="badge bg-light text-muted border mt-1" style={{ fontSize: "0.68rem" }} title="Includes factory overnight non-shift / idle intervals">
-                                                                    💤 {r.OffShiftAndWaitHours}h off-shift/wait
-                                                                </span>
-                                                            )}
+                                                        {/* Elapsed Lead Time */}
+                                                        <td style={{ fontSize: "0.78rem" }}>
+                                                            <strong>{formatDuration(r.ElapsedMinutes)}</strong>
                                                         </td>
 
                                                         {/* Active Machining Time */}
-                                                        <td>
-                                                            <span className="active-time-badge">
+                                                        <td style={{ backgroundColor: "#f0f4f8" }}>
+                                                            <span className="badge bg-light text-primary border border-primary px-2 py-1 fw-bold" style={{ fontSize: "0.85rem" }}>
                                                                 {formatHours(r.ActiveMachiningHours)} hrs
                                                             </span>
-                                                            {r.EquivalentShifts !== undefined && (
-                                                                <div className="text-muted small mt-1" style={{ fontSize: "0.72rem" }} title="Shift Capacity Equivalence (8hr Net/Shift)">
-                                                                    ≈ {r.EquivalentShifts} Shifts
-                                                                </div>
-                                                            )}
                                                         </td>
 
                                                         {/* Minutes Per Unit */}
-                                                        <td className="fw-bold text-muted" style={{ fontSize: "0.85rem" }}>
+                                                        <td className="text-muted fw-bold" style={{ fontSize: "0.78rem" }}>
                                                             {formatHours(r.MinutesPerUnit)} m/u
                                                         </td>
 
                                                         {/* Status */}
                                                         <td>
                                                             {isCompleted ? (
-                                                                <Badge bg="success" className="d-inline-flex align-items-center gap-1">
-                                                                    <FaCheckCircle size={10} /> Done
+                                                                <Badge bg="success" className="px-2 py-1 d-inline-flex align-items-center gap-1">
+                                                                    <FaCheckCircle size={9} /> Completed
                                                                 </Badge>
                                                             ) : (
-                                                                <Badge bg="warning" text="dark" className="d-inline-flex align-items-center gap-1">
-                                                                    <FaSpinner className="fa-spin" size={10} /> Active
+                                                                <Badge bg="warning" text="dark" className="px-2 py-1 d-inline-flex align-items-center gap-1">
+                                                                    <FaSpinner className="fa-spin" size={9} /> In Progress
                                                                 </Badge>
                                                             )}
                                                         </td>
                                                     </tr>
 
-                                                    {/* Expanded Child View (Arrow Clicked) */}
+                                                    {/* Expanded Drawer (Matching MachineDelayDashboard drilldown) */}
                                                     {isExpanded && (
                                                         <tr>
-                                                            <td colSpan={14} className="p-3 bg-light">
-                                                                <div className="nested-breakdown-card p-3">
-                                                                    {/* Expanded Header banner */}
-                                                                    <div className="d-flex flex-wrap justify-content-between align-items-center mb-3 pb-2 border-bottom">
+                                                            <td colSpan={14} className="p-3 bg-light border-bottom">
+                                                                <Card className="border shadow-sm">
+                                                                    <Card.Header className="bg-white py-2 px-3 border-bottom d-flex flex-wrap justify-content-between align-items-center gap-2">
                                                                         <div>
-                                                                            <h5 className="fw-bold mb-1 text-dark d-flex align-items-center gap-2">
+                                                                            <strong className="text-dark d-flex align-items-center gap-2" style={{ fontSize: "0.9rem" }}>
                                                                                 <FaCogs className="text-primary" />
-                                                                                <span>Machine-wise Time Breakdown</span>
-                                                                                <Badge bg="dark">Item: {r.ItemCode}</Badge>
-                                                                                <Badge bg="secondary">Shipment: {r.ContainerNumber}</Badge>
-                                                                                {r.ContractNo && <Badge bg="light" text="dark" className="border">Contract: {r.ContractNo}</Badge>}
-                                                                            </h5>
-                                                                            <small className="text-muted">
-                                                                                Total Machining Duration: <strong>{formatHours(r.ActiveMachiningHours)} hrs ({formatDuration(r.ActiveMachiningMinutes)})</strong> across <strong>{r.MachineCount} machines</strong> and <strong>{r.JobCardCount} job cards</strong>.
+                                                                                Machine Breakdown: Item {r.ItemCode} ({r.ItemName})
+                                                                            </strong>
+                                                                            <small className="text-muted d-block" style={{ fontSize: "0.78rem" }}>
+                                                                                Total Machining: <strong>{formatHours(r.ActiveMachiningHours)} hrs</strong> ({formatDuration(r.ActiveMachiningMinutes)}) across {r.MachineCount} machines and {r.JobCardCount} job cards.
                                                                             </small>
                                                                         </div>
 
-                                                                        {/* Sub Navigation: Machine View vs Step View */}
                                                                         <Nav variant="pills" activeKey={rowDetail?.activeTab || "machines"} onSelect={(k) => {
                                                                             setExpandedRows(prev => ({
                                                                                 ...prev,
@@ -800,146 +925,145 @@ const ItemMachiningTimeReport = () => {
                                                                             }));
                                                                         }}>
                                                                             <Nav.Item>
-                                                                                <Nav.Link eventKey="machines" className="py-1 px-3" style={{ fontSize: "0.8rem" }}>
+                                                                                <Nav.Link eventKey="machines" style={{ padding: "4px 12px", fontSize: "0.78rem" }}>
                                                                                     <FaIndustry className="me-1" /> Machines Summary
                                                                                 </Nav.Link>
                                                                             </Nav.Item>
                                                                             <Nav.Item>
-                                                                                <Nav.Link eventKey="steps" className="py-1 px-3" style={{ fontSize: "0.8rem" }}>
+                                                                                <Nav.Link eventKey="steps" style={{ padding: "4px 12px", fontSize: "0.78rem" }}>
                                                                                     <FaListUl className="me-1" /> Job Card Steps ({rowDetail?.data?.steps?.length || 0})
                                                                                 </Nav.Link>
                                                                             </Nav.Item>
                                                                         </Nav>
-                                                                    </div>
+                                                                    </Card.Header>
 
-                                                                    {rowDetail?.loading ? (
-                                                                        <div className="text-center py-4">
-                                                                            <Spinner animation="border" size="sm" variant="primary" />
-                                                                            <span className="ms-2 text-muted fw-bold">Loading machine breakdown...</span>
-                                                                        </div>
-                                                                    ) : rowDetail?.activeTab === "steps" ? (
-                                                                        /* Steps Detailed Table */
-                                                                        <div className="table-responsive bg-white rounded border">
-                                                                            <Table size="sm" bordered hover className="mb-0 text-center align-middle">
-                                                                                <thead className="table-secondary" style={{ fontSize: "0.8rem" }}>
-                                                                                    <tr>
-                                                                                        <th>#</th>
-                                                                                        <th>Job Card No</th>
-                                                                                        <th>Series</th>
-                                                                                        <th>Process</th>
-                                                                                        <th>Machine</th>
-                                                                                        <th>Operator</th>
-                                                                                        <th>Start Time</th>
-                                                                                        <th>End Time</th>
-                                                                                        <th>Pause (Min)</th>
-                                                                                        <th>Duration</th>
-                                                                                        <th>Status</th>
-                                                                                    </tr>
-                                                                                </thead>
-                                                                                <tbody style={{ fontSize: "0.8rem" }}>
-                                                                                    {rowDetail?.data?.steps?.map((step, sIdx) => (
-                                                                                        <tr key={step.StepId || sIdx}>
-                                                                                            <td className="fw-bold">{sIdx + 1}</td>
-                                                                                            <td className="fw-bold text-primary">{step.JobCardNo}</td>
-                                                                                            <td>{step.Series}</td>
-                                                                                            <td className="text-start fw-bold">{step.ProcessName}</td>
-                                                                                            <td className="text-start">{step.MachineName} (#{step.MachineNumber})</td>
-                                                                                            <td>{step.OperatorName}</td>
-                                                                                            <td>{formatDateTime(step.StartTime)}</td>
-                                                                                            <td>{step.EndTime ? formatDateTime(step.EndTime) : <Badge bg="warning" text="dark">Running</Badge>}</td>
-                                                                                            <td className="text-muted">{step.PauseMinutes || 0}</td>
-                                                                                            <td className="fw-bold text-success">{formatHours(step.ActiveHours)} hrs</td>
-                                                                                            <td>
-                                                                                                {step.IsCompleted ? (
-                                                                                                    <Badge bg="success">Done</Badge>
-                                                                                                ) : step.IsPaused ? (
-                                                                                                    <Badge bg="danger">Paused</Badge>
-                                                                                                ) : (
-                                                                                                    <Badge bg="warning" text="dark">Active</Badge>
-                                                                                                )}
-                                                                                            </td>
+                                                                    <Card.Body className="p-0">
+                                                                        {rowDetail?.loading ? (
+                                                                            <div className="text-center py-4">
+                                                                                <Spinner animation="border" size="sm" variant="primary" />
+                                                                                <span className="ms-2 text-muted fw-bold" style={{ fontSize: "0.82rem" }}>
+                                                                                    Loading machine breakdown details...
+                                                                                </span>
+                                                                            </div>
+                                                                        ) : rowDetail?.activeTab === "steps" ? (
+                                                                            /* Steps Table */
+                                                                            <div className="table-responsive">
+                                                                                <Table size="sm" bordered hover className="mb-0 text-center align-middle" style={{ fontSize: "0.78rem" }}>
+                                                                                    <thead className="thead-light" style={{ backgroundColor: "#f8f9fa" }}>
+                                                                                        <tr>
+                                                                                            <th style={{ width: "35px" }}>#</th>
+                                                                                            <th>Job Card No</th>
+                                                                                            <th>Series</th>
+                                                                                            <th style={{ textAlign: "left" }}>Process</th>
+                                                                                            <th style={{ textAlign: "left" }}>Machine</th>
+                                                                                            <th>Operator</th>
+                                                                                            <th>Start Time</th>
+                                                                                            <th>End Time</th>
+                                                                                            <th>Pause (Min)</th>
+                                                                                            <th style={{ backgroundColor: "#eaecef" }}>Duration</th>
+                                                                                            <th>Status</th>
                                                                                         </tr>
-                                                                                    ))}
-                                                                                </tbody>
-                                                                            </Table>
-                                                                        </div>
-                                                                    ) : (
-                                                                        /* Machine-wise Breakdown Table */
-                                                                        <div className="table-responsive bg-white rounded border">
-                                                                            <Table size="sm" bordered hover className="mb-0 text-center align-middle">
-                                                                                <thead className="table-secondary" style={{ fontSize: "0.85rem" }}>
-                                                                                    <tr>
-                                                                                        <th style={{ width: "90px" }}>M/C NO</th>
-                                                                                        <th style={{ textAlign: "left" }}>MACHINE NAME</th>
-                                                                                        <th style={{ width: "90px" }}>TYPE</th>
-                                                                                        <th style={{ width: "90px" }}>STEPS</th>
-                                                                                        <th style={{ width: "150px" }}>FIRST START</th>
-                                                                                        <th style={{ width: "150px" }}>LAST END</th>
-                                                                                        <th style={{ width: "100px" }}>PAUSE (MIN)</th>
-                                                                                        <th style={{ width: "140px" }}>ACTIVE TIME</th>
-                                                                                        <th style={{ width: "180px" }}>% TIME SHARE</th>
-                                                                                        <th style={{ width: "110px" }}>STATUS</th>
-                                                                                    </tr>
-                                                                                </thead>
-                                                                                <tbody>
-                                                                                    {rowDetail?.data?.machines?.map((m, mIdx) => {
-                                                                                        const pct = parseFloat(m.MachineSharePercent) || 0;
-                                                                                        let barVariant = "primary";
-                                                                                        if (pct > 30) barVariant = "success";
-                                                                                        else if (pct > 15) barVariant = "info";
-                                                                                        else if (pct > 5) barVariant = "warning";
-
-                                                                                        return (
-                                                                                            <tr key={m.MachineId || mIdx} style={{ fontSize: "0.85rem" }}>
-                                                                                                <td className="fw-bold fs-6">{m.MachineNumber}</td>
-                                                                                                <td className="text-start fw-bold text-dark">
-                                                                                                    {m.MachineName}
-                                                                                                </td>
+                                                                                    </thead>
+                                                                                    <tbody>
+                                                                                        {rowDetail?.data?.steps?.map((step, sIdx) => (
+                                                                                            <tr key={step.StepId || sIdx}>
+                                                                                                <td>{sIdx + 1}</td>
+                                                                                                <td className="fw-bold text-primary">{step.JobCardNo}</td>
+                                                                                                <td>{step.Series}</td>
+                                                                                                <td className="text-start fw-bold">{step.ProcessName}</td>
+                                                                                                <td className="text-start">{step.MachineName} (#{step.MachineNumber})</td>
+                                                                                                <td>{step.OperatorName}</td>
+                                                                                                <td>{formatDateTime(step.StartTime)}</td>
                                                                                                 <td>
-                                                                                                    <Badge bg={m.CategoryName === "M" ? "secondary" : "dark"}>
-                                                                                                        {m.CategoryName === "W" ? "Wood" : (m.CategoryName === "M" ? "Metal" : m.CategoryName)}
-                                                                                                    </Badge>
-                                                                                                </td>
-                                                                                                <td>
-                                                                                                    <Badge bg="light" text="dark" className="border">
-                                                                                                        {m.CompletedStepCount} / {m.StepCount}
-                                                                                                    </Badge>
-                                                                                                </td>
-                                                                                                <td style={{ fontSize: "0.8rem" }}>{formatDateTime(m.FirstStartTime)}</td>
-                                                                                                <td style={{ fontSize: "0.8rem" }}>{formatDateTime(m.LastEndTime)}</td>
-                                                                                                <td className="text-muted">{m.TotalPauseMinutes}</td>
-                                                                                                <td className="fw-bold text-primary fs-6">
-                                                                                                    {formatHours(m.ActiveMachiningHours)} <span style={{ fontSize: "0.75rem" }}>hrs</span>
-                                                                                                </td>
-                                                                                                <td>
-                                                                                                    <div className="d-flex align-items-center gap-2">
-                                                                                                        <ProgressBar
-                                                                                                            now={pct}
-                                                                                                            variant={barVariant}
-                                                                                                            style={{ height: "8px", flex: 1 }}
-                                                                                                        />
-                                                                                                        <span className="fw-bold text-dark" style={{ minWidth: "40px", fontSize: "0.75rem" }}>
-                                                                                                            {pct}%
-                                                                                                        </span>
-                                                                                                    </div>
-                                                                                                </td>
-                                                                                                <td>
-                                                                                                    {m.Status === "COMPLETED" ? (
-                                                                                                        <Badge bg="success">Done</Badge>
-                                                                                                    ) : m.Status === "IN_PROGRESS" ? (
-                                                                                                        <Badge bg="warning" text="dark">Active</Badge>
+                                                                                                    {step.EndTime ? (
+                                                                                                        formatDateTime(step.EndTime)
                                                                                                     ) : (
-                                                                                                        <Badge bg="secondary">Pending</Badge>
+                                                                                                        <Badge bg="warning" text="dark" className="px-2 py-1">
+                                                                                                            <FaSpinner className="fa-spin me-1" size={8} /> Running
+                                                                                                        </Badge>
+                                                                                                    )}
+                                                                                                </td>
+                                                                                                <td className="text-muted">{step.PauseMinutes || 0}</td>
+                                                                                                <td className="fw-bold text-primary">{formatHours(step.ActiveHours)} hrs</td>
+                                                                                                <td>
+                                                                                                    {step.IsCompleted ? (
+                                                                                                        <Badge bg="success" className="px-2 py-1">
+                                                                                                            <FaCheckCircle size={8} className="me-1" /> Completed
+                                                                                                        </Badge>
+                                                                                                    ) : (
+                                                                                                        <Badge bg="warning" text="dark" className="px-2 py-1">
+                                                                                                            <FaSpinner className="fa-spin me-1" size={8} /> In Progress
+                                                                                                        </Badge>
                                                                                                     )}
                                                                                                 </td>
                                                                                             </tr>
-                                                                                        );
-                                                                                    })}
-                                                                                </tbody>
-                                                                            </Table>
-                                                                        </div>
-                                                                    )}
-                                                                </div>
+                                                                                        ))}
+                                                                                    </tbody>
+                                                                                </Table>
+                                                                            </div>
+                                                                        ) : (
+                                                                            /* Machines Summary Table */
+                                                                            <div className="table-responsive">
+                                                                                <Table size="sm" bordered hover className="mb-0 text-center align-middle" style={{ fontSize: "0.78rem" }}>
+                                                                                    <thead className="thead-light" style={{ backgroundColor: "#f8f9fa" }}>
+                                                                                        <tr>
+                                                                                            <th style={{ width: "90px" }}>M/C NO</th>
+                                                                                            <th style={{ textAlign: "left" }}>MACHINE NAME</th>
+                                                                                            <th>TYPE</th>
+                                                                                            <th>STEPS</th>
+                                                                                            <th>FIRST START</th>
+                                                                                            <th>LAST END</th>
+                                                                                            <th>PAUSE (MIN)</th>
+                                                                                            <th style={{ backgroundColor: "#eaecef" }}>ACTIVE TIME</th>
+                                                                                            <th style={{ width: "160px" }}>% TIME SHARE</th>
+                                                                                            <th>STATUS</th>
+                                                                                        </tr>
+                                                                                    </thead>
+                                                                                    <tbody>
+                                                                                        {rowDetail?.data?.machines?.map((m, mIdx) => {
+                                                                                            const pct = parseFloat(m.MachineSharePercent) || 0;
+                                                                                            return (
+                                                                                                <tr key={m.MachineId || mIdx}>
+                                                                                                    <td className="fw-bold">{m.MachineNumber}</td>
+                                                                                                    <td className="text-start fw-bold text-dark">{m.MachineName}</td>
+                                                                                                    <td>
+                                                                                                        <span className="badge bg-light text-dark border">
+                                                                                                            {m.CategoryName === "W" ? "Wood" : (m.CategoryName === "M" ? "Metal" : m.CategoryName)}
+                                                                                                        </span>
+                                                                                                    </td>
+                                                                                                    <td>{m.CompletedStepCount} / {m.StepCount}</td>
+                                                                                                    <td>{formatDateTime(m.FirstStartTime)}</td>
+                                                                                                    <td>{formatDateTime(m.LastEndTime)}</td>
+                                                                                                    <td className="text-muted">{m.TotalPauseMinutes}</td>
+                                                                                                    <td className="fw-bold text-primary">
+                                                                                                        {formatHours(m.ActiveMachiningHours)} hrs
+                                                                                                    </td>
+                                                                                                    <td>
+                                                                                                        <div className="d-flex align-items-center gap-1 justify-content-center">
+                                                                                                            <ProgressBar now={pct} variant="primary" style={{ height: "6px", width: "90px" }} />
+                                                                                                            <span style={{ fontSize: "0.72rem", fontWeight: 700, minWidth: "32px" }}>{pct}%</span>
+                                                                                                        </div>
+                                                                                                    </td>
+                                                                                                    <td>
+                                                                                                        {m.Status === "COMPLETED" ? (
+                                                                                                            <Badge bg="success" className="px-2 py-1">
+                                                                                                                <FaCheckCircle size={8} className="me-1" /> Completed
+                                                                                                            </Badge>
+                                                                                                        ) : (
+                                                                                                            <Badge bg="warning" text="dark" className="px-2 py-1">
+                                                                                                                <FaSpinner className="fa-spin me-1" size={8} /> In Progress
+                                                                                                            </Badge>
+                                                                                                        )}
+                                                                                                    </td>
+                                                                                                </tr>
+                                                                                            );
+                                                                                        })}
+                                                                                    </tbody>
+                                                                                </Table>
+                                                                            </div>
+                                                                        )}
+                                                                    </Card.Body>
+                                                                </Card>
                                                             </td>
                                                         </tr>
                                                     )}
@@ -947,12 +1071,12 @@ const ItemMachiningTimeReport = () => {
                                             );
                                         })}
                                     </tbody>
-                                    <tfoot className="table-dark">
-                                        <tr style={{ fontWeight: "800", fontSize: "0.9rem" }}>
+                                    <tfoot className="table-light border-top">
+                                        <tr style={{ fontWeight: 700, fontSize: "0.82rem" }}>
                                             <td colSpan={5} className="text-end pe-3">TOTAL SUMMARY:</td>
                                             <td>{kpiSummary.totalUnits}</td>
                                             <td colSpan={5}></td>
-                                            <td className="text-warning fs-6">{kpiSummary.totalActiveHours} hrs</td>
+                                            <td className="text-primary">{kpiSummary.totalActiveHours} hrs</td>
                                             <td colSpan={2}></td>
                                         </tr>
                                     </tfoot>

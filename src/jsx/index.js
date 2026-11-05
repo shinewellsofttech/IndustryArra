@@ -165,6 +165,7 @@ import GlobalOptions from "./Masters/GlobalOptions";
 import PageList_ShiftMaster from "./Masters/PageList_ShiftMaster";
 import ReportBuilderStudio from "./Reports/ReportBuilderStudio";
 import DynamicCustomReportViewer from "./Reports/DynamicCustomReportViewer";
+import ActiveJobCardsReport from "./Reports/ActiveJobCardsReport";
 
 const Markup = () => {
   const { menuToggle } = useContext(ThemeContext);
@@ -326,6 +327,7 @@ const Markup = () => {
     { url: "ReportBuilder", component: <ReportBuilderStudio/> },
     { url: "ReportBuilder/:editReportId", component: <ReportBuilderStudio/> },
     { url: "CustomReport/:reportId", component: <DynamicCustomReportViewer/> },
+    { url: "ActiveJobCards", component: <ActiveJobCardsReport/> },
 
   ];
   let path = window.location.pathname;
@@ -349,13 +351,15 @@ const Markup = () => {
       case 'AddItem': return 'ItemMaster';
       case 'AddMachine': return 'MachineMaster';
       case 'EditWoodIssue': return 'AddWoodIssue';
+      case 'department-master': return 'DepartmentMaster';
+      case 'AddDepartment': return 'DepartmentMaster';
       default: return url;
     }
   };
 
   const filteredRoutes = allroutes.filter(route => {
     if (!permissions || permissions.length === 0) return true;
-    if (userData?.role === 1 || userData?.roleId === 1 || userData?.Role === 1 || userData?.userType === 1 || userData?.UserType === 1 || userData?.userName?.toLowerCase() === 'admin' || userData?.username?.toLowerCase() === 'admin' || userData?.Name?.toLowerCase() === 'admin') return true;
+    if (userData?.role === 1 || userData?.roleId === 1 || userData?.Role === 1 || userData?.userType === 1 || userData?.UserType === 1 || userData?.userName?.toLowerCase() === 'admin' || userData?.username?.toLowerCase() === 'admin' || userData?.Name?.toLowerCase() === 'admin' || userData?.roleNames?.toLowerCase().includes('admin')) return true;
 
     const publicPages = [
       'dashboard', 'todo', 'widget-basic', 'ecom-product-grid', 'ecom-product-list', 
@@ -365,7 +369,7 @@ const Markup = () => {
       'table-bootstrap-basic'
     ];
     if (publicPages.includes(route.url)) return true;
-    if (route.url.startsWith('ReportBuilder') || route.url.startsWith('CustomReport')) return true;
+    if (route.url.startsWith('ReportBuilder') || route.url.startsWith('CustomReport') || route.url === 'DepartmentMaster' || route.url === 'department-master' || route.url === 'ActiveJobCards') return true;
 
     const checkPath = getParentPath(route.url).toLowerCase().replace(/^\//, '');
     const perm = permissions.find(p => (p.ModulePath || p.Path)?.toLowerCase().replace(/^\//, '') === checkPath);
@@ -388,7 +392,8 @@ const Markup = () => {
       "ContainerMaster", "ContainerMasterReport", "ContainerEntryReport", 
       "UserMasterCrud", "UserRole", "WoodComponentReport", "AddWoodIssue", "QRScanner",
       "WoodIssueScanner", "GlobalOptions", "Report_ContainerWise",
-      "MachineDelayDashboard", "MachineRunningStatusReport", "ItemMachiningTimeReport", "ShiftMaster"
+      "MachineDelayDashboard", "MachineRunningStatusReport", "ItemMachiningTimeReport", "ShiftMaster",
+      "DepartmentMaster"
     ];
 
     if (allModulesList.some(m => m.toLowerCase().replace(/^\//, '') === checkPath)) {
