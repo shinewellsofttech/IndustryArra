@@ -18,7 +18,7 @@ const addDays = (dateInput, days) => {
     return d.toISOString().split('T')[0];
 };
 
-// Helper to calculate difference in calendar days between two dates
+// Helper to calculate difference in calendar days between two dates (dateStr1 - dateStr2)
 const getDayDifference = (dateStr1, dateStr2) => {
     if (!dateStr1 || !dateStr2) return 0;
     const d1 = new Date(dateStr1);
@@ -28,34 +28,59 @@ const getDayDifference = (dateStr1, dateStr2) => {
     return Math.round(diffTime / (1000 * 60 * 60 * 24));
 };
 
-// Format date to readable DD-MM-YYYY
-const formatDisplayDate = (dateStr) => {
-    if (!dateStr) return '-';
-    try {
-        const parts = String(dateStr).split('T')[0].split('-');
-        if (parts.length === 3) {
-            return `${parts[2]}-${parts[1]}-${parts[0]}`;
-        }
-    } catch {
-        // fallback
-    }
-    return String(dateStr).split('T')[0];
-};
+// 10 Standard Active Production Stages in Chronological Order
+const STAGE_ORDER = [
+    { key: 'WoodIssue', inKey: 'WoodIssueIn', outKey: 'WoodIssueOut', daysKey: 'WoodIssueDays', label: 'Wood Issue' },
+    { key: 'PreCutting', inKey: 'PreCuttingIn', outKey: 'PreCuttingOut', daysKey: 'PreCuttingDays', label: 'Pre Cutting' },
+    { key: 'Machining', inKey: 'MachiningIn', outKey: 'MachiningOut', daysKey: 'MachiningDays', label: 'Machining' },
+    { key: 'Assembly', inKey: 'AssemblyIn', outKey: 'AssemblyOut', daysKey: 'AssemblyDays', label: 'Assembly' },
+    { key: 'Sanding', inKey: 'SandingIn', outKey: 'SandingOut', daysKey: 'SandingDays', label: 'Sanding' },
+    { key: 'Polish', inKey: 'PolishIn', outKey: 'PolishOut', daysKey: 'PolishDays', label: 'Polish' },
+    { key: 'Fitting', inKey: 'FittingIn', outKey: 'FittingOut', daysKey: 'FittingDays', label: 'Fitting' },
+    { key: 'Qc', inKey: 'QcIn', outKey: 'QcOut', daysKey: 'QcDays', label: 'QC' },
+    { key: 'FinalQc', inKey: 'FinalQcIn', outKey: 'FinalQcOut', daysKey: 'FinalQcDays', label: 'Final QC' },
+    { key: 'Packing', inKey: 'PackingIn', outKey: 'PackingOut', daysKey: 'PackingDays', label: 'Packing' },
+];
 
-// 12 Editable columns specification for keyboard navigation
+// 32 Editable columns specification for desktop keyboard navigation (Arrow keys, Tab, Enter, Ctrl+D)
 const EDITABLE_COLS = [
+    // Col 0: Target Date
     { key: 'InspectionDate', label: 'Insp Date', isDate: true },
-    { key: 'WoodIssueDays', label: 'Wood' },
-    { key: 'PreCuttingDays', label: 'PreCut' },
-    { key: 'OutSourceDays', label: 'OutSrc', isInfo: true },
-    { key: 'MachiningDays', label: 'Mach' },
-    { key: 'AssemblyDays', label: 'Assem' },
-    { key: 'SandingDays', label: 'Sand' },
-    { key: 'PolishDays', label: 'Polish' },
-    { key: 'FittingDays', label: 'Fit' },
-    { key: 'QcDays', label: 'QC' },
-    { key: 'FinalQcDays', label: 'FinalQC' },
-    { key: 'PackingDays', label: 'Pack' },
+
+    // Cols 1 to 11: Department Days
+    { key: 'WoodIssueDays', label: 'Wood Days', isDay: true },
+    { key: 'PreCuttingDays', label: 'PreCut Days', isDay: true },
+    { key: 'OutSourceDays', label: 'OutSrc Days', isDay: true, isInfo: true },
+    { key: 'MachiningDays', label: 'Mach Days', isDay: true },
+    { key: 'AssemblyDays', label: 'Assem Days', isDay: true },
+    { key: 'SandingDays', label: 'Sand Days', isDay: true },
+    { key: 'PolishDays', label: 'Polish Days', isDay: true },
+    { key: 'FittingDays', label: 'Fit Days', isDay: true },
+    { key: 'QcDays', label: 'QC Days', isDay: true },
+    { key: 'FinalQcDays', label: 'FinalQC Days', isDay: true },
+    { key: 'PackingDays', label: 'Pack Days', isDay: true },
+
+    // Cols 12 to 31: Department Dates (10 stages IN & OUT)
+    { key: 'WoodIssueIn', label: 'Wood IN', isDate: true },
+    { key: 'WoodIssueOut', label: 'Wood OUT', isDate: true },
+    { key: 'PreCuttingIn', label: 'PreCut IN', isDate: true },
+    { key: 'PreCuttingOut', label: 'PreCut OUT', isDate: true },
+    { key: 'MachiningIn', label: 'Mach IN', isDate: true },
+    { key: 'MachiningOut', label: 'Mach OUT', isDate: true },
+    { key: 'AssemblyIn', label: 'Assem IN', isDate: true },
+    { key: 'AssemblyOut', label: 'Assem OUT', isDate: true },
+    { key: 'SandingIn', label: 'Sand IN', isDate: true },
+    { key: 'SandingOut', label: 'Sand OUT', isDate: true },
+    { key: 'PolishIn', label: 'Polish IN', isDate: true },
+    { key: 'PolishOut', label: 'Polish OUT', isDate: true },
+    { key: 'FittingIn', label: 'Fit IN', isDate: true },
+    { key: 'FittingOut', label: 'Fit OUT', isDate: true },
+    { key: 'QcIn', label: 'QC IN', isDate: true },
+    { key: 'QcOut', label: 'QC OUT', isDate: true },
+    { key: 'FinalQcIn', label: 'FinalQC IN', isDate: true },
+    { key: 'FinalQcOut', label: 'FinalQC OUT', isDate: true },
+    { key: 'PackingIn', label: 'Pack IN', isDate: true },
+    { key: 'PackingOut', label: 'Pack OUT', isDate: true },
 ];
 
 export const ProductionPlanningModal = ({
@@ -138,9 +163,29 @@ export const ProductionPlanningModal = ({
                     QcDays: saved.QcDays !== undefined ? saved.QcDays : 0,
                     FinalQcDays: saved.FinalQcDays !== undefined ? saved.FinalQcDays : 0,
                     PackingDays: saved.PackingDays !== undefined ? saved.PackingDays : 0,
+                    WoodIssueIn: saved.WoodIssueIn ? String(saved.WoodIssueIn).split('T')[0] : null,
+                    WoodIssueOut: saved.WoodIssueOut ? String(saved.WoodIssueOut).split('T')[0] : null,
+                    PreCuttingIn: saved.PreCuttingIn ? String(saved.PreCuttingIn).split('T')[0] : null,
+                    PreCuttingOut: saved.PreCuttingOut ? String(saved.PreCuttingOut).split('T')[0] : null,
+                    MachiningIn: saved.MachiningIn ? String(saved.MachiningIn).split('T')[0] : null,
+                    MachiningOut: saved.MachiningOut ? String(saved.MachiningOut).split('T')[0] : null,
+                    AssemblyIn: saved.AssemblyIn ? String(saved.AssemblyIn).split('T')[0] : null,
+                    AssemblyOut: saved.AssemblyOut ? String(saved.AssemblyOut).split('T')[0] : null,
+                    SandingIn: saved.SandingIn ? String(saved.SandingIn).split('T')[0] : null,
+                    SandingOut: saved.SandingOut ? String(saved.SandingOut).split('T')[0] : null,
+                    PolishIn: saved.PolishIn ? String(saved.PolishIn).split('T')[0] : null,
+                    PolishOut: saved.PolishOut ? String(saved.PolishOut).split('T')[0] : null,
+                    FittingIn: saved.FittingIn ? String(saved.FittingIn).split('T')[0] : null,
+                    FittingOut: saved.FittingOut ? String(saved.FittingOut).split('T')[0] : null,
+                    QcIn: saved.QcIn ? String(saved.QcIn).split('T')[0] : null,
+                    QcOut: saved.QcOut ? String(saved.QcOut).split('T')[0] : null,
+                    FinalQcIn: saved.FinalQcIn ? String(saved.FinalQcIn).split('T')[0] : null,
+                    FinalQcOut: saved.FinalQcOut ? String(saved.FinalQcOut).split('T')[0] : null,
+                    PackingIn: saved.PackingIn ? String(saved.PackingIn).split('T')[0] : null,
+                    PackingOut: saved.PackingOut ? String(saved.PackingOut).split('T')[0] : null,
                 };
 
-                return calculateRowSchedule(initialObj);
+                return calculateScheduleFromDays(initialObj);
             });
 
             setPlanItems(merged);
@@ -154,13 +199,15 @@ export const ProductionPlanningModal = ({
     };
 
     /**
-     * Core Scheduling Cascade Engine
-     * OUT SOURCE JOB is strictly informational and does NOT affect timeline dates.
+     * Scheduling Engine (Days -> Dates):
+     * Reverse schedules from InspectionDate to determine WoodIssueIn,
+     * then cascades forward through all 10 stages with +1 day buffer.
+     * OUT SOURCE JOB is strictly informational and excluded from date calculations.
      */
-    const calculateRowSchedule = (item) => {
+    const calculateScheduleFromDays = (item) => {
         const woodDays = parseInt(item.WoodIssueDays, 10) || 0;
         const preCutDays = parseInt(item.PreCuttingDays, 10) || 0;
-        const outSourceDays = parseInt(item.OutSourceDays, 10) || 0; // Informational only
+        const outSourceDays = parseInt(item.OutSourceDays, 10) || 0; // Excluded from calculation
         const machDays = parseInt(item.MachiningDays, 10) || 0;
         const assemDays = parseInt(item.AssemblyDays, 10) || 0;
         const sandDays = parseInt(item.SandingDays, 10) || 0;
@@ -170,13 +217,22 @@ export const ProductionPlanningModal = ({
         const finalQcDays = parseInt(item.FinalQcDays, 10) || 0;
         const packDays = parseInt(item.PackingDays, 10) || 0;
 
-        // Total Lead Days excludes OutSourceDays as clarified
+        // Total Lead Days excludes OutSourceDays as instructed
         const totalLeadDays = woodDays + preCutDays + machDays + assemDays + sandDays + 
                               polishDays + fitDays + qcDays + finalQcDays + packDays;
 
         const inspectionDate = item.InspectionDate ? String(item.InspectionDate).split('T')[0] : null;
 
-        let woodIssueIn = null, woodIssueOut = null;
+        let woodIssueIn = item.WoodIssueIn ? String(item.WoodIssueIn).split('T')[0] : null;
+
+        // Reverse scheduling: Wood Issue IN = InspectionDate - TotalLeadDays
+        if (inspectionDate && totalLeadDays > 0) {
+            if (!woodIssueIn) {
+                woodIssueIn = addDays(inspectionDate, -totalLeadDays);
+            }
+        }
+
+        let woodIssueOut = null;
         let preCutIn = null, preCutOut = null;
         let machIn = null, machOut = null;
         let assemIn = null, assemOut = null;
@@ -186,20 +242,14 @@ export const ProductionPlanningModal = ({
         let qcIn = null, qcOut = null;
         let finalQcIn = null, finalQcOut = null;
         let packIn = null, packOut = null;
-        let daysWithBuffer = 0;
-        let isDeadlineExceeded = false;
-        let overdueDays = 0;
 
-        if (inspectionDate && totalLeadDays > 0) {
-            // Backward calculation: Wood Issue IN = InspectionDate - TotalLeadDays
-            woodIssueIn = addDays(inspectionDate, -totalLeadDays);
+        if (woodIssueIn) {
             woodIssueOut = addDays(woodIssueIn, woodDays);
 
             // Forward cascades (+1 day buffer for each department transition)
             preCutIn = addDays(woodIssueOut, 1);
             preCutOut = addDays(preCutIn, preCutDays);
 
-            // Machining starts after PreCutting (+1 day buffer). Outsource Job is skipped from date math.
             machIn = addDays(preCutOut, 1);
             machOut = addDays(machIn, machDays);
 
@@ -223,15 +273,18 @@ export const ProductionPlanningModal = ({
 
             packIn = addDays(finalQcOut, 1);
             packOut = addDays(packIn, packDays);
+        }
 
-            // Days with Buffer = Packing OUT minus Wood Issue IN
+        let daysWithBuffer = 0;
+        if (packOut && woodIssueIn) {
             daysWithBuffer = getDayDifference(packOut, woodIssueIn);
+        }
 
-            // Check if Packing OUT goes past Target Inspection Date
-            if (packOut && inspectionDate) {
-                overdueDays = getDayDifference(packOut, inspectionDate);
-                isDeadlineExceeded = overdueDays > 0;
-            }
+        let overdueDays = 0;
+        let isDeadlineExceeded = false;
+        if (packOut && inspectionDate) {
+            overdueDays = getDayDifference(packOut, inspectionDate);
+            isDeadlineExceeded = overdueDays > 0;
         }
 
         return {
@@ -274,24 +327,108 @@ export const ProductionPlanningModal = ({
         };
     };
 
-    // Handle single day input change with validation (allows typing freely)
+    // Handle single day input change with validation (re-computes dates)
     const handleDayChange = (itemKey, field, value) => {
         const val = value === '' ? '' : Math.max(0, parseInt(value, 10) || 0);
         setPlanItems(prev => prev.map(p => {
             if (p.ContainerMasterLId === itemKey) {
-                return calculateRowSchedule({ ...p, [field]: val });
+                return calculateScheduleFromDays({ ...p, [field]: val });
             }
             return p;
         }));
     };
 
-    // Handle inspection date change
-    const handleInspectionDateChange = (itemKey, value) => {
+    /**
+     * Smart Bi-Directional Date Cell Change Handler:
+     * Allows user to change dates freely!
+     * Automatically matches Days = (Date OUT - Date IN),
+     * cascades forward with +1 day buffer, and recalculates Total Lead Days
+     * (keeping OUT SOURCE JOB completely out of lead calculation).
+     */
+    const handleDateCellChange = (itemKey, fieldKey, newDateValue) => {
         setPlanItems(prev => prev.map(p => {
-            if (p.ContainerMasterLId === itemKey) {
-                return calculateRowSchedule({ ...p, InspectionDate: value });
+            if (p.ContainerMasterLId !== itemKey) return p;
+
+            const val = newDateValue ? String(newDateValue).split('T')[0] : null;
+            let updated = { ...p, [fieldKey]: val };
+
+            // 1. If user changes Target Inspection Date:
+            if (fieldKey === 'InspectionDate') {
+                const totalDays = updated.TotalLeadDays || 0;
+                if (val && totalDays > 0) {
+                    updated.WoodIssueIn = addDays(val, -totalDays);
+                }
+                return calculateScheduleFromDays(updated);
             }
-            return p;
+
+            // 2. If user changes WoodIssueIn directly:
+            if (fieldKey === 'WoodIssueIn') {
+                return calculateScheduleFromDays(updated);
+            }
+
+            // 3. If user changes any stage OUT date or IN date:
+            const changedStageIdx = STAGE_ORDER.findIndex(
+                s => s.inKey === fieldKey || s.outKey === fieldKey
+            );
+
+            if (changedStageIdx >= 0) {
+                const currentStage = STAGE_ORDER[changedStageIdx];
+                const isOutField = currentStage.outKey === fieldKey;
+
+                if (isOutField) {
+                    // User edited OUT date: Match days = OUT - IN
+                    if (val && updated[currentStage.inKey]) {
+                        const daysDiff = getDayDifference(val, updated[currentStage.inKey]);
+                        updated[currentStage.daysKey] = Math.max(0, daysDiff);
+                    }
+                } else {
+                    // User edited IN date:
+                    if (val && updated[currentStage.outKey] && val <= updated[currentStage.outKey]) {
+                        const daysDiff = getDayDifference(updated[currentStage.outKey], val);
+                        updated[currentStage.daysKey] = Math.max(0, daysDiff);
+                    } else if (val) {
+                        updated[currentStage.outKey] = addDays(val, updated[currentStage.daysKey]);
+                    }
+                }
+
+                // Cascade forward to all subsequent stages (+1 day buffer)
+                let prevOut = updated[currentStage.outKey];
+                for (let i = changedStageIdx + 1; i < STAGE_ORDER.length; i++) {
+                    const stage = STAGE_ORDER[i];
+                    if (prevOut) {
+                        updated[stage.inKey] = addDays(prevOut, 1);
+                        updated[stage.outKey] = addDays(updated[stage.inKey], updated[stage.daysKey]);
+                        prevOut = updated[stage.outKey];
+                    }
+                }
+
+                // Re-calculate total days (STRICTLY EXCLUDING OutSourceDays)
+                const total = 
+                    (parseInt(updated.WoodIssueDays, 10) || 0) +
+                    (parseInt(updated.PreCuttingDays, 10) || 0) +
+                    (parseInt(updated.MachiningDays, 10) || 0) +
+                    (parseInt(updated.AssemblyDays, 10) || 0) +
+                    (parseInt(updated.SandingDays, 10) || 0) +
+                    (parseInt(updated.PolishDays, 10) || 0) +
+                    (parseInt(updated.FittingDays, 10) || 0) +
+                    (parseInt(updated.QcDays, 10) || 0) +
+                    (parseInt(updated.FinalQcDays, 10) || 0) +
+                    (parseInt(updated.PackingDays, 10) || 0);
+
+                updated.TotalLeadDays = total;
+
+                if (updated.PackingOut && updated.WoodIssueIn) {
+                    updated.DaysWithBuffer = getDayDifference(updated.PackingOut, updated.WoodIssueIn);
+                }
+                if (updated.PackingOut && updated.InspectionDate) {
+                    updated.OverdueDays = Math.max(0, getDayDifference(updated.PackingOut, updated.InspectionDate));
+                    updated.IsDeadlineExceeded = updated.OverdueDays > 0;
+                }
+
+                return updated;
+            }
+
+            return calculateScheduleFromDays(updated);
         }));
     };
 
@@ -306,7 +443,7 @@ export const ProductionPlanningModal = ({
         }
     };
 
-    // Comprehensive Keyboard Navigation (Excel-style)
+    // Comprehensive Keyboard Navigation (Excel-style across all 32 editable columns)
     const handleCellKeyDown = (e, rowIdx, colIdx, totalRows) => {
         // Ctrl + S: Save Plan
         if ((e.ctrlKey || e.metaKey) && (e.key === 's' || e.key === 'S')) {
@@ -324,7 +461,7 @@ export const ProductionPlanningModal = ({
                 if (prevRowItem && filteredItems[rowIdx]) {
                     const prevVal = prevRowItem[colDef.key];
                     if (colDef.isDate) {
-                        handleInspectionDateChange(filteredItems[rowIdx].ContainerMasterLId, prevVal);
+                        handleDateCellChange(filteredItems[rowIdx].ContainerMasterLId, colDef.key, prevVal);
                     } else {
                         handleDayChange(filteredItems[rowIdx].ContainerMasterLId, colDef.key, prevVal);
                     }
@@ -393,7 +530,7 @@ export const ProductionPlanningModal = ({
         );
         if (!confirmation) return;
 
-        const updated = planItems.map(item => calculateRowSchedule({
+        const updated = planItems.map(item => calculateScheduleFromDays({
             ...item,
             WoodIssueDays: row1.WoodIssueDays,
             PreCuttingDays: row1.PreCuttingDays,
@@ -511,7 +648,7 @@ export const ProductionPlanningModal = ({
         toast.success(`📥 Template downloaded with ${planItems.length} items!`);
     };
 
-    // Excel Upload Handler: Direct inline update into the same table!
+    // Excel Upload Handler: Direct inline update into the table!
     const handleFileUpload = (e) => {
         const file = e.target.files[0];
         if (!file) return;
@@ -550,7 +687,7 @@ export const ProductionPlanningModal = ({
                             const inspDate = row[5] ? String(row[5]).trim().split('T')[0] : item.InspectionDate;
                             const woodDays = parseInt(row[6], 10) || 0;
                             const preCutDays = parseInt(row[7], 10) || 0;
-                            const outSourceDays = parseInt(row[8], 10) || 0;
+                            const outSourceDays = parseInt(row[8], 10) || 0; // Excluded from calculation
                             const machDays = parseInt(row[9], 10) || 0;
                             const assemDays = parseInt(row[10], 10) || 0;
                             const sandDays = parseInt(row[11], 10) || 0;
@@ -560,7 +697,9 @@ export const ProductionPlanningModal = ({
                             const finalQcDays = parseInt(row[15], 10) || 0;
                             const packDays = parseInt(row[16], 10) || 0;
 
-                            return calculateRowSchedule({
+                            const woodIn = row[18] ? String(row[18]).trim().split('T')[0] : item.WoodIssueIn;
+
+                            return calculateScheduleFromDays({
                                 ...item,
                                 InspectionDate: inspDate,
                                 WoodIssueDays: woodDays,
@@ -574,6 +713,7 @@ export const ProductionPlanningModal = ({
                                 QcDays: qcDays,
                                 FinalQcDays: finalQcDays,
                                 PackingDays: packDays,
+                                WoodIssueIn: woodIn,
                             });
                         }
                     }
@@ -592,7 +732,11 @@ export const ProductionPlanningModal = ({
         e.target.value = '';
     };
 
-    // Save ALL selected shipments plan to backend in ONE JSON POST
+    /**
+     * Save ALL selected shipments plan to backend in ONE JSON POST
+     * Strict Rule: OUT SOURCE JOB is kept OUT of total lead days and timeline calculation.
+     * All days are verified against date differences before saving.
+     */
     const handleSavePlan = async () => {
         if (!planItems || planItems.length === 0) {
             toast.warn('No items to save.');
@@ -613,44 +757,99 @@ export const ProductionPlanningModal = ({
             const userId = localStorage.getItem('userId') || '0';
             const url = `${API_WEB_URLS.BASE}ShipmentPlanning/SavePlan/${userId}/token`;
 
-            const payloadData = planItems.map(item => ({
-                ContainerMasterLId: item.ContainerMasterLId,
-                ContainerId: item.ContainerId,
-                WoodIssueDays: parseInt(item.WoodIssueDays, 10) || 0,
-                PreCuttingDays: parseInt(item.PreCuttingDays, 10) || 0,
-                OutSourceDays: parseInt(item.OutSourceDays, 10) || 0,
-                MachiningDays: parseInt(item.MachiningDays, 10) || 0,
-                AssemblyDays: parseInt(item.AssemblyDays, 10) || 0,
-                SandingDays: parseInt(item.SandingDays, 10) || 0,
-                PolishDays: parseInt(item.PolishDays, 10) || 0,
-                FittingDays: parseInt(item.FittingDays, 10) || 0,
-                QcDays: parseInt(item.QcDays, 10) || 0,
-                FinalQcDays: parseInt(item.FinalQcDays, 10) || 0,
-                PackingDays: parseInt(item.PackingDays, 10) || 0,
-                TotalLeadDays: item.TotalLeadDays || 0,
-                DaysWithBuffer: item.DaysWithBuffer || 0,
-                IsDeadlineExceeded: item.IsDeadlineExceeded ? true : false,
-                WoodIssueIn: item.WoodIssueIn,
-                WoodIssueOut: item.WoodIssueOut,
-                PreCuttingIn: item.PreCuttingIn,
-                PreCuttingOut: item.PreCuttingOut,
-                MachiningIn: item.MachiningIn,
-                MachiningOut: item.MachiningOut,
-                AssemblyIn: item.AssemblyIn,
-                AssemblyOut: item.AssemblyOut,
-                SandingIn: item.SandingIn,
-                SandingOut: item.SandingOut,
-                PolishIn: item.PolishIn,
-                PolishOut: item.PolishOut,
-                FittingIn: item.FittingIn,
-                FittingOut: item.FittingOut,
-                QcIn: item.QcIn,
-                QcOut: item.QcOut,
-                FinalQcIn: item.FinalQcIn,
-                FinalQcOut: item.FinalQcOut,
-                PackingIn: item.PackingIn,
-                PackingOut: item.PackingOut
-            }));
+            const payloadData = planItems.map(item => {
+                // Ensure days match dates if both IN and OUT are set
+                const wood = (item.WoodIssueIn && item.WoodIssueOut) 
+                    ? Math.max(0, getDayDifference(item.WoodIssueOut, item.WoodIssueIn))
+                    : (parseInt(item.WoodIssueDays, 10) || 0);
+
+                const preCut = (item.PreCuttingIn && item.PreCuttingOut)
+                    ? Math.max(0, getDayDifference(item.PreCuttingOut, item.PreCuttingIn))
+                    : (parseInt(item.PreCuttingDays, 10) || 0);
+
+                const outSource = parseInt(item.OutSourceDays, 10) || 0; // Strictly informational
+
+                const mach = (item.MachiningIn && item.MachiningOut)
+                    ? Math.max(0, getDayDifference(item.MachiningOut, item.MachiningIn))
+                    : (parseInt(item.MachiningDays, 10) || 0);
+
+                const assem = (item.AssemblyIn && item.AssemblyOut)
+                    ? Math.max(0, getDayDifference(item.AssemblyOut, item.AssemblyIn))
+                    : (parseInt(item.AssemblyDays, 10) || 0);
+
+                const sand = (item.SandingIn && item.SandingOut)
+                    ? Math.max(0, getDayDifference(item.SandingOut, item.SandingIn))
+                    : (parseInt(item.SandingDays, 10) || 0);
+
+                const polish = (item.PolishIn && item.PolishOut)
+                    ? Math.max(0, getDayDifference(item.PolishOut, item.PolishIn))
+                    : (parseInt(item.PolishDays, 10) || 0);
+
+                const fit = (item.FittingIn && item.FittingOut)
+                    ? Math.max(0, getDayDifference(item.FittingOut, item.FittingIn))
+                    : (parseInt(item.FittingDays, 10) || 0);
+
+                const qc = (item.QcIn && item.QcOut)
+                    ? Math.max(0, getDayDifference(item.QcOut, item.QcIn))
+                    : (parseInt(item.QcDays, 10) || 0);
+
+                const finalQc = (item.FinalQcIn && item.FinalQcOut)
+                    ? Math.max(0, getDayDifference(item.FinalQcOut, item.FinalQcIn))
+                    : (parseInt(item.FinalQcDays, 10) || 0);
+
+                const pack = (item.PackingIn && item.PackingOut)
+                    ? Math.max(0, getDayDifference(item.PackingOut, item.PackingIn))
+                    : (parseInt(item.PackingDays, 10) || 0);
+
+                // TOTAL LEAD DAYS STRICTLY EXCLUDES OutSourceDays
+                const totalLead = wood + preCut + mach + assem + sand + polish + fit + qc + finalQc + pack;
+
+                let daysWithBuffer = 0;
+                if (item.PackingOut && item.WoodIssueIn) {
+                    daysWithBuffer = getDayDifference(item.PackingOut, item.WoodIssueIn);
+                }
+
+                const isDeadlineExceeded = item.InspectionDate && item.PackingOut && item.PackingOut > item.InspectionDate;
+
+                return {
+                    ContainerMasterLId: item.ContainerMasterLId,
+                    ContainerId: item.ContainerId,
+                    WoodIssueDays: wood,
+                    PreCuttingDays: preCut,
+                    OutSourceDays: outSource,
+                    MachiningDays: mach,
+                    AssemblyDays: assem,
+                    SandingDays: sand,
+                    PolishDays: polish,
+                    FittingDays: fit,
+                    QcDays: qc,
+                    FinalQcDays: finalQc,
+                    PackingDays: pack,
+                    TotalLeadDays: totalLead,
+                    DaysWithBuffer: daysWithBuffer,
+                    IsDeadlineExceeded: isDeadlineExceeded ? true : false,
+                    WoodIssueIn: item.WoodIssueIn,
+                    WoodIssueOut: item.WoodIssueOut,
+                    PreCuttingIn: item.PreCuttingIn,
+                    PreCuttingOut: item.PreCuttingOut,
+                    MachiningIn: item.MachiningIn,
+                    MachiningOut: item.MachiningOut,
+                    AssemblyIn: item.AssemblyIn,
+                    AssemblyOut: item.AssemblyOut,
+                    SandingIn: item.SandingIn,
+                    SandingOut: item.SandingOut,
+                    PolishIn: item.PolishIn,
+                    PolishOut: item.PolishOut,
+                    FittingIn: item.FittingIn,
+                    FittingOut: item.FittingOut,
+                    QcIn: item.QcIn,
+                    QcOut: item.QcOut,
+                    FinalQcIn: item.FinalQcIn,
+                    FinalQcOut: item.FinalQcOut,
+                    PackingIn: item.PackingIn,
+                    PackingOut: item.PackingOut
+                };
+            });
 
             const res = await axios.post(url, { Data: JSON.stringify(payloadData) }, {
                 headers: {
@@ -910,22 +1109,27 @@ export const ProductionPlanningModal = ({
                                         <th rowSpan="2" style={{ padding: '4px 6px', border: '1px solid #cbd5e1', textAlign: 'left', width: '80px' }}>Item Code</th>
                                         <th rowSpan="2" style={{ padding: '4px 6px', border: '1px solid #cbd5e1', textAlign: 'left', minWidth: '160px' }}>Description</th>
                                         <th rowSpan="2" style={{ padding: '4px 6px', border: '1px solid #cbd5e1', textAlign: 'center', width: '45px' }}>Qty</th>
-                                        <th rowSpan="2" style={{ padding: '4px 6px', border: '1px solid #cbd5e1', textAlign: 'center', width: '110px' }}>Insp Date</th>
+                                        <th rowSpan="2" style={{ padding: '4px 6px', border: '1px solid #cbd5e1', textAlign: 'center', width: '105px' }}>Insp Date</th>
                                         
-                                        {/* Department Days Group */}
+                                        {/* Department Days Group (ColSpan 11) */}
                                         <th colSpan="11" style={{ padding: '4px 6px', border: '1px solid #cbd5e1', textAlign: 'center', backgroundColor: '#e2e8f0' }}>
                                             Department Lead Times (Days)
                                         </th>
                                         
-                                        {/* Computed Output Dates */}
-                                        <th rowSpan="2" style={{ padding: '4px 6px', border: '1px solid #cbd5e1', textAlign: 'center', width: '55px', backgroundColor: '#f1f5f9' }}>Total</th>
-                                        <th rowSpan="2" style={{ padding: '4px 6px', border: '1px solid #cbd5e1', textAlign: 'center', width: '85px', backgroundColor: '#f1f5f9' }}>Wood IN</th>
-                                        <th rowSpan="2" style={{ padding: '4px 6px', border: '1px solid #cbd5e1', textAlign: 'center', width: '85px', backgroundColor: '#f1f5f9' }}>Wood OUT</th>
-                                        <th rowSpan="2" style={{ padding: '4px 6px', border: '1px solid #cbd5e1', textAlign: 'center', width: '85px', backgroundColor: '#f1f5f9' }}>Mach OUT</th>
-                                        <th rowSpan="2" style={{ padding: '4px 6px', border: '1px solid #cbd5e1', textAlign: 'center', width: '85px', backgroundColor: '#f1f5f9' }}>Assem OUT</th>
-                                        <th rowSpan="2" style={{ padding: '4px 6px', border: '1px solid #cbd5e1', textAlign: 'center', width: '85px', backgroundColor: '#f1f5f9' }}>Polish OUT</th>
-                                        <th rowSpan="2" style={{ padding: '4px 6px', border: '1px solid #cbd5e1', textAlign: 'center', width: '85px', backgroundColor: '#f1f5f9' }}>FinalQC OUT</th>
-                                        <th rowSpan="2" style={{ padding: '4px 6px', border: '1px solid #cbd5e1', textAlign: 'center', width: '85px', backgroundColor: '#f1f5f9' }}>Pack OUT</th>
+                                        <th rowSpan="2" style={{ padding: '4px 6px', border: '1px solid #cbd5e1', textAlign: 'center', width: '50px', backgroundColor: '#f1f5f9' }}>Total</th>
+
+                                        {/* 10 Department Stage Dates (IN & OUT) */}
+                                        <th colSpan="2" style={{ padding: '4px 6px', border: '1px solid #cbd5e1', textAlign: 'center', backgroundColor: '#e2e8f0' }}>Wood Issue</th>
+                                        <th colSpan="2" style={{ padding: '4px 6px', border: '1px solid #cbd5e1', textAlign: 'center', backgroundColor: '#e2e8f0' }}>Pre Cutting</th>
+                                        <th colSpan="2" style={{ padding: '4px 6px', border: '1px solid #cbd5e1', textAlign: 'center', backgroundColor: '#e2e8f0' }}>Machining</th>
+                                        <th colSpan="2" style={{ padding: '4px 6px', border: '1px solid #cbd5e1', textAlign: 'center', backgroundColor: '#e2e8f0' }}>Assembly</th>
+                                        <th colSpan="2" style={{ padding: '4px 6px', border: '1px solid #cbd5e1', textAlign: 'center', backgroundColor: '#e2e8f0' }}>Sanding</th>
+                                        <th colSpan="2" style={{ padding: '4px 6px', border: '1px solid #cbd5e1', textAlign: 'center', backgroundColor: '#e2e8f0' }}>Polish</th>
+                                        <th colSpan="2" style={{ padding: '4px 6px', border: '1px solid #cbd5e1', textAlign: 'center', backgroundColor: '#e2e8f0' }}>Fitting</th>
+                                        <th colSpan="2" style={{ padding: '4px 6px', border: '1px solid #cbd5e1', textAlign: 'center', backgroundColor: '#e2e8f0' }}>QC</th>
+                                        <th colSpan="2" style={{ padding: '4px 6px', border: '1px solid #cbd5e1', textAlign: 'center', backgroundColor: '#e2e8f0' }}>Final QC</th>
+                                        <th colSpan="2" style={{ padding: '4px 6px', border: '1px solid #cbd5e1', textAlign: 'center', backgroundColor: '#e2e8f0' }}>Packing</th>
+
                                         <th rowSpan="2" style={{ padding: '4px 6px', border: '1px solid #cbd5e1', textAlign: 'center', width: '55px', backgroundColor: '#f1f5f9' }}>Buffer</th>
                                         <th rowSpan="2" style={{ padding: '4px 6px', border: '1px solid #cbd5e1', textAlign: 'center', width: '75px', backgroundColor: '#f1f5f9' }}>Status</th>
                                     </tr>
@@ -943,13 +1147,35 @@ export const ProductionPlanningModal = ({
                                         <th style={{ padding: '3px 4px', border: '1px solid #cbd5e1', textAlign: 'center', width: '42px' }}>QC</th>
                                         <th style={{ padding: '3px 4px', border: '1px solid #cbd5e1', textAlign: 'center', width: '45px' }}>FinalQC</th>
                                         <th style={{ padding: '3px 4px', border: '1px solid #cbd5e1', textAlign: 'center', width: '42px' }}>Pack</th>
+
+                                        {/* 10 Stages IN / OUT Headers */}
+                                        <th style={{ padding: '3px 4px', border: '1px solid #cbd5e1', textAlign: 'center', minWidth: '95px' }}>IN</th>
+                                        <th style={{ padding: '3px 4px', border: '1px solid #cbd5e1', textAlign: 'center', minWidth: '95px' }}>OUT</th>
+                                        <th style={{ padding: '3px 4px', border: '1px solid #cbd5e1', textAlign: 'center', minWidth: '95px' }}>IN</th>
+                                        <th style={{ padding: '3px 4px', border: '1px solid #cbd5e1', textAlign: 'center', minWidth: '95px' }}>OUT</th>
+                                        <th style={{ padding: '3px 4px', border: '1px solid #cbd5e1', textAlign: 'center', minWidth: '95px' }}>IN</th>
+                                        <th style={{ padding: '3px 4px', border: '1px solid #cbd5e1', textAlign: 'center', minWidth: '95px' }}>OUT</th>
+                                        <th style={{ padding: '3px 4px', border: '1px solid #cbd5e1', textAlign: 'center', minWidth: '95px' }}>IN</th>
+                                        <th style={{ padding: '3px 4px', border: '1px solid #cbd5e1', textAlign: 'center', minWidth: '95px' }}>OUT</th>
+                                        <th style={{ padding: '3px 4px', border: '1px solid #cbd5e1', textAlign: 'center', minWidth: '95px' }}>IN</th>
+                                        <th style={{ padding: '3px 4px', border: '1px solid #cbd5e1', textAlign: 'center', minWidth: '95px' }}>OUT</th>
+                                        <th style={{ padding: '3px 4px', border: '1px solid #cbd5e1', textAlign: 'center', minWidth: '95px' }}>IN</th>
+                                        <th style={{ padding: '3px 4px', border: '1px solid #cbd5e1', textAlign: 'center', minWidth: '95px' }}>OUT</th>
+                                        <th style={{ padding: '3px 4px', border: '1px solid #cbd5e1', textAlign: 'center', minWidth: '95px' }}>IN</th>
+                                        <th style={{ padding: '3px 4px', border: '1px solid #cbd5e1', textAlign: 'center', minWidth: '95px' }}>OUT</th>
+                                        <th style={{ padding: '3px 4px', border: '1px solid #cbd5e1', textAlign: 'center', minWidth: '95px' }}>IN</th>
+                                        <th style={{ padding: '3px 4px', border: '1px solid #cbd5e1', textAlign: 'center', minWidth: '95px' }}>OUT</th>
+                                        <th style={{ padding: '3px 4px', border: '1px solid #cbd5e1', textAlign: 'center', minWidth: '95px' }}>IN</th>
+                                        <th style={{ padding: '3px 4px', border: '1px solid #cbd5e1', textAlign: 'center', minWidth: '95px' }}>OUT</th>
+                                        <th style={{ padding: '3px 4px', border: '1px solid #cbd5e1', textAlign: 'center', minWidth: '95px' }}>IN</th>
+                                        <th style={{ padding: '3px 4px', border: '1px solid #cbd5e1', textAlign: 'center', minWidth: '95px' }}>OUT</th>
                                     </tr>
                                 </thead>
 
                                 <tbody>
                                     {filteredItems.length === 0 ? (
                                         <tr>
-                                            <td colSpan="26" style={{ textAlign: 'center', padding: '20px', color: '#64748b' }}>
+                                            <td colSpan="41" style={{ textAlign: 'center', padding: '20px', color: '#64748b' }}>
                                                 No items match your filter.
                                             </td>
                                         </tr>
@@ -988,24 +1214,27 @@ export const ProductionPlanningModal = ({
                                                             id={`cell-${idx}-0`}
                                                             type="date"
                                                             value={item.InspectionDate ? String(item.InspectionDate).split('T')[0] : ''}
-                                                            onChange={e => handleInspectionDateChange(item.ContainerMasterLId, e.target.value)}
+                                                            onChange={e => handleDateCellChange(item.ContainerMasterLId, 'InspectionDate', e.target.value)}
                                                             onFocus={e => e.target.select()}
                                                             onKeyDown={e => handleCellKeyDown(e, idx, 0, filteredItems.length)}
                                                             className="desktop-cell-input"
                                                             style={{ 
                                                                 width: '100%', 
+                                                                minWidth: '95px',
                                                                 height: '22px', 
                                                                 fontSize: '11px', 
                                                                 border: '1px solid #cbd5e1', 
                                                                 borderRadius: '2px',
                                                                 padding: '1px 2px',
-                                                                backgroundColor: '#fff'
+                                                                backgroundColor: '#fff',
+                                                                textAlign: 'center'
                                                             }}
+                                                            title="Target Inspection Date"
                                                         />
                                                     </td>
 
                                                     {/* Department Inputs: Wood to Pack (Col Indices 1 to 11) */}
-                                                    {EDITABLE_COLS.slice(1).map((dept, deptIdx) => {
+                                                    {EDITABLE_COLS.slice(1, 12).map((dept, deptIdx) => {
                                                         const colIdx = deptIdx + 1; // 1 to 11
                                                         return (
                                                             <td key={dept.key} style={{ border: '1px solid #e2e8f0', padding: '1px 2px' }}>
@@ -1028,40 +1257,55 @@ export const ProductionPlanningModal = ({
                                                                         backgroundColor: dept.isInfo ? '#f8fafc' : '#fff',
                                                                         color: dept.isInfo ? '#64748b' : '#0f172a'
                                                                     }}
-                                                                    title={dept.isInfo ? 'Outsource Job (Informational save only)' : dept.label}
+                                                                    title={dept.isInfo ? 'Outsource Job (Informational save only - excluded from lead days)' : dept.label}
                                                                 />
                                                             </td>
                                                         );
                                                     })}
 
-                                                    {/* Computed Output Dates */}
+                                                    {/* Computed Output Total Days */}
                                                     <td style={{ textAlign: 'center', border: '1px solid #e2e8f0', fontWeight: 600, backgroundColor: '#f8fafc' }}>
                                                         {item.TotalLeadDays}d
                                                     </td>
-                                                    <td style={{ textAlign: 'center', border: '1px solid #e2e8f0', backgroundColor: '#f8fafc', color: '#1e40af', fontWeight: 500 }}>
-                                                        {formatDisplayDate(item.WoodIssueIn)}
-                                                    </td>
-                                                    <td style={{ textAlign: 'center', border: '1px solid #e2e8f0', backgroundColor: '#f8fafc', color: '#475569' }}>
-                                                        {formatDisplayDate(item.WoodIssueOut)}
-                                                    </td>
-                                                    <td style={{ textAlign: 'center', border: '1px solid #e2e8f0', backgroundColor: '#f8fafc', color: '#475569' }}>
-                                                        {formatDisplayDate(item.MachiningOut)}
-                                                    </td>
-                                                    <td style={{ textAlign: 'center', border: '1px solid #e2e8f0', backgroundColor: '#f8fafc', color: '#475569' }}>
-                                                        {formatDisplayDate(item.AssemblyOut)}
-                                                    </td>
-                                                    <td style={{ textAlign: 'center', border: '1px solid #e2e8f0', backgroundColor: '#f8fafc', color: '#475569' }}>
-                                                        {formatDisplayDate(item.PolishOut)}
-                                                    </td>
-                                                    <td style={{ textAlign: 'center', border: '1px solid #e2e8f0', backgroundColor: '#f8fafc', color: '#475569' }}>
-                                                        {formatDisplayDate(item.FinalQcOut)}
-                                                    </td>
-                                                    <td style={{ textAlign: 'center', border: '1px solid #e2e8f0', backgroundColor: '#f8fafc', fontWeight: 600, color: isLate ? '#dc2626' : '#15803d' }}>
-                                                        {formatDisplayDate(item.PackingOut)}
-                                                    </td>
+
+                                                    {/* Department Date Inputs (Col Indices 12 to 31) */}
+                                                    {EDITABLE_COLS.slice(12).map((dateCol, dateIdx) => {
+                                                        const colIdx = dateIdx + 12; // 12 to 31
+                                                        const rawVal = item[dateCol.key];
+                                                        const dateVal = rawVal ? String(rawVal).split('T')[0] : '';
+                                                        return (
+                                                            <td key={dateCol.key} style={{ border: '1px solid #e2e8f0', padding: '1px 2px' }}>
+                                                                <input 
+                                                                    id={`cell-${idx}-${colIdx}`}
+                                                                    type="date"
+                                                                    value={dateVal}
+                                                                    onChange={e => handleDateCellChange(item.ContainerMasterLId, dateCol.key, e.target.value)}
+                                                                    onFocus={e => e.target.select()}
+                                                                    onKeyDown={e => handleCellKeyDown(e, idx, colIdx, filteredItems.length)}
+                                                                    className="desktop-cell-input"
+                                                                    style={{ 
+                                                                        width: '100%', 
+                                                                        minWidth: '95px',
+                                                                        height: '22px', 
+                                                                        fontSize: '11px', 
+                                                                        border: '1px solid #cbd5e1', 
+                                                                        borderRadius: '2px',
+                                                                        padding: '1px 2px',
+                                                                        backgroundColor: '#fff',
+                                                                        textAlign: 'center'
+                                                                    }}
+                                                                    title={`${dateCol.label} - Click to change date`}
+                                                                />
+                                                            </td>
+                                                        );
+                                                    })}
+
+                                                    {/* Days With Buffer */}
                                                     <td style={{ textAlign: 'center', border: '1px solid #e2e8f0', backgroundColor: '#f8fafc', color: '#475569' }}>
                                                         {item.DaysWithBuffer ? `${item.DaysWithBuffer}d` : '-'}
                                                     </td>
+
+                                                    {/* Status Badge */}
                                                     <td style={{ textAlign: 'center', border: '1px solid #e2e8f0', backgroundColor: '#f8fafc' }}>
                                                         {isLate ? (
                                                             <span style={{ color: '#b91c1c', fontWeight: 600, fontSize: '10px' }}>
@@ -1091,14 +1335,14 @@ export const ProductionPlanningModal = ({
             <Modal.Footer style={{ background: '#f8fafc', padding: '6px 16px', borderTop: '1px solid #e2e8f0' }}>
                 <div className="d-flex align-items-center justify-content-between w-100 flex-wrap gap-2">
                     <span style={{ fontSize: '11px', color: '#475569' }}>
-                        ⌨️ <strong>Keyboard Navigation:</strong> <kbd>↑</kbd><kbd>↓</kbd><kbd>←</kbd><kbd>→</kbd> Move cells | <kbd>Enter</kbd> Down | <kbd>Tab</kbd> Right | <kbd>Ctrl+D</kbd> Fill Down | <kbd>Ctrl+S</kbd> Save Plan
+                        ⌨️ <strong>Navigation:</strong> <kbd>↑</kbd><kbd>↓</kbd><kbd>←</kbd><kbd>→</kbd> Move cells | <kbd>Enter</kbd> Down | <kbd>Tab</kbd> Right | <kbd>Ctrl+D</kbd> Fill Down | <kbd>Ctrl+S</kbd> Save Plan | <em>*Dates &amp; Days match automatically. Outsource Job is excluded from lead calculation.</em>
                     </span>
                     <div className="d-flex gap-2">
                         <Button 
                             variant="secondary" 
                             size="sm" 
-                            onClick={onHide} 
-                            style={{ fontSize: '11px', height: '28px' }}
+                            onClick={onHide}
+                            style={{ fontSize: '12px', padding: '4px 14px' }}
                         >
                             Close
                         </Button>
@@ -1107,9 +1351,18 @@ export const ProductionPlanningModal = ({
                             size="sm" 
                             onClick={handleSavePlan}
                             disabled={saving || planItems.length === 0}
-                            style={{ fontSize: '11px', height: '28px', fontWeight: 600 }}
+                            style={{ fontSize: '12px', padding: '4px 18px', fontWeight: 600 }}
                         >
-                            {saving ? 'Saving...' : `💾 Save Target Plan (${planItems.length})`}
+                            {saving ? (
+                                <>
+                                    <Spinner as="span" animation="border" size="sm" role="status" className="me-1" />
+                                    Saving...
+                                </>
+                            ) : (
+                                <>
+                                    <FaSave className="me-1" /> Save Plan ({planItems.length})
+                                </>
+                            )}
                         </Button>
                     </div>
                 </div>
