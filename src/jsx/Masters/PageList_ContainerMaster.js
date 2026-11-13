@@ -928,17 +928,30 @@ export const PageList_ContainerMaster = () => {
 
 		{
 			Header: "Target Plan",
-			Cell: ({ row }) => (
-				<Button
-					variant="outline-primary"
-					size="sm"
-					onClick={() => handleOpenPlanningModalForRows([row.original])}
-					style={{ fontWeight: 600, padding: "3px 8px", fontSize: "11px", whiteSpace: "nowrap" }}
-					title="Open Target Planning for this shipment line"
-				>
-					🎯 Target Plan
-				</Button>
-			),
+			Cell: ({ row }) => {
+				const isRowChecked = selectedRowKeys.has(String(row.original.F_ContainerMasterL || row.original.RowNum));
+				return (
+					<Button
+						variant={isRowChecked ? "primary" : "outline-primary"}
+						size="sm"
+						onClick={() => {
+							if (selectedRows && selectedRows.length > 0) {
+								const isCurrentInSelected = selectedRows.some(
+									r => String(r.F_ContainerMasterL || r.RowNum) === String(row.original.F_ContainerMasterL || row.original.RowNum)
+								);
+								const itemsToOpen = isCurrentInSelected ? selectedRows : [...selectedRows, row.original];
+								handleOpenPlanningModalForRows(itemsToOpen);
+							} else {
+								handleOpenPlanningModalForRows([row.original]);
+							}
+						}}
+						style={{ fontWeight: 600, padding: "3px 8px", fontSize: "11px", whiteSpace: "nowrap" }}
+						title={selectedRows.length > 0 ? `Open Target Planning for ${selectedRows.length} selected item(s)` : "Open Target Planning for this shipment line"}
+					>
+						🎯 Target Plan
+					</Button>
+				);
+			},
 		},
 
 		{
@@ -1008,7 +1021,7 @@ export const PageList_ContainerMaster = () => {
 		},
 
 	]
-	const columns = useMemo( () => COLUMNS, [canEdit, canDelete, selectedRowKeys] )
+	const columns = useMemo( () => COLUMNS, [canEdit, canDelete, selectedRowKeys, selectedRows] )
 	const data = useMemo( () => gridData, [gridData] )
 	const tableInstance = useTable({
 		columns,
@@ -1274,53 +1287,8 @@ export const PageList_ContainerMaster = () => {
 			</Col>
 			</Row>
 		<div className="card">
-			
-			<div className="card-header d-flex justify-content-between align-items-center flex-wrap gap-2">
-				<div className="d-flex align-items-center gap-2">
-					<h4 className="card-title mb-0">Shipment Master</h4>
-					{selectedRows.length > 0 && (
-						<span className="badge bg-primary px-2 py-1" style={{ fontSize: '12px' }}>
-							{selectedRows.length} item(s) selected
-						</span>
-					)}
-				</div>
-
-				<div className="d-flex align-items-center gap-2">
-					{selectedRows.length > 0 && (
-						<Button
-							variant="outline-secondary"
-							size="sm"
-							onClick={handleClearSelection}
-							title="Clear all checked checkboxes"
-						>
-							Clear Selection
-						</Button>
-					)}
-					<Button
-						variant={selectedRows.length > 0 ? "success" : "primary"}
-						size="sm"
-						onClick={() => {
-							if (selectedRows.length === 0) {
-								if (gridData && gridData.length > 0) {
-									const planAll = window.confirm(`No specific rows checked via checkbox.\n\nDo you want to plan ALL ${gridData.length} visible items together?`);
-									if (planAll) {
-										handleOpenPlanningModalForRows(gridData);
-										return;
-									}
-								} else {
-									toast.warn("No shipment items available to plan.");
-								}
-								return;
-							}
-							handleOpenPlanningModalForRows(selectedRows);
-						}}
-						className="d-flex align-items-center gap-1 shadow-sm"
-						style={{ fontWeight: 600 }}
-						title="Open Target Planning for Selected Shipments"
-					>
-						🎯 Production Target Planning {selectedRows.length > 0 ? `(${selectedRows.length} Selected)` : ''}
-					</Button>
-				</div>
+			<div className="card-header d-flex justify-content-between align-items-center">
+				<h4 className="card-title mb-0">Shipment Master</h4>
             </div>
 			<div className="card-body">
 				<div className="table-responsive">
@@ -1756,7 +1724,7 @@ export const PageList_ContainerMaster = () => {
 					onHide={() => setShowPlanningModal(false)}
 					selectedItems={selectedPlanningItems}
 					onSuccess={() => {
-						// Success callback
+						handleClearSelection();
 					}}
 				/>
 			)}
