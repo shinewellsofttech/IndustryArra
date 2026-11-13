@@ -7,7 +7,7 @@ import {
 import * as XLSX from 'xlsx';
 import axios from 'axios';
 import { toast } from 'react-toastify';
-import { API_WEB_URLS } from '../../../constants/constAPI';
+import { API_WEB_URLS } from '../../constants/constAPI';
 
 // Helper to safely add integer days to a Date object or YYYY-MM-DD string
 const addDays = (dateInput, days) => {
@@ -544,7 +544,7 @@ export const ProductionPlanningModal = ({
             // Prepare clean payload
             const payloadData = planItems.map(item => ({
                 ContainerMasterLId: item.ContainerMasterLId,
-                ContainerId: containerId,
+                ContainerId: currentContainerId,
                 WoodIssueDays: item.WoodIssueDays || 0,
                 PreCuttingDays: item.PreCuttingDays || 0,
                 OutSourceDays: item.OutSourceDays || 0,
