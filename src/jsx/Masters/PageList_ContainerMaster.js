@@ -62,37 +62,63 @@ export const PageList_ContainerMaster = () => {
 	const [breakUpArray, setBreakUpArray] = useState([]);
 	const { canAdd, canEdit, canDelete } = usePagePermissions('ContainerMaster');
 
-	// Production Planning Target Modal States
+	// Multi-select Checkbox & Production Planning Target States
+	const [selectedRowKeys, setSelectedRowKeys] = useState(new Set());
+	const [selectedRows, setSelectedRows] = useState([]);
 	const [showPlanningModal, setShowPlanningModal] = useState(false);
-	const [selectedPlanningContainer, setSelectedPlanningContainer] = useState({ id: 0, number: '' });
+	const [selectedPlanningItems, setSelectedPlanningItems] = useState([]);
 
-	// Extract unique list of shipments/containers for switching in modal
-	const containerList = useMemo(() => {
-		if (!gridData || !Array.isArray(gridData)) return [];
-		const map = new Map();
-		gridData.forEach(item => {
-			if (item.F_ContainerMaster && !map.has(item.F_ContainerMaster)) {
-				map.set(item.F_ContainerMaster, {
-					id: item.F_ContainerMaster,
-					number: item.ContainerNumber || `Shipment #${item.F_ContainerMaster}`
-				});
+	const handleToggleRowSelect = (item) => {
+		const key = String(item.F_ContainerMasterL || item.RowNum);
+		setSelectedRowKeys(prev => {
+			const next = new Set(prev);
+			if (next.has(key)) {
+				next.delete(key);
+			} else {
+				next.add(key);
+			}
+			return next;
+		});
+
+		setSelectedRows(prev => {
+			const exists = prev.some(r => String(r.F_ContainerMasterL || r.RowNum) === key);
+			if (exists) {
+				return prev.filter(r => String(r.F_ContainerMasterL || r.RowNum) !== key);
+			} else {
+				return [...prev, item];
 			}
 		});
-		return Array.from(map.values());
-	}, [gridData]);
-
-	const handleOpenPlanningModal = (containerId, containerNumber) => {
-		setSelectedPlanningContainer({ id: containerId, number: containerNumber });
-		setShowPlanningModal(true);
 	};
 
-	const handleOpenPlanningModalTop = () => {
-		if (containerList.length > 0) {
-			setSelectedPlanningContainer(containerList[0]);
-			setShowPlanningModal(true);
+	const handleSelectAll = (rows, checked) => {
+		if (checked && rows && rows.length > 0) {
+			const allKeys = new Set();
+			const allRows = [];
+			rows.forEach(r => {
+				const key = String(r.original.F_ContainerMasterL || r.original.RowNum);
+				allKeys.add(key);
+				allRows.push(r.original);
+			});
+			setSelectedRowKeys(allKeys);
+			setSelectedRows(allRows);
 		} else {
-			toast.warn("No shipments available to plan.");
+			setSelectedRowKeys(new Set());
+			setSelectedRows([]);
 		}
+	};
+
+	const handleClearSelection = () => {
+		setSelectedRowKeys(new Set());
+		setSelectedRows([]);
+	};
+
+	const handleOpenPlanningModalForRows = (items) => {
+		if (!items || items.length === 0) {
+			toast.warn("Please select at least one shipment or line item.");
+			return;
+		}
+		setSelectedPlanningItems(items);
+		setShowPlanningModal(true);
 	};
 
 	useEffect(() => {
@@ -656,6 +682,39 @@ export const PageList_ContainerMaster = () => {
 	
 	const COLUMNS = [
 		{
+			id: 'selection',
+			Header: ({ rows }) => {
+				const isAllSelected = rows && rows.length > 0 && rows.every(r => selectedRowKeys.has(String(r.original.F_ContainerMasterL || r.original.RowNum)));
+				return (
+					<div className="text-center" style={{ width: '30px' }}>
+						<input
+							type="checkbox"
+							checked={isAllSelected}
+							onChange={(e) => handleSelectAll(rows, e.target.checked)}
+							style={{ width: '16px', height: '16px', cursor: 'pointer', verticalAlign: 'middle' }}
+							title={isAllSelected ? "Deselect All Visible" : "Select All Visible"}
+						/>
+					</div>
+				);
+			},
+			Cell: ({ row }) => {
+				const key = String(row.original.F_ContainerMasterL || row.original.RowNum);
+				const isChecked = selectedRowKeys.has(key);
+				return (
+					<div className="text-center" style={{ width: '30px' }}>
+						<input
+							type="checkbox"
+							checked={isChecked}
+							onChange={() => handleToggleRowSelect(row.original)}
+							style={{ width: '16px', height: '16px', cursor: 'pointer', verticalAlign: 'middle' }}
+							title="Select item for target planning"
+						/>
+					</div>
+				);
+			},
+			disableFilters: true,
+		},
+		{
 			Header : 'Sno',
 			Footer : 'Id',
 			accessor: 'RowNum',
@@ -873,9 +932,9 @@ export const PageList_ContainerMaster = () => {
 				<Button
 					variant="outline-primary"
 					size="sm"
-					onClick={() => handleOpenPlanningModal(row.original.F_ContainerMaster, row.original.ContainerNumber)}
+					onClick={() => handleOpenPlanningModalForRows([row.original])}
 					style={{ fontWeight: 600, padding: "3px 8px", fontSize: "11px", whiteSpace: "nowrap" }}
-					title="Open Production Planning Target"
+					title="Open Target Planning for this shipment line"
 				>
 					🎯 Target Plan
 				</Button>
@@ -949,7 +1008,7 @@ export const PageList_ContainerMaster = () => {
 		},
 
 	]
-	const columns = useMemo( () => COLUMNS, [canEdit, canDelete] )
+	const columns = useMemo( () => COLUMNS, [canEdit, canDelete, selectedRowKeys] )
 	const data = useMemo( () => gridData, [gridData] )
 	const tableInstance = useTable({
 		columns,
@@ -1216,18 +1275,52 @@ export const PageList_ContainerMaster = () => {
 			</Row>
 		<div className="card">
 			
-			<div className="card-header d-flex justify-content-between align-items-center">
-				<h4 className="card-title mb-0">Shipment Master</h4>
-				<Button
-					variant="primary"
-					size="sm"
-					onClick={handleOpenPlanningModalTop}
-					className="d-flex align-items-center gap-1 shadow-sm"
-					style={{ fontWeight: 600 }}
-					title="Open Target Planning for Shipment"
-				>
-					🎯 Production Target Planning
-				</Button>
+			<div className="card-header d-flex justify-content-between align-items-center flex-wrap gap-2">
+				<div className="d-flex align-items-center gap-2">
+					<h4 className="card-title mb-0">Shipment Master</h4>
+					{selectedRows.length > 0 && (
+						<span className="badge bg-primary px-2 py-1" style={{ fontSize: '12px' }}>
+							{selectedRows.length} item(s) selected
+						</span>
+					)}
+				</div>
+
+				<div className="d-flex align-items-center gap-2">
+					{selectedRows.length > 0 && (
+						<Button
+							variant="outline-secondary"
+							size="sm"
+							onClick={handleClearSelection}
+							title="Clear all checked checkboxes"
+						>
+							Clear Selection
+						</Button>
+					)}
+					<Button
+						variant={selectedRows.length > 0 ? "success" : "primary"}
+						size="sm"
+						onClick={() => {
+							if (selectedRows.length === 0) {
+								if (gridData && gridData.length > 0) {
+									const planAll = window.confirm(`No specific rows checked via checkbox.\n\nDo you want to plan ALL ${gridData.length} visible items together?`);
+									if (planAll) {
+										handleOpenPlanningModalForRows(gridData);
+										return;
+									}
+								} else {
+									toast.warn("No shipment items available to plan.");
+								}
+								return;
+							}
+							handleOpenPlanningModalForRows(selectedRows);
+						}}
+						className="d-flex align-items-center gap-1 shadow-sm"
+						style={{ fontWeight: 600 }}
+						title="Open Target Planning for Selected Shipments"
+					>
+						🎯 Production Target Planning {selectedRows.length > 0 ? `(${selectedRows.length} Selected)` : ''}
+					</Button>
+				</div>
             </div>
 			<div className="card-body">
 				<div className="table-responsive">
@@ -1656,14 +1749,12 @@ export const PageList_ContainerMaster = () => {
 					</Modal.Footer>
 				</Modal>
 			)}
-			{/* Production Planning Target Modal */}
+			{/* Multi-Shipment Production Planning Target Modal */}
 			{showPlanningModal && (
 				<ProductionPlanningModal
 					show={showPlanningModal}
 					onHide={() => setShowPlanningModal(false)}
-					containerId={selectedPlanningContainer.id}
-					containerNumber={selectedPlanningContainer.number}
-					containerList={containerList}
+					selectedItems={selectedPlanningItems}
 					onSuccess={() => {
 						// Success callback
 					}}

@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { Modal, Button, Table, Spinner, Badge, Form, Row, Col, Card, Alert, Tab, Nav } from 'react-bootstrap';
+import { Modal, Button, Table, Spinner, Badge, Form, Row, Col, Card, Tab, Nav } from 'react-bootstrap';
 import { 
-    FaDownload, FaUpload, FaFileExcel, FaCopy, FaCheckCircle, 
-    FaExclamationTriangle, FaSave, FaTimes, FaCalendarAlt, FaMagic, FaEye, FaUndo
+    FaDownload, FaUpload, FaFileExcel, FaCheckCircle, 
+    FaSave, FaTimes, FaMagic, FaEye, FaUndo
 } from 'react-icons/fa';
 import * as XLSX from 'xlsx';
 import axios from 'axios';
@@ -45,61 +45,98 @@ const formatDisplayDate = (dateStr) => {
 export const ProductionPlanningModal = ({
     show,
     onHide,
-    containerId: initialContainerId,
-    containerNumber: initialContainerNumber,
-    containerList = [],
+    selectedItems = [],
     onSuccess,
 }) => {
-    const [currentContainerId, setCurrentContainerId] = useState(initialContainerId);
-    const [currentContainerNumber, setCurrentContainerNumber] = useState(initialContainerNumber);
     const [loading, setLoading] = useState(false);
     const [saving, setSaving] = useState(false);
     const [planItems, setPlanItems] = useState([]);
     const [originalItems, setOriginalItems] = useState([]);
     const [searchTerm, setSearchTerm] = useState('');
+    const [selectedShipmentFilter, setSelectedShipmentFilter] = useState('ALL');
     const [activeTab, setActiveTab] = useState('grid');
     
     // Upload & Preview state
     const [uploadPreview, setUploadPreview] = useState(null);
     const [uploadFileName, setUploadFileName] = useState('');
 
+    // Fetch existing planning data from DB for all selected container IDs
     useEffect(() => {
-        setCurrentContainerId(initialContainerId);
-        setCurrentContainerNumber(initialContainerNumber);
-    }, [initialContainerId, initialContainerNumber]);
-
-    // Fetch container items and existing plan targets
-    useEffect(() => {
-        if (show && currentContainerId) {
-            fetchContainerPlan(currentContainerId);
+        if (show && selectedItems && selectedItems.length > 0) {
+            loadPlanningForSelectedItems();
+        } else if (show) {
+            setPlanItems([]);
+            setOriginalItems([]);
         }
-    }, [show, currentContainerId]);
+    }, [show, selectedItems]);
 
-    const fetchContainerPlan = async (cId) => {
+    const loadPlanningForSelectedItems = async () => {
         setLoading(true);
         try {
             const token = localStorage.getItem('token') || localStorage.getItem('authToken') || '';
             const userId = localStorage.getItem('userId') || '0';
-            const url = `${API_WEB_URLS.BASE}ShipmentPlanning/GetPlan/${cId}/${userId}/token`;
 
-            const res = await axios.get(url, {
-                headers: {
-                    Authorization: token ? `Bearer ${token}` : '',
+            // Collect unique container IDs
+            const containerIds = Array.from(new Set(
+                selectedItems.map(i => i.F_ContainerMaster || i.ContainerId).filter(Boolean)
+            )).join(',');
+
+            let existingSavedMap = new Map();
+
+            if (containerIds) {
+                try {
+                    const url = `${API_WEB_URLS.BASE}ShipmentPlanning/GetPlan/0/${userId}/token?containerIds=${containerIds}`;
+                    const res = await axios.get(url, {
+                        headers: { Authorization: token ? `Bearer ${token}` : '' }
+                    });
+
+                    if (res.data && res.data.Success && Array.isArray(res.data.Data)) {
+                        res.data.Data.forEach(savedItem => {
+                            if (savedItem.ContainerMasterLId) {
+                                existingSavedMap.set(String(savedItem.ContainerMasterLId), savedItem);
+                            }
+                        });
+                    }
+                } catch (fetchErr) {
+                    console.warn('Could not fetch existing saved plans from DB, will initialize from selection:', fetchErr);
                 }
+            }
+
+            // Merge selected items with existing saved plans
+            const merged = selectedItems.map(item => {
+                const lineId = String(item.F_ContainerMasterL || item.ContainerMasterLId || item.Id || '');
+                const saved = existingSavedMap.get(lineId) || {};
+
+                const initialObj = {
+                    ContainerMasterLId: parseInt(lineId, 10) || 0,
+                    ContainerId: item.F_ContainerMaster || item.ContainerId || saved.ContainerId || 0,
+                    ContainerNumber: item.ContainerNumber || saved.ContainerNumber || 'N/A',
+                    ContractNo: item.ContractNo || saved.ContractNo || '',
+                    ItemCode: item.ItemCode || saved.ItemCode || '',
+                    ItemName: item.ItemName || saved.ItemName || '',
+                    Quantity: item.Quantity || saved.Quantity || 0,
+                    InspectionDate: item.InspectionDate || saved.InspectionDate || null,
+                    WoodIssueDays: saved.WoodIssueDays !== undefined ? saved.WoodIssueDays : 0,
+                    PreCuttingDays: saved.PreCuttingDays !== undefined ? saved.PreCuttingDays : 0,
+                    OutSourceDays: saved.OutSourceDays !== undefined ? saved.OutSourceDays : 0,
+                    MachiningDays: saved.MachiningDays !== undefined ? saved.MachiningDays : 0,
+                    AssemblyDays: saved.AssemblyDays !== undefined ? saved.AssemblyDays : 0,
+                    SandingDays: saved.SandingDays !== undefined ? saved.SandingDays : 0,
+                    PolishDays: saved.PolishDays !== undefined ? saved.PolishDays : 0,
+                    FittingDays: saved.FittingDays !== undefined ? saved.FittingDays : 0,
+                    QcDays: saved.QcDays !== undefined ? saved.QcDays : 0,
+                    FinalQcDays: saved.FinalQcDays !== undefined ? saved.FinalQcDays : 0,
+                    PackingDays: saved.PackingDays !== undefined ? saved.PackingDays : 0,
+                };
+
+                return calculateRowSchedule(initialObj);
             });
 
-            if (res.data && res.data.Success && Array.isArray(res.data.Data)) {
-                // Compute initial dates for each row
-                const computed = res.data.Data.map(item => calculateRowSchedule(item));
-                setPlanItems(computed);
-                setOriginalItems(JSON.parse(JSON.stringify(computed)));
-            } else {
-                toast.warn(res.data?.Message || 'No line items found for this shipment.');
-                setPlanItems([]);
-            }
+            setPlanItems(merged);
+            setOriginalItems(JSON.parse(JSON.stringify(merged)));
         } catch (err) {
-            console.error('Error fetching shipment plan:', err);
-            toast.error('Failed to load shipment planning data: ' + (err.response?.data?.Message || err.message));
+            console.error('Error loading planning targets:', err);
+            toast.error('Failed to load planning targets: ' + err.message);
         } finally {
             setLoading(false);
         }
@@ -227,28 +264,24 @@ export const ProductionPlanningModal = ({
     };
 
     // Handle single day input change with validation
-    const handleDayChange = (index, field, value) => {
+    const handleDayChange = (itemKey, field, value) => {
         const intVal = value === '' ? 0 : Math.max(0, parseInt(value, 10) || 0);
-        setPlanItems(prev => {
-            const updated = [...prev];
-            updated[index] = calculateRowSchedule({
-                ...updated[index],
-                [field]: intVal
-            });
-            return updated;
-        });
+        setPlanItems(prev => prev.map(p => {
+            if (p.ContainerMasterLId === itemKey) {
+                return calculateRowSchedule({ ...p, [field]: intVal });
+            }
+            return p;
+        }));
     };
 
     // Handle inspection date change
-    const handleInspectionDateChange = (index, value) => {
-        setPlanItems(prev => {
-            const updated = [...prev];
-            updated[index] = calculateRowSchedule({
-                ...updated[index],
-                InspectionDate: value
-            });
-            return updated;
-        });
+    const handleInspectionDateChange = (itemKey, value) => {
+        setPlanItems(prev => prev.map(p => {
+            if (p.ContainerMasterLId === itemKey) {
+                return calculateRowSchedule({ ...p, InspectionDate: value });
+            }
+            return p;
+        }));
     };
 
     // Smart Action: Copy Row 1 Lead Times to ALL Rows
@@ -256,7 +289,7 @@ export const ProductionPlanningModal = ({
         if (planItems.length === 0) return;
         const row1 = planItems[0];
         const confirmation = window.confirm(
-            `Apply Row 1 lead times (Wood: ${row1.WoodIssueDays}d, PreCut: ${row1.PreCuttingDays}d, Mach: ${row1.MachiningDays}d, etc.) to all ${planItems.length} items?`
+            `Apply Row 1 lead times (Wood: ${row1.WoodIssueDays}d, PreCut: ${row1.PreCuttingDays}d, Mach: ${row1.MachiningDays}d, Assem: ${row1.AssemblyDays}d, Sand: ${row1.SandingDays}d, Polish: ${row1.PolishDays}d, Fit: ${row1.FittingDays}d, QC: ${row1.QcDays}d, FinalQC: ${row1.FinalQcDays}d, Pack: ${row1.PackingDays}d) to ALL ${planItems.length} selected items across all shipments?`
         );
         if (!confirmation) return;
 
@@ -276,7 +309,7 @@ export const ProductionPlanningModal = ({
         }));
 
         setPlanItems(updated);
-        toast.info('⚡ Lead times copied from Row 1 to all items successfully!');
+        toast.info(`⚡ Lead times copied to all ${planItems.length} items successfully!`);
     };
 
     // Reset to initial
@@ -287,7 +320,7 @@ export const ProductionPlanningModal = ({
         }
     };
 
-    // Download Pre-filled Template (.xlsx) matching the 39-column standard
+    // Download Pre-filled Template (.xlsx) matching the 39-column standard for all selected shipments
     const handleDownloadTemplate = () => {
         if (!planItems || planItems.length === 0) {
             toast.warn('No items to export.');
@@ -330,7 +363,7 @@ export const ProductionPlanningModal = ({
         ];
 
         const rowsData = planItems.map(item => [
-            currentContainerNumber || item.ContainerNumber || '',
+            item.ContainerNumber || '',
             item.ItemCode || '',
             item.ContractNo || '',
             item.ItemName || '',
@@ -364,20 +397,19 @@ export const ProductionPlanningModal = ({
         const fullAOA = [row1, row2, ...rowsData];
         const ws = XLSX.utils.aoa_to_sheet(fullAOA);
 
-        // Set column widths
         ws['!cols'] = [
-            { wch: 14 }, { wch: 12 }, { wch: 15 }, { wch: 35 }, { wch: 10 }, { wch: 14 }, // A-F
-            { wch: 11 }, { wch: 11 }, { wch: 14 }, { wch: 11 }, { wch: 11 }, { wch: 11 }, { wch: 11 }, { wch: 11 }, { wch: 10 }, { wch: 16 }, { wch: 10 }, // G-Q
-            { wch: 12 }, // R
-            { wch: 12 }, { wch: 12 }, { wch: 12 }, { wch: 12 }, { wch: 12 }, { wch: 12 }, { wch: 12 }, { wch: 12 }, // S-Z
-            { wch: 12 }, { wch: 12 }, { wch: 12 }, { wch: 12 }, { wch: 12 }, { wch: 12 }, { wch: 12 }, { wch: 12 }, { wch: 12 }, { wch: 12 }, { wch: 12 }, { wch: 12 }, // AA-AL
-            { wch: 16 } // AM
+            { wch: 14 }, { wch: 12 }, { wch: 15 }, { wch: 35 }, { wch: 10 }, { wch: 14 },
+            { wch: 11 }, { wch: 11 }, { wch: 14 }, { wch: 11 }, { wch: 11 }, { wch: 11 }, { wch: 11 }, { wch: 11 }, { wch: 10 }, { wch: 16 }, { wch: 10 },
+            { wch: 12 },
+            { wch: 12 }, { wch: 12 }, { wch: 12 }, { wch: 12 }, { wch: 12 }, { wch: 12 }, { wch: 12 }, { wch: 12 },
+            { wch: 12 }, { wch: 12 }, { wch: 12 }, { wch: 12 }, { wch: 12 }, { wch: 12 }, { wch: 12 }, { wch: 12 }, { wch: 12 }, { wch: 12 }, { wch: 12 }, { wch: 12 },
+            { wch: 16 }
         ];
 
         const wb = XLSX.utils.book_new();
         XLSX.utils.book_append_sheet(wb, ws, 'PRODUCTION TARGET');
-        XLSX.writeFile(wb, `AARA_${currentContainerNumber || 'Shipment'}_Target_Template.xlsx`);
-        toast.success('📥 Template downloaded with pre-filled items!');
+        XLSX.writeFile(wb, `AARA_Multi_Shipment_Target_Template.xlsx`);
+        toast.success(`📥 Template downloaded with ${planItems.length} items!`);
     };
 
     // Excel Upload Handler
@@ -395,14 +427,12 @@ export const ProductionPlanningModal = ({
                 const firstSheetName = wb.SheetNames[0];
                 const ws = wb.Sheets[firstSheetName];
 
-                // Convert to array of arrays
                 const aoa = XLSX.utils.sheet_to_json(ws, { header: 1, raw: false });
                 if (!aoa || aoa.length < 3) {
                     toast.error('Invalid Excel file format: Must have headers in rows 1-2 and data starting at row 3.');
                     return;
                 }
 
-                // Parse uploaded rows starting at row 3 (index 2)
                 const parsedRows = [];
                 for (let r = 2; r < aoa.length; r++) {
                     const row = aoa[r];
@@ -415,7 +445,6 @@ export const ProductionPlanningModal = ({
                     const qty = parseInt(row[4], 10) || 0;
                     const inspDate = row[5] ? String(row[5]).trim().split('T')[0] : null;
 
-                    // Days from Col 7 to 17 (index 6 to 16)
                     const woodDays = parseInt(row[6], 10) || 0;
                     const preCutDays = parseInt(row[7], 10) || 0;
                     const outSourceDays = parseInt(row[8], 10) || 0;
@@ -428,8 +457,13 @@ export const ProductionPlanningModal = ({
                     const finalQcDays = parseInt(row[15], 10) || 0;
                     const packDays = parseInt(row[16], 10) || 0;
 
-                    // Check if row matches an item in current container
-                    const matchedItem = planItems.find(p => 
+                    // Match item by ContractNo or ItemCode and ShipmentNo
+                    const matchedItem = planItems.find(p => {
+                        const matchContract = contractNo && String(p.ContractNo).trim().toLowerCase() === contractNo.toLowerCase();
+                        const matchItem = itemCode && String(p.ItemCode).trim().toLowerCase() === itemCode.toLowerCase();
+                        const matchShip = !shipmentNo || String(p.ContainerNumber).trim().toLowerCase() === shipmentNo.toLowerCase();
+                        return (matchContract || matchItem) && matchShip;
+                    }) || planItems.find(p => 
                         (contractNo && String(p.ContractNo).trim().toLowerCase() === contractNo.toLowerCase()) ||
                         (itemCode && String(p.ItemCode).trim().toLowerCase() === itemCode.toLowerCase())
                     );
@@ -439,7 +473,7 @@ export const ProductionPlanningModal = ({
 
                     if (!matchedItem) {
                         status = 'unmatched';
-                        statusMsg = 'Item/Contract not found in this shipment';
+                        statusMsg = 'Item/Contract not found in selected shipments';
                     } else if (!inspDate && !matchedItem.InspectionDate) {
                         status = 'warning';
                         statusMsg = 'Inspection Date missing';
@@ -447,7 +481,7 @@ export const ProductionPlanningModal = ({
 
                     parsedRows.push({
                         rowIdx: r + 1,
-                        ShipmentNo: shipmentNo,
+                        ShipmentNo: shipmentNo || (matchedItem ? matchedItem.ContainerNumber : ''),
                         ItemCode: itemCode,
                         ContractNo: contractNo,
                         ItemName: itemName || (matchedItem ? matchedItem.ItemName : ''),
@@ -472,7 +506,7 @@ export const ProductionPlanningModal = ({
 
                 setUploadPreview(parsedRows);
                 setActiveTab('preview');
-                toast.success(`Excel file parsed: ${parsedRows.length} rows loaded into Preview.`);
+                toast.success(`Excel parsed: ${parsedRows.length} rows loaded into Preview.`);
             } catch (err) {
                 console.error('Error reading excel:', err);
                 toast.error('Failed to parse Excel file: ' + err.message);
@@ -488,7 +522,12 @@ export const ProductionPlanningModal = ({
 
         let matchCount = 0;
         const updated = planItems.map(item => {
-            const found = uploadPreview.find(p => 
+            const found = uploadPreview.find(p => {
+                const matchContract = p.ContractNo && String(p.ContractNo).trim().toLowerCase() === String(item.ContractNo).trim().toLowerCase();
+                const matchItem = p.ItemCode && String(p.ItemCode).trim().toLowerCase() === String(item.ItemCode).trim().toLowerCase();
+                const matchShip = !p.ShipmentNo || String(p.ShipmentNo).trim().toLowerCase() === String(item.ContainerNumber).trim().toLowerCase();
+                return (matchContract || matchItem) && matchShip;
+            }) || uploadPreview.find(p =>
                 (p.ContractNo && String(p.ContractNo).trim().toLowerCase() === String(item.ContractNo).trim().toLowerCase()) ||
                 (p.ItemCode && String(p.ItemCode).trim().toLowerCase() === String(item.ItemCode).trim().toLowerCase())
             );
@@ -516,21 +555,20 @@ export const ProductionPlanningModal = ({
 
         setPlanItems(updated);
         setActiveTab('grid');
-        toast.success(`Successfully updated ${matchCount} shipment items from uploaded Excel!`);
+        toast.success(`Successfully updated ${matchCount} items across selected shipments!`);
     };
 
-    // Save plan to backend
+    // Save ALL selected shipments plan to backend in ONE JSON POST
     const handleSavePlan = async () => {
         if (!planItems || planItems.length === 0) {
             toast.warn('No items to save.');
             return;
         }
 
-        // Validate: Warn if any row has deadline exceeded
         const overdueItems = planItems.filter(p => p.IsDeadlineExceeded);
         if (overdueItems.length > 0) {
             const proceed = window.confirm(
-                `⚠️ Warning: ${overdueItems.length} item(s) have packing finish dates that exceed the Target Inspection Date!\n\nDo you still want to proceed and save this target plan?`
+                `⚠️ Warning: ${overdueItems.length} item(s) have packing finish dates exceeding their Target Inspection Date!\n\nDo you want to proceed and save this plan?`
             );
             if (!proceed) return;
         }
@@ -541,10 +579,10 @@ export const ProductionPlanningModal = ({
             const userId = localStorage.getItem('userId') || '0';
             const url = `${API_WEB_URLS.BASE}ShipmentPlanning/SavePlan/${userId}/token`;
 
-            // Prepare clean payload
+            // Prepare unified payload across all shipments
             const payloadData = planItems.map(item => ({
                 ContainerMasterLId: item.ContainerMasterLId,
-                ContainerId: currentContainerId,
+                ContainerId: item.ContainerId,
                 WoodIssueDays: item.WoodIssueDays || 0,
                 PreCuttingDays: item.PreCuttingDays || 0,
                 OutSourceDays: item.OutSourceDays || 0,
@@ -589,39 +627,55 @@ export const ProductionPlanningModal = ({
             });
 
             if (res.data && res.data.Success) {
-                toast.success('✅ Production planning targets saved successfully!');
+                toast.success(`✅ Saved ${planItems.length} items across all shipments successfully!`);
                 setOriginalItems(JSON.parse(JSON.stringify(planItems)));
                 if (onSuccess) onSuccess();
             } else {
                 toast.error(res.data?.Message || 'Failed to save production plan.');
             }
         } catch (err) {
-            console.error('Error saving plan:', err);
+            console.error('Error saving multi-shipment plan:', err);
             toast.error('Error saving plan: ' + (err.response?.data?.Message || err.message));
         } finally {
             setSaving(false);
         }
     };
 
-    // Filter items based on search term
+    // Unique list of shipments in current modal
+    const uniqueShipments = useMemo(() => {
+        const set = new Set();
+        planItems.forEach(p => {
+            if (p.ContainerNumber) set.add(p.ContainerNumber);
+        });
+        return Array.from(set);
+    }, [planItems]);
+
+    // Filter items based on search term & shipment dropdown
     const filteredItems = useMemo(() => {
-        if (!searchTerm) return planItems;
-        const lower = searchTerm.toLowerCase();
-        return planItems.filter(item => 
-            (item.ContractNo && item.ContractNo.toLowerCase().includes(lower)) ||
-            (item.ItemCode && item.ItemCode.toLowerCase().includes(lower)) ||
-            (item.ItemName && item.ItemName.toLowerCase().includes(lower))
-        );
-    }, [planItems, searchTerm]);
+        let items = planItems;
+        if (selectedShipmentFilter !== 'ALL') {
+            items = items.filter(p => p.ContainerNumber === selectedShipmentFilter);
+        }
+        if (searchTerm) {
+            const lower = searchTerm.toLowerCase();
+            items = items.filter(item => 
+                (item.ContainerNumber && item.ContainerNumber.toLowerCase().includes(lower)) ||
+                (item.ContractNo && item.ContractNo.toLowerCase().includes(lower)) ||
+                (item.ItemCode && item.ItemCode.toLowerCase().includes(lower)) ||
+                (item.ItemName && item.ItemName.toLowerCase().includes(lower))
+            );
+        }
+        return items;
+    }, [planItems, selectedShipmentFilter, searchTerm]);
 
     // Statistics
     const stats = useMemo(() => {
         const total = planItems.length;
         const planned = planItems.filter(p => p.TotalLeadDays > 0).length;
         const overdue = planItems.filter(p => p.IsDeadlineExceeded).length;
-        const unplanned = total - planned;
-        return { total, planned, overdue, unplanned };
-    }, [planItems]);
+        const shipmentsCount = uniqueShipments.length;
+        return { total, planned, overdue, shipmentsCount };
+    }, [planItems, uniqueShipments]);
 
     return (
         <Modal show={show} onHide={onHide} size="fullscreen" centered className="production-planning-modal">
@@ -630,50 +684,26 @@ export const ProductionPlanningModal = ({
                     <div className="d-flex align-items-center gap-3">
                         <span style={{ fontSize: '1.4rem' }}>🎯</span>
                         <div>
-                            {containerList && containerList.length > 1 ? (
-                                <div className="d-flex align-items-center gap-2">
-                                    <span style={{ color: '#fff', fontSize: '1.15rem', fontWeight: 600 }}>
-                                        Production Planning Targets — Shipment:
-                                    </span>
-                                    <Form.Select 
-                                        size="sm" 
-                                        value={currentContainerId}
-                                        onChange={e => {
-                                            const sel = containerList.find(c => String(c.id) === String(e.target.value));
-                                            if (sel) {
-                                                setCurrentContainerId(sel.id);
-                                                setCurrentContainerNumber(sel.number);
-                                            }
-                                        }}
-                                        style={{ 
-                                            width: 'auto', 
-                                            display: 'inline-block', 
-                                            backgroundColor: '#0f172a', 
-                                            color: '#fbbf24', 
-                                            fontWeight: 'bold', 
-                                            border: '1px solid #475569' 
-                                        }}
-                                    >
-                                        {containerList.map(c => (
-                                            <option key={c.id} value={c.id}>{c.number || `Container #${c.id}`}</option>
-                                        ))}
-                                    </Form.Select>
-                                </div>
-                            ) : (
-                                <Modal.Title style={{ color: '#fff', fontSize: '1.25rem', fontWeight: 600 }}>
-                                    Production Planning Targets — Shipment: <span className="text-warning">{currentContainerNumber || 'N/A'}</span>
-                                </Modal.Title>
-                            )}
-                            <small className="text-light opacity-75 d-block">
-                                Backward Scheduling & Department Date Allocation Engine
+                            <Modal.Title style={{ color: '#fff', fontSize: '1.25rem', fontWeight: 600 }}>
+                                Multi-Shipment Production Planning Targets
+                            </Modal.Title>
+                            <small className="text-light opacity-75">
+                                Planning for <span className="text-warning fw-bold">{stats.shipmentsCount} Shipments</span> ({stats.total} total items)
                             </small>
                         </div>
                     </div>
 
                     {/* Quick Metric Badges */}
                     <div className="d-none d-md-flex align-items-center gap-2">
-                        <Badge bg="secondary" className="px-3 py-2">Total Items: {stats.total}</Badge>
-                        <Badge bg="success" className="px-3 py-2">Planned: {stats.planned}</Badge>
+                        <Badge bg="dark" className="px-3 py-2 border border-secondary">
+                            Shipments: {stats.shipmentsCount}
+                        </Badge>
+                        <Badge bg="secondary" className="px-3 py-2">
+                            Total Items: {stats.total}
+                        </Badge>
+                        <Badge bg="success" className="px-3 py-2">
+                            Planned: {stats.planned}
+                        </Badge>
                         {stats.overdue > 0 ? (
                             <Badge bg="danger" className="px-3 py-2 animate__animated animate__pulse animate__infinite">
                                 ⚠️ Overdue: {stats.overdue}
@@ -689,31 +719,47 @@ export const ProductionPlanningModal = ({
                 {loading ? (
                     <div className="text-center py-5">
                         <Spinner animation="border" variant="primary" style={{ width: '3rem', height: '3rem' }} />
-                        <h5 className="mt-3 text-muted">Loading shipment target planning data...</h5>
+                        <h5 className="mt-3 text-muted">Loading multi-shipment target planning data...</h5>
                     </div>
                 ) : (
                     <>
-                        {/* Toolbar: Actions & Search */}
+                        {/* Toolbar: Actions, Filters & Search */}
                         <Card className="mb-3 border-0 shadow-sm">
                             <Card.Body className="p-3">
                                 <Row className="align-items-center g-2">
-                                    <Col lg={3} md={4}>
+                                    <Col lg={3} md={4} sm={6}>
                                         <Form.Control 
                                             type="text" 
                                             size="sm" 
-                                            placeholder="🔍 Search Contract, Item Code, Name..."
+                                            placeholder="🔍 Search Shipment, Contract, Item..."
                                             value={searchTerm}
                                             onChange={e => setSearchTerm(e.target.value)}
                                         />
                                     </Col>
 
-                                    <Col lg={9} md={8} className="d-flex flex-wrap align-items-center justify-content-md-end gap-2">
+                                    {uniqueShipments.length > 1 && (
+                                        <Col lg={2} md={3} sm={6}>
+                                            <Form.Select 
+                                                size="sm"
+                                                value={selectedShipmentFilter}
+                                                onChange={e => setSelectedShipmentFilter(e.target.value)}
+                                                title="Filter by Shipment"
+                                            >
+                                                <option value="ALL">All Shipments ({uniqueShipments.length})</option>
+                                                {uniqueShipments.map(s => (
+                                                    <option key={s} value={s}>{s}</option>
+                                                ))}
+                                            </Form.Select>
+                                        </Col>
+                                    )}
+
+                                    <Col lg={uniqueShipments.length > 1 ? 7 : 9} md={uniqueShipments.length > 1 ? 5 : 8} className="d-flex flex-wrap align-items-center justify-content-md-end gap-2">
                                         <Button 
                                             variant="outline-primary" 
                                             size="sm" 
                                             onClick={handleCopyRow1ToAll}
                                             disabled={planItems.length === 0}
-                                            title="Copy lead times of Row 1 to all items in this container"
+                                            title="Copy lead times of Row 1 to all items across all selected shipments"
                                         >
                                             <FaMagic className="me-1" /> Copy Row 1 Days to All
                                         </Button>
@@ -723,7 +769,7 @@ export const ProductionPlanningModal = ({
                                             size="sm" 
                                             onClick={handleDownloadTemplate}
                                             disabled={planItems.length === 0}
-                                            title="Download Excel template pre-filled with shipment items"
+                                            title="Download Excel template pre-filled with all selected shipments and items"
                                         >
                                             <FaDownload className="me-1" /> Download Template (.xlsx)
                                         </Button>
@@ -760,7 +806,7 @@ export const ProductionPlanningModal = ({
                                                 </>
                                             ) : (
                                                 <>
-                                                    <FaSave className="me-1" /> Save Plan
+                                                    <FaSave className="me-1" /> Save All ({planItems.length})
                                                 </>
                                             )}
                                         </Button>
@@ -774,7 +820,7 @@ export const ProductionPlanningModal = ({
                             <Nav variant="tabs" className="mb-2">
                                 <Nav.Item>
                                     <Nav.Link eventKey="grid" className="fw-semibold">
-                                        📊 Smart Planning Grid ({filteredItems.length})
+                                        📊 Multi-Shipment Planning Grid ({filteredItems.length})
                                     </Nav.Link>
                                 </Nav.Item>
                                 {uploadPreview && (
@@ -793,47 +839,48 @@ export const ProductionPlanningModal = ({
                                         <Table bordered hover size="sm" className="mb-0 text-nowrap" style={{ fontSize: '0.8rem' }}>
                                             <thead className="table-dark sticky-top text-center" style={{ zIndex: 1 }}>
                                                 <tr>
-                                                    <th rowSpan="2" style={{ width: '40px' }}>#</th>
-                                                    <th rowSpan="2" style={{ width: '100px' }}>Contract No</th>
-                                                    <th rowSpan="2" style={{ width: '90px' }}>Item Code</th>
-                                                    <th rowSpan="2" style={{ minWidth: '180px' }}>Item Description</th>
-                                                    <th rowSpan="2" style={{ width: '60px' }}>Qty</th>
-                                                    <th rowSpan="2" style={{ width: '130px' }} className="table-warning text-dark">Target Insp Date</th>
+                                                    <th rowSpan="2" style={{ width: '35px' }}>#</th>
+                                                    <th rowSpan="2" style={{ width: '90px' }} className="table-primary text-dark">Shipment</th>
+                                                    <th rowSpan="2" style={{ width: '95px' }}>Contract No</th>
+                                                    <th rowSpan="2" style={{ width: '85px' }}>Item Code</th>
+                                                    <th rowSpan="2" style={{ minWidth: '170px' }}>Item Description</th>
+                                                    <th rowSpan="2" style={{ width: '50px' }}>Qty</th>
+                                                    <th rowSpan="2" style={{ width: '125px' }} className="table-warning text-dark">Target Insp Date</th>
                                                     
                                                     {/* Departments Days */}
                                                     <th colSpan="11" className="bg-primary text-white">Department Lead Times (Days Required)</th>
                                                     
                                                     {/* Summary & Key Dates */}
-                                                    <th rowSpan="2" className="bg-info text-dark" style={{ width: '70px' }}>Total Days</th>
-                                                    <th rowSpan="2" className="bg-success text-white" style={{ width: '110px' }}>Wood Issue IN</th>
-                                                    <th rowSpan="2" style={{ width: '110px' }}>Wood Issue OUT</th>
-                                                    <th rowSpan="2" style={{ width: '110px' }}>Machining OUT</th>
-                                                    <th rowSpan="2" style={{ width: '110px' }}>Assembly OUT</th>
-                                                    <th rowSpan="2" style={{ width: '110px' }}>Polish OUT</th>
-                                                    <th rowSpan="2" style={{ width: '110px' }}>Final QC OUT</th>
-                                                    <th rowSpan="2" className="bg-success text-white" style={{ width: '110px' }}>Packing OUT</th>
-                                                    <th rowSpan="2" style={{ width: '80px' }}>Buffer Days</th>
-                                                    <th rowSpan="2" style={{ width: '100px' }}>Status</th>
+                                                    <th rowSpan="2" className="bg-info text-dark" style={{ width: '65px' }}>Total</th>
+                                                    <th rowSpan="2" className="bg-success text-white" style={{ width: '105px' }}>Wood IN</th>
+                                                    <th rowSpan="2" style={{ width: '105px' }}>Wood OUT</th>
+                                                    <th rowSpan="2" style={{ width: '105px' }}>Mach OUT</th>
+                                                    <th rowSpan="2" style={{ width: '105px' }}>Assem OUT</th>
+                                                    <th rowSpan="2" style={{ width: '105px' }}>Polish OUT</th>
+                                                    <th rowSpan="2" style={{ width: '105px' }}>Final QC OUT</th>
+                                                    <th rowSpan="2" className="bg-success text-white" style={{ width: '105px' }}>Packing OUT</th>
+                                                    <th rowSpan="2" style={{ width: '70px' }}>Buffer</th>
+                                                    <th rowSpan="2" style={{ width: '90px' }}>Status</th>
                                                 </tr>
                                                 <tr>
-                                                    <th style={{ width: '55px' }}>Wood</th>
-                                                    <th style={{ width: '55px' }}>PreCut</th>
-                                                    <th style={{ width: '65px' }} className="bg-secondary text-white" title="Informational only (No date impact)">OutSrc*</th>
-                                                    <th style={{ width: '55px' }}>Mach</th>
-                                                    <th style={{ width: '55px' }}>Assem</th>
-                                                    <th style={{ width: '55px' }}>Sand</th>
-                                                    <th style={{ width: '55px' }}>Polish</th>
-                                                    <th style={{ width: '55px' }}>Fitting</th>
-                                                    <th style={{ width: '55px' }}>QC</th>
-                                                    <th style={{ width: '60px' }}>FinalQC</th>
-                                                    <th style={{ width: '55px' }}>Pack</th>
+                                                    <th style={{ width: '50px' }}>Wood</th>
+                                                    <th style={{ width: '50px' }}>PreCut</th>
+                                                    <th style={{ width: '60px' }} className="bg-secondary text-white" title="Informational save only">OutSrc*</th>
+                                                    <th style={{ width: '50px' }}>Mach</th>
+                                                    <th style={{ width: '50px' }}>Assem</th>
+                                                    <th style={{ width: '50px' }}>Sand</th>
+                                                    <th style={{ width: '50px' }}>Polish</th>
+                                                    <th style={{ width: '50px' }}>Fitting</th>
+                                                    <th style={{ width: '50px' }}>QC</th>
+                                                    <th style={{ width: '55px' }}>FinalQC</th>
+                                                    <th style={{ width: '50px' }}>Pack</th>
                                                 </tr>
                                             </thead>
 
                                             <tbody>
                                                 {filteredItems.length === 0 ? (
                                                     <tr>
-                                                        <td colSpan="25" className="text-center py-4 text-muted">
+                                                        <td colSpan="26" className="text-center py-4 text-muted">
                                                             No line items match your criteria.
                                                         </td>
                                                     </tr>
@@ -846,20 +893,21 @@ export const ProductionPlanningModal = ({
                                                                 className={isLate ? 'table-danger' : (item.TotalLeadDays > 0 ? '' : 'table-light')}
                                                             >
                                                                 <td className="text-center font-monospace">{idx + 1}</td>
+                                                                <td className="fw-bold text-primary font-monospace">{item.ContainerNumber || '-'}</td>
                                                                 <td className="fw-semibold">{item.ContractNo || '-'}</td>
                                                                 <td className="font-monospace">{item.ItemCode || '-'}</td>
-                                                                <td title={item.ItemName} style={{ maxWidth: '220px', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                                                <td title={item.ItemName} style={{ maxWidth: '200px', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                                                                     {item.ItemName || '-'}
                                                                 </td>
                                                                 <td className="text-center fw-bold">{item.Quantity || 0}</td>
                                                                 
-                                                                {/* Inspection Date (Editable) */}
+                                                                {/* Inspection Date */}
                                                                 <td>
                                                                     <Form.Control 
                                                                         type="date"
                                                                         size="sm"
                                                                         value={item.InspectionDate ? String(item.InspectionDate).split('T')[0] : ''}
-                                                                        onChange={e => handleInspectionDateChange(idx, e.target.value)}
+                                                                        onChange={e => handleInspectionDateChange(item.ContainerMasterLId, e.target.value)}
                                                                         style={{ fontSize: '0.75rem', padding: '2px 4px' }}
                                                                     />
                                                                 </td>
@@ -869,7 +917,7 @@ export const ProductionPlanningModal = ({
                                                                     <Form.Control 
                                                                         type="number" min="0" size="sm"
                                                                         value={item.WoodIssueDays}
-                                                                        onChange={e => handleDayChange(idx, 'WoodIssueDays', e.target.value)}
+                                                                        onChange={e => handleDayChange(item.ContainerMasterLId, 'WoodIssueDays', e.target.value)}
                                                                         className="text-center p-1"
                                                                     />
                                                                 </td>
@@ -877,7 +925,7 @@ export const ProductionPlanningModal = ({
                                                                     <Form.Control 
                                                                         type="number" min="0" size="sm"
                                                                         value={item.PreCuttingDays}
-                                                                        onChange={e => handleDayChange(idx, 'PreCuttingDays', e.target.value)}
+                                                                        onChange={e => handleDayChange(item.ContainerMasterLId, 'PreCuttingDays', e.target.value)}
                                                                         className="text-center p-1"
                                                                     />
                                                                 </td>
@@ -885,7 +933,7 @@ export const ProductionPlanningModal = ({
                                                                     <Form.Control 
                                                                         type="number" min="0" size="sm"
                                                                         value={item.OutSourceDays}
-                                                                        onChange={e => handleDayChange(idx, 'OutSourceDays', e.target.value)}
+                                                                        onChange={e => handleDayChange(item.ContainerMasterLId, 'OutSourceDays', e.target.value)}
                                                                         className="text-center p-1 text-muted"
                                                                         title="Outsource Job (Informational save only)"
                                                                     />
@@ -894,7 +942,7 @@ export const ProductionPlanningModal = ({
                                                                     <Form.Control 
                                                                         type="number" min="0" size="sm"
                                                                         value={item.MachiningDays}
-                                                                        onChange={e => handleDayChange(idx, 'MachiningDays', e.target.value)}
+                                                                        onChange={e => handleDayChange(item.ContainerMasterLId, 'MachiningDays', e.target.value)}
                                                                         className="text-center p-1"
                                                                     />
                                                                 </td>
@@ -902,7 +950,7 @@ export const ProductionPlanningModal = ({
                                                                     <Form.Control 
                                                                         type="number" min="0" size="sm"
                                                                         value={item.AssemblyDays}
-                                                                        onChange={e => handleDayChange(idx, 'AssemblyDays', e.target.value)}
+                                                                        onChange={e => handleDayChange(item.ContainerMasterLId, 'AssemblyDays', e.target.value)}
                                                                         className="text-center p-1"
                                                                     />
                                                                 </td>
@@ -910,7 +958,7 @@ export const ProductionPlanningModal = ({
                                                                     <Form.Control 
                                                                         type="number" min="0" size="sm"
                                                                         value={item.SandingDays}
-                                                                        onChange={e => handleDayChange(idx, 'SandingDays', e.target.value)}
+                                                                        onChange={e => handleDayChange(item.ContainerMasterLId, 'SandingDays', e.target.value)}
                                                                         className="text-center p-1"
                                                                     />
                                                                 </td>
@@ -918,7 +966,7 @@ export const ProductionPlanningModal = ({
                                                                     <Form.Control 
                                                                         type="number" min="0" size="sm"
                                                                         value={item.PolishDays}
-                                                                        onChange={e => handleDayChange(idx, 'PolishDays', e.target.value)}
+                                                                        onChange={e => handleDayChange(item.ContainerMasterLId, 'PolishDays', e.target.value)}
                                                                         className="text-center p-1"
                                                                     />
                                                                 </td>
@@ -926,7 +974,7 @@ export const ProductionPlanningModal = ({
                                                                     <Form.Control 
                                                                         type="number" min="0" size="sm"
                                                                         value={item.FittingDays}
-                                                                        onChange={e => handleDayChange(idx, 'FittingDays', e.target.value)}
+                                                                        onChange={e => handleDayChange(item.ContainerMasterLId, 'FittingDays', e.target.value)}
                                                                         className="text-center p-1"
                                                                     />
                                                                 </td>
@@ -934,7 +982,7 @@ export const ProductionPlanningModal = ({
                                                                     <Form.Control 
                                                                         type="number" min="0" size="sm"
                                                                         value={item.QcDays}
-                                                                        onChange={e => handleDayChange(idx, 'QcDays', e.target.value)}
+                                                                        onChange={e => handleDayChange(item.ContainerMasterLId, 'QcDays', e.target.value)}
                                                                         className="text-center p-1"
                                                                     />
                                                                 </td>
@@ -942,7 +990,7 @@ export const ProductionPlanningModal = ({
                                                                     <Form.Control 
                                                                         type="number" min="0" size="sm"
                                                                         value={item.FinalQcDays}
-                                                                        onChange={e => handleDayChange(idx, 'FinalQcDays', e.target.value)}
+                                                                        onChange={e => handleDayChange(item.ContainerMasterLId, 'FinalQcDays', e.target.value)}
                                                                         className="text-center p-1"
                                                                     />
                                                                 </td>
@@ -950,7 +998,7 @@ export const ProductionPlanningModal = ({
                                                                     <Form.Control 
                                                                         type="number" min="0" size="sm"
                                                                         value={item.PackingDays}
-                                                                        onChange={e => handleDayChange(idx, 'PackingDays', e.target.value)}
+                                                                        onChange={e => handleDayChange(item.ContainerMasterLId, 'PackingDays', e.target.value)}
                                                                         className="text-center p-1"
                                                                     />
                                                                 </td>
@@ -1027,6 +1075,7 @@ export const ProductionPlanningModal = ({
                                                     <thead className="table-light sticky-top">
                                                         <tr>
                                                             <th>Excel Row</th>
+                                                            <th>Shipment</th>
                                                             <th>Status</th>
                                                             <th>Contract No</th>
                                                             <th>Item Code</th>
@@ -1053,6 +1102,7 @@ export const ProductionPlanningModal = ({
                                                                 className={p.status === 'matched' ? '' : (p.status === 'warning' ? 'table-warning' : 'table-danger')}
                                                             >
                                                                 <td className="text-center font-monospace">{p.rowIdx}</td>
+                                                                <td className="fw-bold text-primary">{p.ShipmentNo || '-'}</td>
                                                                 <td>
                                                                     {p.status === 'matched' && <Badge bg="success">Matched</Badge>}
                                                                     {p.status === 'warning' && <Badge bg="warning" text="dark">Warning</Badge>}
@@ -1092,7 +1142,7 @@ export const ProductionPlanningModal = ({
             <Modal.Footer className="bg-light py-2">
                 <div className="d-flex align-items-center justify-content-between w-100">
                     <small className="text-muted">
-                        💡 <strong>Scheduling Rule:</strong> Wood Issue IN = [Target Date - Total Days]. Each handover department adds +1 day buffer. Out Source Job is informational only.
+                        💡 <strong>Multi-Shipment Engine:</strong> Wood Issue IN = [Target Date - Total Days]. Each handover department adds +1 day buffer. Out Source Job is informational only.
                     </small>
                     <div className="d-flex gap-2">
                         <Button variant="secondary" size="sm" onClick={onHide}>
@@ -1104,7 +1154,7 @@ export const ProductionPlanningModal = ({
                             onClick={handleSavePlan}
                             disabled={saving || planItems.length === 0}
                         >
-                            {saving ? 'Saving...' : '💾 Save Target Plan'}
+                            {saving ? 'Saving...' : `💾 Save Target Plan (${planItems.length})`}
                         </Button>
                     </div>
                 </div>
