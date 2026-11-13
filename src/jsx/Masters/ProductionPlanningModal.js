@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { Modal, Button, Spinner, Form, Row, Col, Badge } from 'react-bootstrap';
+import { Modal, Button, Spinner, Form, Row, Col } from 'react-bootstrap';
 import { 
-    FaDownload, FaUpload, FaFileExcel, 
-    FaSave, FaTimes, FaMagic, FaUndo, FaSearch
+    FaDownload, FaUpload, 
+    FaSave, FaMagic, FaUndo, FaSearch
 } from 'react-icons/fa';
 import * as XLSX from 'xlsx';
 import axios from 'axios';
@@ -41,6 +41,22 @@ const formatDisplayDate = (dateStr) => {
     }
     return String(dateStr).split('T')[0];
 };
+
+// 12 Editable columns specification for keyboard navigation
+const EDITABLE_COLS = [
+    { key: 'InspectionDate', label: 'Insp Date', isDate: true },
+    { key: 'WoodIssueDays', label: 'Wood' },
+    { key: 'PreCuttingDays', label: 'PreCut' },
+    { key: 'OutSourceDays', label: 'OutSrc', isInfo: true },
+    { key: 'MachiningDays', label: 'Mach' },
+    { key: 'AssemblyDays', label: 'Assem' },
+    { key: 'SandingDays', label: 'Sand' },
+    { key: 'PolishDays', label: 'Polish' },
+    { key: 'FittingDays', label: 'Fit' },
+    { key: 'QcDays', label: 'QC' },
+    { key: 'FinalQcDays', label: 'FinalQC' },
+    { key: 'PackingDays', label: 'Pack' },
+];
 
 export const ProductionPlanningModal = ({
     show,
@@ -258,12 +274,12 @@ export const ProductionPlanningModal = ({
         };
     };
 
-    // Handle single day input change with validation
+    // Handle single day input change with validation (allows typing freely)
     const handleDayChange = (itemKey, field, value) => {
-        const intVal = value === '' ? 0 : Math.max(0, parseInt(value, 10) || 0);
+        const val = value === '' ? '' : Math.max(0, parseInt(value, 10) || 0);
         setPlanItems(prev => prev.map(p => {
             if (p.ContainerMasterLId === itemKey) {
-                return calculateRowSchedule({ ...p, [field]: intVal });
+                return calculateRowSchedule({ ...p, [field]: val });
             }
             return p;
         }));
@@ -277,6 +293,95 @@ export const ProductionPlanningModal = ({
             }
             return p;
         }));
+    };
+
+    // Keyboard cell focusing helper
+    const focusCell = (r, c) => {
+        const el = document.getElementById(`cell-${r}-${c}`);
+        if (el) {
+            el.focus();
+            if (el.select) {
+                el.select();
+            }
+        }
+    };
+
+    // Comprehensive Keyboard Navigation (Excel-style)
+    const handleCellKeyDown = (e, rowIdx, colIdx, totalRows) => {
+        // Ctrl + S: Save Plan
+        if ((e.ctrlKey || e.metaKey) && (e.key === 's' || e.key === 'S')) {
+            e.preventDefault();
+            handleSavePlan();
+            return;
+        }
+
+        // Ctrl + D: Fill Down (copies value from cell directly above)
+        if ((e.ctrlKey || e.metaKey) && (e.key === 'd' || e.key === 'D')) {
+            e.preventDefault();
+            if (rowIdx > 0) {
+                const colDef = EDITABLE_COLS[colIdx];
+                const prevRowItem = filteredItems[rowIdx - 1];
+                if (prevRowItem && filteredItems[rowIdx]) {
+                    const prevVal = prevRowItem[colDef.key];
+                    if (colDef.isDate) {
+                        handleInspectionDateChange(filteredItems[rowIdx].ContainerMasterLId, prevVal);
+                    } else {
+                        handleDayChange(filteredItems[rowIdx].ContainerMasterLId, colDef.key, prevVal);
+                    }
+                }
+            }
+            return;
+        }
+
+        if (e.key === 'ArrowDown') {
+            e.preventDefault();
+            if (rowIdx < totalRows - 1) {
+                focusCell(rowIdx + 1, colIdx);
+            }
+        } else if (e.key === 'ArrowUp') {
+            e.preventDefault();
+            if (rowIdx > 0) {
+                focusCell(rowIdx - 1, colIdx);
+            }
+        } else if (e.key === 'Enter') {
+            e.preventDefault();
+            if (e.shiftKey) {
+                if (rowIdx > 0) focusCell(rowIdx - 1, colIdx);
+            } else {
+                if (rowIdx < totalRows - 1) focusCell(rowIdx + 1, colIdx);
+            }
+        } else if (e.key === 'Tab') {
+            e.preventDefault();
+            if (e.shiftKey) {
+                if (colIdx > 0) {
+                    focusCell(rowIdx, colIdx - 1);
+                } else if (rowIdx > 0) {
+                    focusCell(rowIdx - 1, EDITABLE_COLS.length - 1);
+                }
+            } else {
+                if (colIdx < EDITABLE_COLS.length - 1) {
+                    focusCell(rowIdx, colIdx + 1);
+                } else if (rowIdx < totalRows - 1) {
+                    focusCell(rowIdx + 1, 0);
+                }
+            }
+        } else if (e.key === 'ArrowLeft') {
+            const valLen = e.target.value ? e.target.value.length : 0;
+            const isSelected = e.target.selectionStart === 0 && e.target.selectionEnd === valLen;
+            const isAtStart = e.target.selectionStart === 0 && e.target.selectionEnd === 0;
+            if ((isSelected || isAtStart) && colIdx > 0) {
+                e.preventDefault();
+                focusCell(rowIdx, colIdx - 1);
+            }
+        } else if (e.key === 'ArrowRight') {
+            const valLen = e.target.value ? e.target.value.length : 0;
+            const isSelected = e.target.selectionStart === 0 && e.target.selectionEnd === valLen;
+            const isAtEnd = e.target.selectionStart === valLen;
+            if ((isSelected || isAtEnd) && colIdx < EDITABLE_COLS.length - 1) {
+                e.preventDefault();
+                focusCell(rowIdx, colIdx + 1);
+            }
+        }
     };
 
     // Smart Action: Copy Row 1 Lead Times to ALL Rows
@@ -428,7 +533,6 @@ export const ProductionPlanningModal = ({
                 // Map uploaded data directly into existing items
                 let matchedCount = 0;
                 const updated = planItems.map(item => {
-                    // search through rows
                     for (let r = 2; r < aoa.length; r++) {
                         const row = aoa[r];
                         if (!row || row.length === 0) continue;
@@ -485,7 +589,6 @@ export const ProductionPlanningModal = ({
         };
 
         reader.readAsBinaryString(file);
-        // reset file input
         e.target.value = '';
     };
 
@@ -513,17 +616,17 @@ export const ProductionPlanningModal = ({
             const payloadData = planItems.map(item => ({
                 ContainerMasterLId: item.ContainerMasterLId,
                 ContainerId: item.ContainerId,
-                WoodIssueDays: item.WoodIssueDays || 0,
-                PreCuttingDays: item.PreCuttingDays || 0,
-                OutSourceDays: item.OutSourceDays || 0,
-                MachiningDays: item.MachiningDays || 0,
-                AssemblyDays: item.AssemblyDays || 0,
-                SandingDays: item.SandingDays || 0,
-                PolishDays: item.PolishDays || 0,
-                FittingDays: item.FittingDays || 0,
-                QcDays: item.QcDays || 0,
-                FinalQcDays: item.FinalQcDays || 0,
-                PackingDays: item.PackingDays || 0,
+                WoodIssueDays: parseInt(item.WoodIssueDays, 10) || 0,
+                PreCuttingDays: parseInt(item.PreCuttingDays, 10) || 0,
+                OutSourceDays: parseInt(item.OutSourceDays, 10) || 0,
+                MachiningDays: parseInt(item.MachiningDays, 10) || 0,
+                AssemblyDays: parseInt(item.AssemblyDays, 10) || 0,
+                SandingDays: parseInt(item.SandingDays, 10) || 0,
+                PolishDays: parseInt(item.PolishDays, 10) || 0,
+                FittingDays: parseInt(item.FittingDays, 10) || 0,
+                QcDays: parseInt(item.QcDays, 10) || 0,
+                FinalQcDays: parseInt(item.FinalQcDays, 10) || 0,
+                PackingDays: parseInt(item.PackingDays, 10) || 0,
                 TotalLeadDays: item.TotalLeadDays || 0,
                 DaysWithBuffer: item.DaysWithBuffer || 0,
                 IsDeadlineExceeded: item.IsDeadlineExceeded ? true : false,
@@ -609,6 +712,19 @@ export const ProductionPlanningModal = ({
 
     return (
         <Modal show={show} onHide={onHide} size="fullscreen" centered className="desktop-planning-modal">
+            {/* Embedded styles for desktop keyboard traversing & active cell highlight */}
+            <style>{`
+                .desktop-cell-input:focus {
+                    outline: 2px solid #2563eb !important;
+                    background-color: #eff6ff !important;
+                    font-weight: 600;
+                    box-shadow: 0 0 4px rgba(37,99,235,0.4);
+                }
+                .desktop-cell-input {
+                    transition: outline 0.1s ease-in-out;
+                }
+            `}</style>
+
             {/* Desktop ERP Style Header */}
             <Modal.Header closeButton style={{ background: '#1e293b', color: '#f8fafc', padding: '10px 16px', borderBottom: '1px solid #334155' }}>
                 <div className="d-flex align-items-center justify-content-between w-100 me-3">
@@ -619,7 +735,7 @@ export const ProductionPlanningModal = ({
                                 Production Planning Target Management
                             </Modal.Title>
                             <span style={{ fontSize: '11px', color: '#94a3b8' }}>
-                                Desktop Data Entry & Schedule Grid | Selected Shipments: <strong style={{ color: '#e2e8f0' }}>{stats.shipmentsCount}</strong> ({stats.total} total items)
+                                Desktop Grid Data Entry | Selected Shipments: <strong style={{ color: '#e2e8f0' }}>{stats.shipmentsCount}</strong> ({stats.total} total items)
                             </span>
                         </div>
                     </div>
@@ -740,6 +856,7 @@ export const ProductionPlanningModal = ({
                                         onClick={handleSavePlan}
                                         disabled={saving || planItems.length === 0}
                                         style={{ fontSize: '11px', padding: '3px 12px', height: '28px', fontWeight: 600 }}
+                                        title="Save Plan (Ctrl + S)"
                                     >
                                         {saving ? (
                                             <>
@@ -756,13 +873,13 @@ export const ProductionPlanningModal = ({
                             </Row>
                         </div>
 
-                        {/* Desktop ERP Unified Data Grid (Show & Edit in Same Table) */}
+                        {/* Desktop ERP Unified Data Grid (Show & Edit in Same Table with Arrow Traversal) */}
                         <div 
                             style={{ 
                                 background: '#fff', 
                                 border: '1px solid #cbd5e1', 
                                 borderRadius: '4px', 
-                                maxHeight: 'calc(100vh - 190px)', 
+                                maxHeight: 'calc(100vh - 200px)', 
                                 overflow: 'auto' 
                             }}
                         >
@@ -865,12 +982,16 @@ export const ProductionPlanningModal = ({
                                                         {item.Quantity || 0}
                                                     </td>
 
-                                                    {/* Inspection Date Cell */}
+                                                    {/* Inspection Date Cell (Col Index 0) */}
                                                     <td style={{ border: '1px solid #e2e8f0', padding: '1px 2px' }}>
                                                         <input 
+                                                            id={`cell-${idx}-0`}
                                                             type="date"
                                                             value={item.InspectionDate ? String(item.InspectionDate).split('T')[0] : ''}
                                                             onChange={e => handleInspectionDateChange(item.ContainerMasterLId, e.target.value)}
+                                                            onFocus={e => e.target.select()}
+                                                            onKeyDown={e => handleCellKeyDown(e, idx, 0, filteredItems.length)}
+                                                            className="desktop-cell-input"
                                                             style={{ 
                                                                 width: '100%', 
                                                                 height: '22px', 
@@ -883,40 +1004,35 @@ export const ProductionPlanningModal = ({
                                                         />
                                                     </td>
 
-                                                    {/* Department Inputs: Wood to Pack */}
-                                                    {[
-                                                        { f: 'WoodIssueDays', w: 'Wood' },
-                                                        { f: 'PreCuttingDays', w: 'PreCut' },
-                                                        { f: 'OutSourceDays', w: 'OutSrc', isInfo: true },
-                                                        { f: 'MachiningDays', w: 'Mach' },
-                                                        { f: 'AssemblyDays', w: 'Assem' },
-                                                        { f: 'SandingDays', w: 'Sand' },
-                                                        { f: 'PolishDays', w: 'Polish' },
-                                                        { f: 'FittingDays', w: 'Fit' },
-                                                        { f: 'QcDays', w: 'QC' },
-                                                        { f: 'FinalQcDays', w: 'FinalQC' },
-                                                        { f: 'PackingDays', w: 'Pack' },
-                                                    ].map(dept => (
-                                                        <td key={dept.f} style={{ border: '1px solid #e2e8f0', padding: '1px 2px' }}>
-                                                            <input 
-                                                                type="number"
-                                                                min="0"
-                                                                value={item[dept.f]}
-                                                                onChange={e => handleDayChange(item.ContainerMasterLId, dept.f, e.target.value)}
-                                                                style={{ 
-                                                                    width: '100%', 
-                                                                    height: '22px', 
-                                                                    textAlign: 'center', 
-                                                                    fontSize: '11px', 
-                                                                    border: '1px solid #cbd5e1', 
-                                                                    borderRadius: '2px',
-                                                                    backgroundColor: dept.isInfo ? '#f8fafc' : '#fff',
-                                                                    color: dept.isInfo ? '#64748b' : '#0f172a'
-                                                                }}
-                                                                title={dept.isInfo ? 'Outsource Job (Informational save only)' : dept.w}
-                                                            />
-                                                        </td>
-                                                    ))}
+                                                    {/* Department Inputs: Wood to Pack (Col Indices 1 to 11) */}
+                                                    {EDITABLE_COLS.slice(1).map((dept, deptIdx) => {
+                                                        const colIdx = deptIdx + 1; // 1 to 11
+                                                        return (
+                                                            <td key={dept.key} style={{ border: '1px solid #e2e8f0', padding: '1px 2px' }}>
+                                                                <input 
+                                                                    id={`cell-${idx}-${colIdx}`}
+                                                                    type="number"
+                                                                    min="0"
+                                                                    value={item[dept.key] === 0 ? 0 : item[dept.key]}
+                                                                    onChange={e => handleDayChange(item.ContainerMasterLId, dept.key, e.target.value)}
+                                                                    onFocus={e => e.target.select()}
+                                                                    onKeyDown={e => handleCellKeyDown(e, idx, colIdx, filteredItems.length)}
+                                                                    className="desktop-cell-input"
+                                                                    style={{ 
+                                                                        width: '100%', 
+                                                                        height: '22px', 
+                                                                        textAlign: 'center', 
+                                                                        fontSize: '11px', 
+                                                                        border: '1px solid #cbd5e1', 
+                                                                        borderRadius: '2px',
+                                                                        backgroundColor: dept.isInfo ? '#f8fafc' : '#fff',
+                                                                        color: dept.isInfo ? '#64748b' : '#0f172a'
+                                                                    }}
+                                                                    title={dept.isInfo ? 'Outsource Job (Informational save only)' : dept.label}
+                                                                />
+                                                            </td>
+                                                        );
+                                                    })}
 
                                                     {/* Computed Output Dates */}
                                                     <td style={{ textAlign: 'center', border: '1px solid #e2e8f0', fontWeight: 600, backgroundColor: '#f8fafc' }}>
@@ -972,10 +1088,10 @@ export const ProductionPlanningModal = ({
                 )}
             </Modal.Body>
 
-            <Modal.Footer style={{ background: '#f8fafc', padding: '8px 16px', borderTop: '1px solid #e2e8f0' }}>
-                <div className="d-flex align-items-center justify-content-between w-100">
-                    <span style={{ fontSize: '11px', color: '#64748b' }}>
-                        * <strong>Wood Issue IN</strong> = [Target Date - Total Days]. Each handover adds +1 day transit buffer. Outsource Job is informational only.
+            <Modal.Footer style={{ background: '#f8fafc', padding: '6px 16px', borderTop: '1px solid #e2e8f0' }}>
+                <div className="d-flex align-items-center justify-content-between w-100 flex-wrap gap-2">
+                    <span style={{ fontSize: '11px', color: '#475569' }}>
+                        ⌨️ <strong>Keyboard Navigation:</strong> <kbd>↑</kbd><kbd>↓</kbd><kbd>←</kbd><kbd>→</kbd> Move cells | <kbd>Enter</kbd> Down | <kbd>Tab</kbd> Right | <kbd>Ctrl+D</kbd> Fill Down | <kbd>Ctrl+S</kbd> Save Plan
                     </span>
                     <div className="d-flex gap-2">
                         <Button 
