@@ -5,7 +5,9 @@ import reportWebVitals from './reportWebVitals';
 import { BrowserRouter } from 'react-router-dom';
 import { Provider } from 'react-redux';
 import { store } from './store/store';
+import { injectStore } from './services/AuthSessionManager';
 import ThemeContext from "./context/ThemeContext";
+import "./services/setupAxiosInterceptors";
 
 // Import Icons Globally to prevent empty boxes/missing icons
 import "./icons/font-awesome/css/fontawesome.min.css";
@@ -18,6 +20,9 @@ import "./icons/flaticon_1/flaticon_1.css";
 import "./icons/line-awesome/css/line-awesome.min.css";
 import "./icons/simple-line-icons/css/simple-line-icons.css";
 import "./icons/themify-icons/css/themify-icons.css";
+
+// Inject Redux store into AuthSessionManager for central auth management
+injectStore(store);
 
 // Inject global style
 const fontStyle = document.createElement('style');

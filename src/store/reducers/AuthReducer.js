@@ -5,7 +5,7 @@ import {
     LOGOUT_ACTION,
     SIGNUP_CONFIRMED_ACTION,
     SIGNUP_FAILED_ACTION,
-} from '../actions/AuthActions';
+} from '../actions/AuthActionTypes';
 
 const initialState = {
     auth: {

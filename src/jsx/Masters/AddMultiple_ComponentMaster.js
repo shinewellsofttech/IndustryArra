@@ -346,6 +346,19 @@ const AddMultiple_ComponentMaster = () => {
                   </div>
                 </div>
 
+                {/* Dimension Units Guidance Banner */}
+                <div className="alert alert-info py-2 px-3 mb-3 d-flex align-items-center justify-content-between" style={{ fontSize: '0.85rem' }}>
+                  <div>
+                    <strong><i className="bi bi-info-circle me-1"></i> Dimension Units Guide:</strong>
+                    <span className="ms-2">
+                      <span className="badge bg-primary me-1">L1, W1, T1</span> = Final Finished Size in <strong>Centimeters (cm)</strong> (Drawings & Assembly)
+                    </span>
+                    <span className="ms-3">
+                      <span className="badge bg-success me-1">L2, W2, T2</span> = Wood Issue Size in <strong>Inches (inch)</strong> (Lumber CFT Calculation)
+                    </span>
+                  </div>
+                </div>
+
                 {/* Tabular Form */}
                 <div className="table-responsive">
                   <Table striped bordered hover>
@@ -354,18 +367,18 @@ const AddMultiple_ComponentMaster = () => {
                         <th style={{ width: '50px' }}>#</th>
                         <th style={{ minWidth: '150px' }}>Category *</th>
                         <th style={{ minWidth: '150px' }}>Name *</th>
-                        <th>L1</th>
-                        <th>W1</th>
-                        <th>T1</th>
-                        <th>Qty1</th>
-                        <th>L2</th>
-                        <th>W2</th>
-                        <th>T2</th>
-                        <th>{rows[0]?.F_CategoryMaster == 5 ? "Required_Sheet" : "Qty2"}</th>
-                        <th>L3</th>
-                        <th>W3</th>
-                        <th>T3</th>
-                        <th>Qty3</th>
+                        <th className="bg-primary text-white" title="Final Finished Length (cm)">L1 (cm)</th>
+                        <th className="bg-primary text-white" title="Final Finished Width (cm)">W1 (cm)</th>
+                        <th className="bg-primary text-white" title="Final Finished Thickness (cm)">T1 (cm)</th>
+                        <th className="bg-primary text-white" title="Component Quantity">Qty1</th>
+                        <th className="bg-success text-white" title="Wood Issue Length (inch)">L2 (inch)</th>
+                        <th className="bg-success text-white" title="Wood Issue Width (inch)">W2 (inch)</th>
+                        <th className="bg-success text-white" title="Wood Issue Thickness (inch)">T2 (inch)</th>
+                        <th className="bg-success text-white" title="Issue Quantity or Required Sheets">{rows[0]?.F_CategoryMaster == 5 ? "Req_Sheet (MDF)" : "Qty2"}</th>
+                        <th title="Alternate Length">L3</th>
+                        <th title="Alternate Width">W3</th>
+                        <th title="Alternate Thickness">T3</th>
+                        <th title="Alternate Quantity">Qty3</th>
                         <th>Is Active</th>
                         <th style={{ minWidth: '200px' }}>Images (Max 5)</th>
                         <th style={{ width: '80px' }}>Action</th>

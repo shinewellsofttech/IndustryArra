@@ -294,15 +294,29 @@ export const PageList_ItemMaster = () => {
 					dateNF: "yyyy-mm-dd",
 				  });
 
-				  let columns = componentRaw[0];
+				  let columns = componentRaw[0] || [];
 				  let columnCount = {};
 
 				  columns = columns.map((col) => {
-					if (["L", "W", "T", "QTY"].includes(col)) {
-					  columnCount[col] = (columnCount[col] || 0) + 1;
-					  return `${col}${columnCount[col]}`;
+					if (!col) return "";
+					const trimmed = String(col).trim();
+					const upper = trimmed.toUpperCase();
+					if (["L", "W", "T", "QTY"].includes(trimmed)) {
+					  columnCount[trimmed] = (columnCount[trimmed] || 0) + 1;
+					  return `${trimmed}${columnCount[trimmed]}`;
 					}
-					return col;
+					if (upper.startsWith("L1")) return "L1";
+					if (upper.startsWith("W1")) return "W1";
+					if (upper.startsWith("T1")) return "T1";
+					if (upper.startsWith("QTY1")) return "QTY1";
+					if (upper.startsWith("L2")) return "L2";
+					if (upper.startsWith("W2")) return "W2";
+					if (upper.startsWith("T2")) return "T2";
+					if (upper.startsWith("QTY2") || upper.includes("REQ SHEET")) return "QTY2";
+					if (upper.includes("COMPONENT")) return "COMPONENT NAME";
+					if (upper.includes("CATEGORY")) return "CATEGORY";
+					if (upper.includes("PICTURE")) return "PICTURE";
+					return trimmed;
 				  });
 
 				  const compData = componentRaw.slice(1).map((row) => {
@@ -599,8 +613,8 @@ export const PageList_ItemMaster = () => {
 					Status
 					<br />
 					<a 
-						href={`${process.env.PUBLIC_URL}/TEMPLATE_Item_Upload.xlsm`}
-						download="TEMPLATE_Item_Upload.xlsm"
+						href={`${process.env.PUBLIC_URL}/TEMPLATE_Item_Upload.xlsx`}
+						download="TEMPLATE_Item_Upload.xlsx"
 						className="badge bg-info text-decoration-none mt-1"
 						style={{ fontSize: '0.75rem', cursor: 'pointer' }}
 					>

@@ -270,184 +270,225 @@ const AddEdit_ComponentMaster = () => {
                         </div>
                       </div>
 
-                      {/* Compact numeric fields - Set 1 */}
-                      <div className="row mb-3">
-                        <div className="col-md-3">
-                          <div className="form-group">
-                            <label className="text-label">L1</label>
-                            <input
-                              type="number"
-                              step="0.01"
-                              className="form-control"
-                              name="L1"
-                              onChange={handleChange}
-                              onBlur={handleBlur}
-                              value={values.L1 || ""}
-                            />
-                          </div>
+                      {/* Set 1: Final Finished Size (Centimeters - cm) */}
+                      <div className="card mb-3 border" style={{ borderColor: '#b0c4de' }}>
+                        <div className="card-header py-2 bg-light d-flex justify-content-between align-items-center">
+                          <span className="fw-bold text-primary">
+                            <i className="bi bi-rulers me-1"></i> Final Finished Size (Centimeters - cm)
+                          </span>
+                          <span className="badge bg-primary">Finished / Drawing Size (cm)</span>
                         </div>
-                        <div className="col-md-3">
-                          <div className="form-group">
-                            <label className="text-label">W1</label>
-                            <input
-                              type="number"
-                              step="0.01"
-                              className="form-control"
-                              name="W1"
-                              onChange={handleChange}
-                              onBlur={handleBlur}
-                              value={values.W1 || ""}
-                            />
+                        <div className="card-body py-2">
+                          <div className="row">
+                            <div className="col-md-3">
+                              <div className="form-group mb-2">
+                                <label className="text-label fw-bold">L1 - Length (cm)</label>
+                                <input
+                                  type="number"
+                                  step="0.01"
+                                  className="form-control"
+                                  name="L1"
+                                  placeholder="e.g. 57.5 cm"
+                                  onChange={handleChange}
+                                  onBlur={handleBlur}
+                                  value={values.L1 || ""}
+                                />
+                              </div>
+                            </div>
+                            <div className="col-md-3">
+                              <div className="form-group mb-2">
+                                <label className="text-label fw-bold">W1 - Width (cm)</label>
+                                <input
+                                  type="number"
+                                  step="0.01"
+                                  className="form-control"
+                                  name="W1"
+                                  placeholder="e.g. 44.0 cm"
+                                  onChange={handleChange}
+                                  onBlur={handleBlur}
+                                  value={values.W1 || ""}
+                                />
+                              </div>
+                            </div>
+                            <div className="col-md-3">
+                              <div className="form-group mb-2">
+                                <label className="text-label fw-bold">T1 - Thickness (cm)</label>
+                                <input
+                                  type="number"
+                                  step="0.01"
+                                  className="form-control"
+                                  name="T1"
+                                  placeholder="e.g. 2.1 cm"
+                                  onChange={handleChange}
+                                  onBlur={handleBlur}
+                                  value={values.T1 || ""}
+                                />
+                              </div>
+                            </div>
+                            <div className="col-md-3">
+                              <div className="form-group mb-2">
+                                <label className="text-label fw-bold">Qty1 - Quantity (pcs)</label>
+                                <input
+                                  type="number"
+                                  step="0.01"
+                                  className="form-control"
+                                  name="Qty1"
+                                  placeholder="e.g. 2 pcs"
+                                  onChange={handleChange}
+                                  onBlur={handleBlur}
+                                  value={values.Qty1 || ""}
+                                />
+                              </div>
+                            </div>
                           </div>
-                        </div>
-                        <div className="col-md-3">
-                          <div className="form-group">
-                            <label className="text-label">T1</label>
-                            <input
-                              type="number"
-                              step="0.01"
-                              className="form-control"
-                              name="T1"
-                              onChange={handleChange}
-                              onBlur={handleBlur}
-                              value={values.T1 || ""}
-                            />
-                          </div>
-                        </div>
-                        <div className="col-md-3">
-                          <div className="form-group">
-                            <label className="text-label">Qty1</label>
-                            <input
-                              type="number"
-                              step="0.01"
-                              className="form-control"
-                              name="Qty1"
-                              onChange={handleChange}
-                              onBlur={handleBlur}
-                              value={values.Qty1 || ""}
-                            />
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* Compact numeric fields - Set 2 */}
-                      <div className="row mb-3">
-                        <div className="col-md-3">
-                          <div className="form-group">
-                            <label className="text-label">L2</label>
-                            <input
-                              type="number"
-                              step="0.01"
-                              className="form-control"
-                              name="L2"
-                              onChange={handleChange}
-                              onBlur={handleBlur}
-                              value={values.L2 || ""}
-                            />
-                          </div>
-                        </div>
-                        <div className="col-md-3">
-                          <div className="form-group">
-                            <label className="text-label">W2</label>
-                            <input
-                              type="number"
-                              step="0.01"
-                              className="form-control"
-                              name="W2"
-                              onChange={handleChange}
-                              onBlur={handleBlur}
-                              value={values.W2 || ""}
-                            />
-                          </div>
-                        </div>
-                        <div className="col-md-3">
-                          <div className="form-group">
-                            <label className="text-label">T2</label>
-                            <input
-                              type="number"
-                              step="0.01"
-                              className="form-control"
-                              name="T2"
-                              onChange={handleChange}
-                              onBlur={handleBlur}
-                              value={values.T2 || ""}
-                            />
-                          </div>
-                        </div>
-                        <div className="col-md-3">
-                          <div className="form-group">
-                            <label className="text-label">
-                              {values.F_CategoryMaster == 5 ? "Required_Sheet" : "Qty2"}
-                            </label>
-                            <input
-                              type="number"
-                              step="0.01"
-                              className="form-control"
-                              name="Qty2"
-                              onChange={handleChange}
-                              onBlur={handleBlur}
-                              value={values.Qty2 || ""}
-                            />
-                          </div>
+                          <small className="text-muted d-block">
+                            * Final finished component dimensions in <strong>Centimeters (cm)</strong> used on drawings & final assembly.
+                          </small>
                         </div>
                       </div>
 
-                      {/* Compact numeric fields - Set 3 */}
-                      <div className="row mb-3">
-                        <div className="col-md-3">
-                          <div className="form-group">
-                            <label className="text-label">L3</label>
-                            <input
-                              type="number"
-                              step="0.01"
-                              className="form-control"
-                              name="L3"
-                              onChange={handleChange}
-                              onBlur={handleBlur}
-                              value={values.L3 || ""}
-                            />
-                          </div>
+                      {/* Set 2: Wood Issue Size (Inches - inch) */}
+                      <div className="card mb-3 border" style={{ borderColor: '#b0c4de' }}>
+                        <div className="card-header py-2 bg-light d-flex justify-content-between align-items-center">
+                          <span className="fw-bold text-success">
+                            <i className="bi bi-box-seam me-1"></i> Wood Issue Size (Inches - inch)
+                          </span>
+                          <span className="badge bg-success">Raw Issue Size (inch)</span>
                         </div>
-                        <div className="col-md-3">
-                          <div className="form-group">
-                            <label className="text-label">W3</label>
-                            <input
-                              type="number"
-                              step="0.01"
-                              className="form-control"
-                              name="W3"
-                              onChange={handleChange}
-                              onBlur={handleBlur}
-                              value={values.W3 || ""}
-                            />
+                        <div className="card-body py-2">
+                          <div className="row">
+                            <div className="col-md-3">
+                              <div className="form-group mb-2">
+                                <label className="text-label fw-bold">L2 - Issue Length (inch)</label>
+                                <input
+                                  type="number"
+                                  step="0.01"
+                                  className="form-control"
+                                  name="L2"
+                                  placeholder="e.g. 24.0 inch"
+                                  onChange={handleChange}
+                                  onBlur={handleBlur}
+                                  value={values.L2 || ""}
+                                />
+                              </div>
+                            </div>
+                            <div className="col-md-3">
+                              <div className="form-group mb-2">
+                                <label className="text-label fw-bold">W2 - Issue Width (inch)</label>
+                                <input
+                                  type="number"
+                                  step="0.01"
+                                  className="form-control"
+                                  name="W2"
+                                  placeholder="e.g. 18.0 inch"
+                                  onChange={handleChange}
+                                  onBlur={handleBlur}
+                                  value={values.W2 || ""}
+                                />
+                              </div>
+                            </div>
+                            <div className="col-md-3">
+                              <div className="form-group mb-2">
+                                <label className="text-label fw-bold">T2 - Issue Thickness (inch)</label>
+                                <input
+                                  type="number"
+                                  step="0.01"
+                                  className="form-control"
+                                  name="T2"
+                                  placeholder="e.g. 1.5 inch"
+                                  onChange={handleChange}
+                                  onBlur={handleBlur}
+                                  value={values.T2 || ""}
+                                />
+                              </div>
+                            </div>
+                            <div className="col-md-3">
+                              <div className="form-group mb-2">
+                                <label className="text-label fw-bold">
+                                  {values.F_CategoryMaster == 5 ? "Required Sheets (MDF)" : "Qty2 - Issue Qty (pcs)"}
+                                </label>
+                                <input
+                                  type="number"
+                                  step="0.01"
+                                  className="form-control"
+                                  name="Qty2"
+                                  placeholder="e.g. 2"
+                                  onChange={handleChange}
+                                  onBlur={handleBlur}
+                                  value={values.Qty2 || ""}
+                                />
+                              </div>
+                            </div>
                           </div>
+                          <small className="text-muted d-block">
+                            * Raw Wood Cut dimensions in <strong>Inches (inch)</strong> used for Lumber CFT calculation: (L &times; W &times; T) / 1728.
+                          </small>
                         </div>
-                        <div className="col-md-3">
-                          <div className="form-group">
-                            <label className="text-label">T3</label>
-                            <input
-                              type="number"
-                              step="0.01"
-                              className="form-control"
-                              name="T3"
-                              onChange={handleChange}
-                              onBlur={handleBlur}
-                              value={values.T3 || ""}
-                            />
-                          </div>
+                      </div>
+
+                      {/* Set 3: Compact numeric fields - Set 3 (Optional) */}
+                      <div className="card mb-3 border">
+                        <div className="card-header py-1 bg-light">
+                          <span className="text-muted small fw-bold">Additional / Alternate Size (Optional)</span>
                         </div>
-                        <div className="col-md-3">
-                          <div className="form-group">
-                            <label className="text-label">Qty3</label>
-                            <input
-                              type="number"
-                              step="0.01"
-                              className="form-control"
-                              name="Qty3"
-                              onChange={handleChange}
-                              onBlur={handleBlur}
-                              value={values.Qty3 || ""}
-                            />
+                        <div className="card-body py-2">
+                          <div className="row">
+                            <div className="col-md-3">
+                              <div className="form-group mb-1">
+                                <label className="text-label">L3 (Alternate Length)</label>
+                                <input
+                                  type="number"
+                                  step="0.01"
+                                  className="form-control form-control-sm"
+                                  name="L3"
+                                  onChange={handleChange}
+                                  onBlur={handleBlur}
+                                  value={values.L3 || ""}
+                                />
+                              </div>
+                            </div>
+                            <div className="col-md-3">
+                              <div className="form-group mb-1">
+                                <label className="text-label">W3 (Alternate Width)</label>
+                                <input
+                                  type="number"
+                                  step="0.01"
+                                  className="form-control form-control-sm"
+                                  name="W3"
+                                  onChange={handleChange}
+                                  onBlur={handleBlur}
+                                  value={values.W3 || ""}
+                                />
+                              </div>
+                            </div>
+                            <div className="col-md-3">
+                              <div className="form-group mb-1">
+                                <label className="text-label">T3 (Alternate Thickness)</label>
+                                <input
+                                  type="number"
+                                  step="0.01"
+                                  className="form-control form-control-sm"
+                                  name="T3"
+                                  onChange={handleChange}
+                                  onBlur={handleBlur}
+                                  value={values.T3 || ""}
+                                />
+                              </div>
+                            </div>
+                            <div className="col-md-3">
+                              <div className="form-group mb-1">
+                                <label className="text-label">Qty3 (Alternate Qty)</label>
+                                <input
+                                  type="number"
+                                  step="0.01"
+                                  className="form-control form-control-sm"
+                                  name="Qty3"
+                                  onChange={handleChange}
+                                  onBlur={handleBlur}
+                                  value={values.Qty3 || ""}
+                                />
+                              </div>
+                            </div>
                           </div>
                         </div>
                       </div>

@@ -1,23 +1,49 @@
+import { getAuthToken, handleSessionExpired, isAuthEndpoint } from '../services/AuthSessionManager';
+
 const handleError = (response) => {
+  if (!response) {
+    return { status: 500, success: false, data: null, message: "No response data" };
+  }
   return {
-    status: response.status,
-    success: response.success,
-    data: response.data,
-    message: response.message,
+    status: response.status !== undefined ? response.status : (response.Status || 200),
+    success: response.success !== undefined ? response.success : (response.Success || false),
+    data: response.data !== undefined ? response.data : (response.Data || null),
+    message: response.message || response.Message || "",
   };
 };
 
 const getAuthHeader = () => {
-  try {
-    const authUser = JSON.parse(localStorage.getItem('authUser'));
-    if (authUser && (authUser.jwtToken || authUser.token || authUser.UserToken || authUser.UserTokenNew)) {
-      const token = authUser.jwtToken || authUser.token || authUser.UserToken || authUser.UserTokenNew;
-      return { 'Authorization': `Bearer ${token}` };
-    }
-  } catch (e) {
-    console.error("Error reading authUser from localStorage:", e);
+  const token = getAuthToken();
+  if (token) {
+    return { 'Authorization': `Bearer ${token}` };
   }
   return {};
+};
+
+const handleFetchResponse = async (response, url = '') => {
+  if (response.status === 401 && !isAuthEndpoint(url)) {
+    handleSessionExpired(`FETCH_401 from [${url}]`);
+    return {
+      status: 401,
+      success: false,
+      message: "Unauthorized / Session Expired",
+      data: null,
+    };
+  }
+
+  // Handle empty or non-JSON responses gracefully
+  const contentType = response.headers.get("content-type");
+  if (contentType && contentType.includes("application/json")) {
+    try {
+      const json = await response.json();
+      return handleError(json);
+    } catch (e) {
+      console.warn("Failed to parse JSON response:", e);
+      return { status: response.status, success: response.ok, data: null };
+    }
+  }
+
+  return { status: response.status, success: response.ok, data: null };
 };
 
 const apiGET = (url) => {
@@ -30,12 +56,10 @@ const apiGET = (url) => {
   };
 
   return fetch(url, requestOptions)
-    .then((response) => response.json())
-    .then((json) => {
-      return handleError(json);
-    })
+    .then((response) => handleFetchResponse(response, url))
     .catch((error) => {
-      console.error(error);
+      console.error("apiGET Error:", error);
+      return { status: 500, success: false, data: null, message: error?.message };
     });
 };
 
@@ -50,12 +74,10 @@ const apiPOST = (url, data) => {
   };
 
   return fetch(url, requestOptions)
-    .then((response) => response.json())
-    .then((json) => {
-      return handleError(json);
-    })
+    .then((response) => handleFetchResponse(response, url))
     .catch((error) => {
-      console.error(error);
+      console.error("apiPOST Error:", error);
+      return { status: 500, success: false, data: null, message: error?.message };
     });
 };
 
@@ -68,12 +90,10 @@ const apiPOST_Multipart = (url, formdata) => {
     body: formdata,
   };
   return fetch(url, requestOptions)
-    .then((response) => response.json())
-    .then((data) => {
-      return handleError(data);
-    })
+    .then((response) => handleFetchResponse(response, url))
     .catch((error) => {
-      console.error(error);
+      console.error("apiPOST_Multipart Error:", error);
+      return { status: 500, success: false, data: null, message: error?.message };
     });
 };
 
@@ -86,12 +106,10 @@ const apiPUT_Multipart = (url, formdata) => {
     body: formdata,
   };
   return fetch(url, requestOptions)
-    .then((response) => response.json())
-    .then((data) => {
-      return handleError(data);
-    })
+    .then((response) => handleFetchResponse(response, url))
     .catch((error) => {
-      console.error(error);
+      console.error("apiPUT_Multipart Error:", error);
+      return { status: 500, success: false, data: null, message: error?.message };
     });
 };
 
@@ -106,12 +124,10 @@ const apiPUT = (url, data) => {
   };
 
   return fetch(url, requestOptions)
-    .then((response) => response.json())
-    .then((json) => {
-      return handleError(json);
-    })
+    .then((response) => handleFetchResponse(response, url))
     .catch((error) => {
-      console.error(error);
+      console.error("apiPUT Error:", error);
+      return { status: 500, success: false, data: null, message: error?.message };
     });
 };
 
@@ -125,12 +141,10 @@ const apiDELETE = (url, data) => {
   };
 
   return fetch(url, requestOptions)
-    .then((response) => response.json())
-    .then((json) => {
-      return handleError(json);
-    })
+    .then((response) => handleFetchResponse(response, url))
     .catch((error) => {
-      console.error(error);
+      console.error("apiDELETE Error:", error);
+      return { status: 500, success: false, data: null, message: error?.message };
     });
 };
 
@@ -144,12 +158,10 @@ const apiVERIFY = (url, data) => {
   };
 
   return fetch(url, requestOptions)
-    .then((response) => response.json())
-    .then((json) => {
-      return handleError(json);
-    })
+    .then((response) => handleFetchResponse(response, url))
     .catch((error) => {
-      console.error(error);
+      console.error("apiVERIFY Error:", error);
+      return { status: 500, success: false, data: null, message: error?.message };
     });
 };
 

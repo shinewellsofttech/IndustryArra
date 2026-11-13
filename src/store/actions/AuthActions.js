@@ -1,7 +1,15 @@
 import React from 'react';
 //import { useNavigate } from "react-router-dom";
-
-
+import axios from 'axios';
+import { API_WEB_URLS } from '../../constants/constAPI';
+import {
+    SIGNUP_CONFIRMED_ACTION,
+    SIGNUP_FAILED_ACTION,
+    LOGIN_CONFIRMED_ACTION,
+    LOGIN_FAILED_ACTION,
+    LOADING_TOGGLE_ACTION,
+    LOGOUT_ACTION,
+} from './AuthActionTypes';
 import {
     formatError,
     login,
@@ -9,16 +17,8 @@ import {
     saveTokenInLocalStorage,
     signUp,
 } from '../../services/AuthService';
-import axios from 'axios';
-import { API_WEB_URLS } from '../../constants/constAPI';
 
-
-export const SIGNUP_CONFIRMED_ACTION = '[signup action] confirmed signup';
-export const SIGNUP_FAILED_ACTION = '[signup action] failed signup';
-export const LOGIN_CONFIRMED_ACTION = '[login action] confirmed login';
-export const LOGIN_FAILED_ACTION = '[login action] failed login';
-export const LOADING_TOGGLE_ACTION = '[Loading action] toggle loading';
-export const LOGOUT_ACTION = '[Logout action] logout action';
+export * from './AuthActionTypes';
 
 
 
@@ -46,7 +46,12 @@ export function signupAction(email, password, navigate) {
 
 export function Logout(navigate) {
     localStorage.removeItem('authUser');
-    navigate('/login');
+    localStorage.removeItem('userDetails');
+    if (typeof navigate === 'function') {
+        navigate('/login');
+    } else {
+        window.location.href = '/login';
+    }
     
     return {
         type: LOGOUT_ACTION,

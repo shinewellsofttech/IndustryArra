@@ -4,9 +4,9 @@ import {
     loginConfirmedAction,
     Logout,
 } from '../store/actions/AuthActions';
+import { isJwtExpired } from './jwtHelper';
 
 export function signUp(email, password) {
-    //axios call
     const postData = {
         email,
         password,
@@ -33,16 +33,13 @@ export function login(email, password) {
 export function formatError(errorResponse) {
     switch (errorResponse.error.message) {
         case 'EMAIL_EXISTS':
-            //return 'Email already exists';
             swal("Oops", "Email already exists", "error");
             break;
         case 'EMAIL_NOT_FOUND':
-            //return 'Email not found';
-           swal("Oops", "Email not found", "error",{ button: "Try Again!",});
+           swal("Oops", "Email not found", "error", { button: "Try Again!" });
            break;
         case 'INVALID_PASSWORD':
-            //return 'Invalid Password';
-            swal("Oops", "Invalid Password", "error",{ button: "Try Again!",});
+            swal("Oops", "Invalid Password", "error", { button: "Try Again!" });
             break;
         case 'USER_DISABLED':
             return 'User Disabled';
@@ -60,34 +57,55 @@ export function saveTokenInLocalStorage(tokenDetails) {
 }
 
 export function runLogoutTimer(dispatch, timer, navigate) {
+    if (timer <= 0) {
+        dispatch(Logout(navigate));
+        return;
+    }
     setTimeout(() => {
-        //dispatch(Logout(history));
         dispatch(Logout(navigate));
     }, timer);
 }
 
 export function checkAutoLogin(dispatch, navigate) {
     const userDataString = localStorage.getItem('authUser');
-        console.log("userDataString------------------------------------------------------------------");
-            console.log("userDataString", userDataString);
     if (!userDataString) {
-        console.log("userDataString------------------------------------------------------------------");
         dispatch(Logout(navigate));
         return;
     }
 
-    const userData = JSON.parse(userDataString);
-    const expireDate = new Date(userData.dateOfCreation);
-    expireDate.setSeconds(expireDate.getSeconds() + userData.expiresIn);
-    const todaysDate = new Date();
+    try {
+        const userData = JSON.parse(userDataString);
+        const token = userData.jwtToken || userData.token;
 
-    // if (todaysDate > expireDate) {
-    //     dispatch(Logout(navigate));
-    //     return;
-    // }
-    
-    dispatch(loginConfirmedAction(userData));
-    
-    const timer = expireDate.getTime() - todaysDate.getTime();
-    // runLogoutTimer(dispatch, timer, navigate);
+        // 1. Check if JWT is present and expired
+        if (token && isJwtExpired(token)) {
+            console.warn("[checkAutoLogin] Stored JWT token has expired. Logging out.");
+            dispatch(Logout(navigate));
+            return;
+        }
+
+        // 2. Check session duration against expiresIn & dateOfCreation if present
+        if (userData.dateOfCreation && userData.expiresIn) {
+            const expireDate = new Date(userData.dateOfCreation);
+            expireDate.setSeconds(expireDate.getSeconds() + userData.expiresIn);
+            const todaysDate = new Date();
+
+            if (todaysDate > expireDate) {
+                console.warn("[checkAutoLogin] Session lifetime exceeded. Logging out.");
+                dispatch(Logout(navigate));
+                return;
+            }
+
+            const remainingMs = expireDate.getTime() - todaysDate.getTime();
+            if (remainingMs > 0) {
+                runLogoutTimer(dispatch, remainingMs, navigate);
+            }
+        }
+
+        // Token is valid
+        dispatch(loginConfirmedAction(userData));
+    } catch (err) {
+        console.error("Error parsing user session in checkAutoLogin:", err);
+        dispatch(Logout(navigate));
+    }
 }
