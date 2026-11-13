@@ -5,6 +5,20 @@ import swal from "sweetalert";
 import PageTitle from "../layouts/PageTitle";
 import { Fn_FillListData, Fn_AddEditData } from "../../store/Functions";
 import { API_WEB_URLS } from "../../constants/constAPI";
+import { 
+    FaCheckSquare, 
+    FaEye, 
+    FaPlus, 
+    FaEdit, 
+    FaTrash, 
+    FaCogs, 
+    FaMinus, 
+    FaSave, 
+    FaCopy, 
+    FaLock, 
+    FaInfoCircle, 
+    FaSpinner 
+} from "react-icons/fa";
 
 const PermissionMetrixs = () => {
     const dispatch = useDispatch();
@@ -377,22 +391,22 @@ const PermissionMetrixs = () => {
                                                     Module Name
                                                 </th>
                                                 <th className="text-center py-3 border-0" style={{ backgroundColor: "#1e3d73", color: "white", width: "100px" }}>
-                                                    <i className="fa fa-check-square-o me-1"></i> Select All
+                                                    <FaCheckSquare className="me-1" /> Select All
                                                 </th>
                                                 <th className="text-center py-3 border-0" style={{ backgroundColor: "#1e3d73", color: "white", width: "80px" }}>
-                                                    <i className="fa fa-eye text-white-50 me-1"></i> View
+                                                    <FaEye className="text-white-50 me-1" /> View
                                                 </th>
                                                 <th className="text-center py-3 border-0" style={{ backgroundColor: "#1e3d73", color: "white", width: "80px" }}>
-                                                    <i className="fa fa-plus text-primary-light me-1" style={{ color: "#8bb6ff" }}></i> Add
+                                                    <FaPlus className="text-primary-light me-1" style={{ color: "#8bb6ff" }} /> Add
                                                 </th>
                                                 <th className="text-center py-3 border-0" style={{ backgroundColor: "#1e3d73", color: "white", width: "80px" }}>
-                                                    <i className="fa fa-pencil text-warning me-1"></i> Edit
+                                                    <FaEdit className="text-warning me-1" /> Edit
                                                 </th>
                                                 <th className="text-center py-3 border-0" style={{ backgroundColor: "#1e3d73", color: "white", width: "80px" }}>
-                                                    <i className="fa fa-trash text-white-50 me-1"></i> Delete
+                                                    <FaTrash className="text-white-50 me-1" /> Delete
                                                 </th>
                                                 <th className="text-center py-3 border-0" style={{ backgroundColor: "#1e3d73", color: "white", width: "120px" }}>
-                                                    <i className="fa fa-cogs me-1"></i> Actions
+                                                    <FaCogs className="me-1" /> Actions
                                                 </th>
                                             </tr>
                                         </thead>
@@ -486,7 +500,7 @@ const PermissionMetrixs = () => {
                                                                     addButtonRefs.current[perm.Id] = el;
                                                                 }}
                                                             >
-                                                                <i className="fa fa-plus"></i>
+                                                                <FaPlus />
                                                             </button>
                                                             <button
                                                                 className="btn btn-danger btn-sm px-2"
@@ -494,7 +508,7 @@ const PermissionMetrixs = () => {
                                                                 title="Remove Row"
                                                                 disabled={permissions.length === 1}
                                                             >
-                                                                <i className="fa fa-minus"></i>
+                                                                <FaMinus />
                                                             </button>
                                                         </div>
                                                     </td>
@@ -514,16 +528,16 @@ const PermissionMetrixs = () => {
 
                             <div className="d-flex align-items-center gap-3 mt-4 pt-3 border-top">
                                 <button className="btn btn-primary" onClick={handleSavePermissions} disabled={!isEditingOpen}>
-                                    <i className="fa fa-save me-2"></i> Save Permissions
+                                    <FaSave className="me-2" /> Save Permissions
                                 </button>
                                 <button className="btn btn-info" onClick={() => setShowCopyModal(true)} disabled={!isEditingOpen || !selectedRole}>
-                                    <i className="fa fa-copy me-2"></i> Copy from another Role
+                                    <FaCopy className="me-2" /> Copy from another Role
                                 </button>
                                 <button
                                     className="btn btn-light text-dark border"
                                     onClick={() => setIsEditingOpen(!isEditingOpen)}
                                 >
-                                    <i className={`fa ${isEditingOpen ? "fa-lock" : "fa-pencil"} me-2`}></i>
+                                    {isEditingOpen ? <FaLock className="me-2" /> : <FaEdit className="me-2" />}
                                     {isEditingOpen ? "Lock" : "Edit"}
                                 </button>
                             </div>
@@ -539,7 +553,7 @@ const PermissionMetrixs = () => {
                         <div className="modal-content">
                             <div className="modal-header">
                                 <h5 className="modal-title">
-                                    <i className="fa fa-copy me-2"></i> Copy Permissions from Another Role
+                                    <FaCopy className="me-2" /> Copy Permissions from Another Role
                                 </h5>
                                 <button type="button" className="btn-close" onClick={() => setShowCopyModal(false)}></button>
                             </div>
@@ -562,7 +576,7 @@ const PermissionMetrixs = () => {
                                 </div>
 
                                 <div className="alert alert-info" role="alert">
-                                    <i className="fa fa-info-circle me-2"></i>
+                                    <FaInfoCircle className="me-2" />
                                     <strong>Target Role:</strong> {dropdowns.roles.find(r => r.Id == parseInt(selectedRole))?.Name || `Role ${selectedRole}`}
                                 </div>
                             </div>
@@ -573,11 +587,11 @@ const PermissionMetrixs = () => {
                                 <button type="button" className="btn btn-primary" onClick={handleCopyPermissions} disabled={isCopying || !sourceRole}>
                                     {isCopying ? (
                                         <>
-                                            <i className="fa fa-spinner fa-spin me-2"></i> Copying...
+                                            <FaSpinner className="fa-spin me-2" /> Copying...
                                         </>
                                     ) : (
                                         <>
-                                            <i className="fa fa-copy me-2"></i> Copy Permissions
+                                            <FaCopy className="me-2" /> Copy Permissions
                                         </>
                                     )}
                                 </button>

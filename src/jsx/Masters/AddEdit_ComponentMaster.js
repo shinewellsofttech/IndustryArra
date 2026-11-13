@@ -7,6 +7,7 @@ import { useDispatch } from "react-redux";
 import Select from "react-select";
 import { API_WEB_URLS } from '../../constants/constAPI';
 import { Fn_AddEditData, Fn_DisplayData, Fn_FillListData } from '../../store/Functions';
+import { FaRulerCombined, FaBox } from 'react-icons/fa';
 
 const NameSchema = Yup.object().shape({
   Name: Yup.string().required("Name is required"),
@@ -274,7 +275,7 @@ const AddEdit_ComponentMaster = () => {
                       <div className="card mb-3 border" style={{ borderColor: '#b0c4de' }}>
                         <div className="card-header py-2 bg-light d-flex justify-content-between align-items-center">
                           <span className="fw-bold text-primary">
-                            <i className="bi bi-rulers me-1"></i> Final Finished Size (Centimeters - cm)
+                            <FaRulerCombined className="me-1" /> Final Finished Size (Centimeters - cm)
                           </span>
                           <span className="badge bg-primary">Finished / Drawing Size (cm)</span>
                         </div>
@@ -351,7 +352,7 @@ const AddEdit_ComponentMaster = () => {
                       <div className="card mb-3 border" style={{ borderColor: '#b0c4de' }}>
                         <div className="card-header py-2 bg-light d-flex justify-content-between align-items-center">
                           <span className="fw-bold text-success">
-                            <i className="bi bi-box-seam me-1"></i> Wood Issue Size (Inches - inch)
+                            <FaBox className="me-1" /> Wood Issue Size (Inches - inch)
                           </span>
                           <span className="badge bg-success">Raw Issue Size (inch)</span>
                         </div>

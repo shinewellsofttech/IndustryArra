@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import PageTitle from "../layouts/PageTitle";
 import { Formik } from "formik";
 import * as Yup from "yup";
+import { FaUser, FaLock, FaEyeSlash, FaEye, FaEnvelope, FaPhone } from "react-icons/fa";
 
 const loginSchema = Yup.object().shape({
   username: Yup.string()
@@ -83,7 +84,7 @@ const AddEdit_UserMaster = () => {
                         <label className="text-label">Username</label>
                         <div className="input-group">
                           <span className="input-group-text ">
-                            <i className="fa fa-user" />{" "}
+                            <FaUser />{" "}
                           </span>
                           <input
                             type="text"
@@ -119,7 +120,7 @@ const AddEdit_UserMaster = () => {
                         <div className="input-group transparent-append mb-2">
                           <span className="input-group-text">
                             {" "}
-                            <i className="fa fa-lock" />{" "}
+                            <FaLock />{" "}
                           </span>
                           <input
                             type={`${showPassword ? "text" : "password"}`}
@@ -136,9 +137,9 @@ const AddEdit_UserMaster = () => {
                             onClick={() => setShowPassword(!showPassword)}
                           >
                             {showPassword === false ? (
-                              <i className="fa fa-eye-slash" />
+                              <FaEyeSlash />
                             ) : (
-                              <i className="fa fa-eye" />
+                              <FaEye />
                             )}
                           </div>
                           <div
@@ -164,7 +165,7 @@ const AddEdit_UserMaster = () => {
                         <label className="text-label">Email *</label>
                         <div className="input-group">
                           <span className="input-group-text">
-                            <i className="fa fa-envelope" />
+                            <FaEnvelope />
                           </span>
                           <input
                             type="email"
@@ -199,7 +200,7 @@ const AddEdit_UserMaster = () => {
                         <label className="text-label">Phone *</label>
                         <div className="input-group">
                           <span className="input-group-text">
-                            <i className="fa fa-phone" />
+                            <FaPhone />
                           </span>
                           <input
                             type="text"

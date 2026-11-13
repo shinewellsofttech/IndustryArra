@@ -7,6 +7,39 @@ import { useNavigate } from "react-router-dom";
 import { HubConnectionBuilder, HttpTransportType } from "@microsoft/signalr";
 import { API_WEB_URLS } from "../../constants/constAPI";
 import axios from "axios";
+import {
+  FaForward,
+  FaPauseCircle,
+  FaPlay,
+  FaStop,
+  FaPause,
+  FaExclamationTriangle,
+  FaExchangeAlt,
+  FaExclamationCircle,
+  FaCheckDouble,
+  FaCheck,
+  FaTimes,
+  FaInfoCircle,
+  FaHistory,
+  FaClipboardCheck,
+  FaClock,
+  FaTimesCircle,
+  FaArrowRight,
+  FaCheckCircle,
+  FaQrcode,
+  FaDesktop,
+  FaMinusSquare,
+  FaPlayCircle,
+  FaStopCircle,
+  FaCamera,
+  FaUpload,
+  FaVideo,
+  FaUser,
+  FaCloudUploadAlt,
+  FaImage,
+  FaPowerOff,
+  FaSyncAlt
+} from 'react-icons/fa';
 
 // Play a physical scanner sound using the Web Audio API
 const playBeepSound = () => {
@@ -208,7 +241,7 @@ const MachineControlPanel = ({
           marginBottom: "12px"
         }}>
           <div style={{ fontWeight: 600, display: "flex", alignItems: "center", gap: "6px" }}>
-            <i className="fas fa-forward"></i>
+            <FaForward />
             <span>Marked as Bypassed for Rejection Material</span>
           </div>
           {machine.BypassReason && (
@@ -233,7 +266,7 @@ const MachineControlPanel = ({
           marginBottom: "12px"
         }}>
           <div style={{ fontWeight: 700, display: "flex", alignItems: "center", gap: "6px", color: "#c2410c" }}>
-            <i className="fas fa-pause-circle" style={{ fontSize: "14px" }}></i>
+            <FaPauseCircle style={{ fontSize: "14px" }} />
             <span>Machine Operation Paused (Duty Off / Shift Ended)</span>
           </div>
           <div style={{ display: "flex", justifyContent: "space-between", flexWrap: "wrap", gap: "6px" }}>
@@ -289,7 +322,7 @@ const MachineControlPanel = ({
             {actionLoading ? (
               <span className="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
             ) : (
-              <i className="fas fa-play"></i>
+              <FaPlay />
             )}
             ▶️ RESUME
           </button>
@@ -317,7 +350,7 @@ const MachineControlPanel = ({
             {actionLoading ? (
               <span className="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
             ) : (
-              <i className="fas fa-stop"></i>
+              <FaStop />
             )}
             STOP
           </button>
@@ -348,7 +381,7 @@ const MachineControlPanel = ({
             {actionLoading ? (
               <span className="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
             ) : (
-              <i className="fas fa-play"></i>
+              <FaPlay />
             )}
             START
           </button>
@@ -376,7 +409,7 @@ const MachineControlPanel = ({
               opacity: actionLoading ? 0.7 : 1,
             }}
           >
-            <i className="fas fa-pause"></i>
+            <FaPause />
             PAUSE
           </button>
 
@@ -404,7 +437,7 @@ const MachineControlPanel = ({
             {actionLoading ? (
               <span className="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
             ) : (
-              <i className="fas fa-stop"></i>
+              <FaStop />
             )}
             STOP
           </button>
@@ -423,7 +456,7 @@ const MachineControlPanel = ({
           gap: "8px"
         }}>
           <div style={{ color: "#dc2626", fontSize: "12.5px", fontWeight: 600, textAlign: "left", display: "flex", alignItems: "center", gap: "6px" }}>
-            <i className="fas fa-exclamation-triangle"></i>
+            <FaExclamationTriangle />
             <span>Please start the previous machine ({prevMachineName || "preceding machine"}) first.</span>
           </div>
           {onOpenBypassModal && unstartedPrecedingCount > 0 && (
@@ -449,7 +482,7 @@ const MachineControlPanel = ({
                   boxShadow: "0 1px 3px rgba(234, 88, 12, 0.3)"
                 }}
               >
-                <i className="fas fa-forward"></i>
+                <FaForward />
                 ⚡ Bypass Previous Machines ({unstartedPrecedingCount})
               </button>
             </div>
@@ -459,7 +492,7 @@ const MachineControlPanel = ({
 
       {isEngagedElsewhere && (
         <div style={{ color: "#dc2626", fontSize: "12.5px", fontWeight: 600, marginTop: "12px", textAlign: "left", display: "flex", alignItems: "center", gap: "6px" }}>
-          <i className="fas fa-exclamation-triangle"></i>
+          <FaExclamationTriangle />
           <span>This machine is currently active on Job Card No: {machine.EngagedJobCardNo}. Please end that operation first.</span>
         </div>
       )}
@@ -568,7 +601,7 @@ const MachineSwapModal = ({
         }}>
           <div>
             <h5 style={{ margin: 0, fontSize: "16px", fontWeight: 700, color: "#fff", display: "flex", alignItems: "center", gap: "8px" }}>
-              <i className="fas fa-exchange-alt" style={{ color: "#38bdf8" }}></i>
+              <FaExchangeAlt style={{ color: "#38bdf8" }} />
               {isBulk ? `Bulk Machine Switch (${sessionsList.length} Job Cards)` : "Change / Re-assign Machine"}
             </h5>
             <div style={{ color: "#94a3b8", fontSize: "12px", marginTop: "3px" }}>
@@ -615,7 +648,7 @@ const MachineSwapModal = ({
               alignItems: "center",
               gap: "8px"
             }}>
-              <i className="fas fa-exclamation-circle fs-16"></i>
+              <FaExclamationCircle className="fs-16" />
               <span>Cannot change machine: This operation has already started or completed on this step.</span>
             </div>
           )}
@@ -804,7 +837,7 @@ const MachineSwapModal = ({
               </>
             ) : (
               <>
-                <i className={isBulk ? "fas fa-check-double" : "fas fa-check"}></i>{" "}
+                {isBulk ? <FaCheckDouble /> : <FaCheck />}{" "}
                 {isBulk ? `Update All (${sessionsList.length}) Machines` : "Update Machine"}
               </>
             )}
@@ -883,7 +916,7 @@ const MachineBypassModal = ({
         }}>
           <div>
             <h5 style={{ margin: 0, fontSize: "16px", fontWeight: 700, color: "#fff", display: "flex", alignItems: "center", gap: "8px" }}>
-              <i className="fas fa-forward"></i>
+              <FaForward />
               Bypass Previous Machines (Rejection Material)
             </h5>
             <div style={{ color: "#ffedd5", fontSize: "12px", marginTop: "3px" }}>
@@ -902,7 +935,7 @@ const MachineBypassModal = ({
               padding: "4px 8px"
             }}
           >
-            <i className="fas fa-times"></i>
+            <FaTimes />
           </button>
         </div>
 
@@ -919,7 +952,7 @@ const MachineBypassModal = ({
             color: "#9a3412",
             lineHeight: 1.5
           }}>
-            <i className="fas fa-info-circle me-1" style={{ color: "#ea580c" }}></i>
+            <FaInfoCircle className="me-1" style={{ color: "#ea580c" }} />
             Starting directly from <strong>{targetName} ({targetNo})</strong> using rejection or pre-sized offcut material.
             The unstarted preceding machines below will be marked as bypassed so this machine unlocks immediately.
           </div>
@@ -1086,7 +1119,7 @@ const MachineBypassModal = ({
               </>
             ) : (
               <>
-                <i className="fas fa-forward"></i>
+                <FaForward />
                 Confirm & Bypass Machines
               </>
             )}
@@ -1165,7 +1198,7 @@ const MachinePauseModal = ({
         }}>
           <div>
             <h5 style={{ margin: 0, fontSize: "16px", fontWeight: 700, color: "#fff", display: "flex", alignItems: "center", gap: "8px" }}>
-              <i className="fas fa-pause-circle" style={{ color: "#fef3c7" }}></i>
+              <FaPauseCircle style={{ color: "#fef3c7" }} />
               Pause Machine Operation
             </h5>
             <small style={{ color: "#fed7aa", fontSize: "12px" }}>
@@ -1337,7 +1370,7 @@ const MachinePauseModal = ({
               </>
             ) : (
               <>
-                <i className="fas fa-pause"></i>
+                <FaPause />
                 Confirm & Pause Machine
               </>
             )}
@@ -1393,7 +1426,7 @@ const MachineLogsModal = ({
         }}>
           <div>
             <h5 style={{ margin: 0, fontSize: "16px", fontWeight: 700, color: "#fff", display: "flex", alignItems: "center", gap: "8px" }}>
-              <i className="fas fa-history" style={{ color: "#38bdf8" }}></i>
+              <FaHistory style={{ color: "#38bdf8" }} />
               Machine Change Audit Logs
             </h5>
             <small style={{ color: "#94a3b8", fontSize: "12px" }}>
@@ -1430,7 +1463,7 @@ const MachineLogsModal = ({
               border: "1px dashed #cbd5e1",
               color: "#64748b"
             }}>
-              <i className="fas fa-clipboard-check fs-30 mb-2" style={{ color: "#94a3b8" }}></i>
+              <FaClipboardCheck className="fs-30 mb-2" style={{ color: "#94a3b8" }} />
               <div style={{ fontWeight: 600, fontSize: "14px", color: "#475569" }}>No Machine Changes Recorded</div>
               <div style={{ fontSize: "12px", marginTop: "4px" }}>
                 All operations on this Job Card are running on their originally allocated machines.
@@ -1469,7 +1502,7 @@ const MachineLogsModal = ({
                         {processName}
                       </span>
                       <span style={{ fontSize: "11.5px", color: "#64748b", fontFamily: "monospace" }}>
-                        <i className="far fa-clock mr-1"></i>
+                        <FaClock className="mr-1" />
                         {changeDate}
                       </span>
                     </div>
@@ -1483,10 +1516,10 @@ const MachineLogsModal = ({
                         fontSize: "12.5px",
                         fontWeight: 600
                       }}>
-                        <i className="fas fa-times-circle mr-1"></i>
+                        <FaTimesCircle className="mr-1" />
                         {oldMachine}
                       </div>
-                      <i className="fas fa-arrow-right" style={{ color: "#94a3b8", fontSize: "14px" }}></i>
+                      <FaArrowRight style={{ color: "#94a3b8", fontSize: "14px" }} />
                       <div style={{
                         backgroundColor: "#dcfce7",
                         color: "#166534",
@@ -1495,7 +1528,7 @@ const MachineLogsModal = ({
                         fontSize: "12.5px",
                         fontWeight: 700
                       }}>
-                        <i className="fas fa-check-circle mr-1"></i>
+                        <FaCheckCircle className="mr-1" />
                         {newMachine}
                       </div>
                     </div>
@@ -1629,7 +1662,7 @@ const ScannedWoodJobCard = ({
       >
         <div>
           <div style={{ color: "#a7f3d0", fontSize: 12, fontWeight: 600, letterSpacing: 1 }}>
-            <i className="fas fa-check-circle" style={{ marginRight: 6 }}></i>
+            <FaCheckCircle style={{ marginRight: 6 }} />
             WOOD JOB CARD — SCAN SUCCESSFUL
           </div>
           <div style={{ color: "#fff", fontSize: 22, fontWeight: 700, marginTop: 4 }}>
@@ -1652,7 +1685,7 @@ const ScannedWoodJobCard = ({
           }}
           onClick={onRescan}
         >
-          <i className="fas fa-qrcode"></i> Scan Again
+          <FaQrcode /> Scan Again
         </button>
       </div>
 
@@ -1683,7 +1716,7 @@ const ScannedWoodJobCard = ({
                 <div>
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "8px" }}>
                     <label style={{ fontSize: "11px", fontWeight: 700, color: "#065f46", margin: 0, letterSpacing: "0.5px" }}>
-                      <i className="fas fa-desktop mr-2" style={{ color: "#065f46" }}></i> ASSIGNED MACHINE
+                      <FaDesktop className="mr-2" style={{ color: "#065f46" }} /> ASSIGNED MACHINE
                     </label>
                     <div style={{ display: "flex", gap: "6px" }}>
                       {unstartedPrecedingCount > 0 && machineData && (!machineData.StartTime || String(machineData.StartTime).trim() === "") && (
@@ -1706,7 +1739,7 @@ const ScannedWoodJobCard = ({
                             gap: "4px"
                           }}
                         >
-                          <i className="fas fa-forward"></i> Bypass ({unstartedPrecedingCount})
+                          <FaForward /> Bypass ({unstartedPrecedingCount})
                         </button>
                       )}
                       <button
@@ -1728,7 +1761,7 @@ const ScannedWoodJobCard = ({
                           gap: "4px"
                         }}
                       >
-                        <i className="fas fa-exchange-alt"></i> Switch Machine
+                        <FaExchangeAlt /> Switch Machine
                       </button>
                       <button
                         type="button"
@@ -1747,7 +1780,7 @@ const ScannedWoodJobCard = ({
                           gap: "4px"
                         }}
                       >
-                        <i className="fas fa-history"></i> Logs
+                        <FaHistory /> Logs
                       </button>
                     </div>
                   </div>
@@ -1789,7 +1822,7 @@ const ScannedWoodJobCard = ({
                 <div style={{ marginBottom: "16px" }}>
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "8px" }}>
                     <label style={{ fontSize: "11px", fontWeight: 700, color: "#065f46", margin: 0, letterSpacing: "0.5px" }}>
-                      <i className="fas fa-desktop mr-2" style={{ color: "#065f46" }}></i> SELECT MACHINE FOR OPERATION
+                      <FaDesktop className="mr-2" style={{ color: "#065f46" }} /> SELECT MACHINE FOR OPERATION
                     </label>
                     <div style={{ display: "flex", gap: "6px" }}>
                       {unstartedPrecedingCount > 0 && machineData && (!machineData.StartTime || String(machineData.StartTime).trim() === "") && (
@@ -1812,7 +1845,7 @@ const ScannedWoodJobCard = ({
                             gap: "4px"
                           }}
                         >
-                          <i className="fas fa-forward"></i> Bypass ({unstartedPrecedingCount})
+                          <FaForward /> Bypass ({unstartedPrecedingCount})
                         </button>
                       )}
                       {machineData && (
@@ -1835,7 +1868,7 @@ const ScannedWoodJobCard = ({
                             gap: "4px"
                           }}
                         >
-                          <i className="fas fa-exchange-alt"></i> Switch Machine
+                          <FaExchangeAlt /> Switch Machine
                         </button>
                       )}
                       <button
@@ -1855,7 +1888,7 @@ const ScannedWoodJobCard = ({
                           gap: "4px"
                         }}
                       >
-                        <i className="fas fa-history"></i> Logs
+                        <FaHistory /> Logs
                       </button>
                     </div>
                   </div>
@@ -1992,7 +2025,7 @@ const ScannedMetalJobCard = ({
       >
         <div>
           <div style={{ color: "#dbeafe", fontSize: 12, fontWeight: 600, letterSpacing: 1 }}>
-            <i className="fas fa-check-circle" style={{ marginRight: 6 }}></i>
+            <FaCheckCircle style={{ marginRight: 6 }} />
             METAL JOB CARD — SCAN SUCCESSFUL
           </div>
           <div style={{ color: "#fff", fontSize: 22, fontWeight: 700, marginTop: 4 }}>
@@ -2015,7 +2048,7 @@ const ScannedMetalJobCard = ({
           }}
           onClick={onRescan}
         >
-          <i className="fas fa-qrcode"></i> Scan Again
+          <FaQrcode /> Scan Again
         </button>
       </div>
 
@@ -2046,7 +2079,7 @@ const ScannedMetalJobCard = ({
                 <div>
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "8px" }}>
                     <label style={{ fontSize: "11px", fontWeight: 700, color: "#1e3a8a", margin: 0, letterSpacing: "0.5px" }}>
-                      <i className="fas fa-desktop mr-2" style={{ color: "#1e3a8a" }}></i> ASSIGNED MACHINE
+                      <FaDesktop className="mr-2" style={{ color: "#1e3a8a" }} /> ASSIGNED MACHINE
                     </label>
                     <div style={{ display: "flex", gap: "6px" }}>
                       {unstartedPrecedingCount > 0 && machineData && (!machineData.StartTime || String(machineData.StartTime).trim() === "") && (
@@ -2069,7 +2102,7 @@ const ScannedMetalJobCard = ({
                             gap: "4px"
                           }}
                         >
-                          <i className="fas fa-forward"></i> Bypass ({unstartedPrecedingCount})
+                          <FaForward /> Bypass ({unstartedPrecedingCount})
                         </button>
                       )}
                       <button
@@ -2091,7 +2124,7 @@ const ScannedMetalJobCard = ({
                           gap: "4px"
                         }}
                       >
-                        <i className="fas fa-exchange-alt"></i> Switch Machine
+                        <FaExchangeAlt /> Switch Machine
                       </button>
                       <button
                         type="button"
@@ -2110,7 +2143,7 @@ const ScannedMetalJobCard = ({
                           gap: "4px"
                         }}
                       >
-                        <i className="fas fa-history"></i> Logs
+                        <FaHistory /> Logs
                       </button>
                     </div>
                   </div>
@@ -2152,7 +2185,7 @@ const ScannedMetalJobCard = ({
                 <div style={{ marginBottom: "16px" }}>
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "8px" }}>
                     <label style={{ fontSize: "11px", fontWeight: 700, color: "#1e3a8a", margin: 0, letterSpacing: "0.5px" }}>
-                      <i className="fas fa-desktop mr-2" style={{ color: "#1e3a8a" }}></i> SELECT MACHINE FOR OPERATION
+                      <FaDesktop className="mr-2" style={{ color: "#1e3a8a" }} /> SELECT MACHINE FOR OPERATION
                     </label>
                     <div style={{ display: "flex", gap: "6px" }}>
                       {unstartedPrecedingCount > 0 && machineData && (!machineData.StartTime || String(machineData.StartTime).trim() === "") && (
@@ -2175,7 +2208,7 @@ const ScannedMetalJobCard = ({
                             gap: "4px"
                           }}
                         >
-                          <i className="fas fa-forward"></i> Bypass ({unstartedPrecedingCount})
+                          <FaForward /> Bypass ({unstartedPrecedingCount})
                         </button>
                       )}
                       {machineData && (
@@ -2198,7 +2231,7 @@ const ScannedMetalJobCard = ({
                             gap: "4px"
                           }}
                         >
-                          <i className="fas fa-exchange-alt"></i> Switch Machine
+                          <FaExchangeAlt /> Switch Machine
                         </button>
                       )}
                       <button
@@ -2218,7 +2251,7 @@ const ScannedMetalJobCard = ({
                           gap: "4px"
                         }}
                       >
-                        <i className="fas fa-history"></i> Logs
+                        <FaHistory /> Logs
                       </button>
                     </div>
                   </div>
@@ -2355,7 +2388,7 @@ const ScannedMDFJobCard = ({
       >
         <div>
           <div style={{ color: "#ffedd5", fontSize: 12, fontWeight: 600, letterSpacing: 1 }}>
-            <i className="fas fa-check-circle" style={{ marginRight: 6 }}></i>
+            <FaCheckCircle style={{ marginRight: 6 }} />
             MDF JOB CARD — SCAN SUCCESSFUL
           </div>
           <div style={{ color: "#fff", fontSize: 22, fontWeight: 700, marginTop: 4 }}>
@@ -2378,7 +2411,7 @@ const ScannedMDFJobCard = ({
           }}
           onClick={onRescan}
         >
-          <i className="fas fa-qrcode"></i> Scan Again
+          <FaQrcode /> Scan Again
         </button>
       </div>
 
@@ -2409,7 +2442,7 @@ const ScannedMDFJobCard = ({
                 <div>
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "8px" }}>
                     <label style={{ fontSize: "11px", fontWeight: 700, color: "#c2410c", margin: 0, letterSpacing: "0.5px" }}>
-                      <i className="fas fa-desktop mr-2" style={{ color: "#c2410c" }}></i> ASSIGNED MACHINE
+                      <FaDesktop className="mr-2" style={{ color: "#c2410c" }} /> ASSIGNED MACHINE
                     </label>
                     <div style={{ display: "flex", gap: "6px" }}>
                       {unstartedPrecedingCount > 0 && machineData && (!machineData.StartTime || String(machineData.StartTime).trim() === "") && (
@@ -2432,7 +2465,7 @@ const ScannedMDFJobCard = ({
                             gap: "4px"
                           }}
                         >
-                          <i className="fas fa-forward"></i> Bypass ({unstartedPrecedingCount})
+                          <FaForward /> Bypass ({unstartedPrecedingCount})
                         </button>
                       )}
                       <button
@@ -2454,7 +2487,7 @@ const ScannedMDFJobCard = ({
                           gap: "4px"
                         }}
                       >
-                        <i className="fas fa-exchange-alt"></i> Switch Machine
+                        <FaExchangeAlt /> Switch Machine
                       </button>
                       <button
                         type="button"
@@ -2473,7 +2506,7 @@ const ScannedMDFJobCard = ({
                           gap: "4px"
                         }}
                       >
-                        <i className="fas fa-history"></i> Logs
+                        <FaHistory /> Logs
                       </button>
                     </div>
                   </div>
@@ -2515,7 +2548,7 @@ const ScannedMDFJobCard = ({
                 <div style={{ marginBottom: "16px" }}>
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "8px" }}>
                     <label style={{ fontSize: "11px", fontWeight: 700, color: "#c2410c", margin: 0, letterSpacing: "0.5px" }}>
-                      <i className="fas fa-desktop mr-2" style={{ color: "#c2410c" }}></i> SELECT MACHINE FOR OPERATION
+                      <FaDesktop className="mr-2" style={{ color: "#c2410c" }} /> SELECT MACHINE FOR OPERATION
                     </label>
                     <div style={{ display: "flex", gap: "6px" }}>
                       {unstartedPrecedingCount > 0 && machineData && (!machineData.StartTime || String(machineData.StartTime).trim() === "") && (
@@ -2538,7 +2571,7 @@ const ScannedMDFJobCard = ({
                             gap: "4px"
                           }}
                         >
-                          <i className="fas fa-forward"></i> Bypass ({unstartedPrecedingCount})
+                          <FaForward /> Bypass ({unstartedPrecedingCount})
                         </button>
                       )}
                       {machineData && (
@@ -2561,7 +2594,7 @@ const ScannedMDFJobCard = ({
                             gap: "4px"
                           }}
                         >
-                          <i className="fas fa-exchange-alt"></i> Switch Machine
+                          <FaExchangeAlt /> Switch Machine
                         </button>
                       )}
                       <button
@@ -2581,7 +2614,7 @@ const ScannedMDFJobCard = ({
                           gap: "4px"
                         }}
                       >
-                        <i className="fas fa-history"></i> Logs
+                        <FaHistory /> Logs
                       </button>
                     </div>
                   </div>
@@ -2801,7 +2834,7 @@ const ScannedJobCardView = ({
               boxShadow: "0 2px 8px rgba(52,211,153,0.3)"
             }}
           >
-            <i className="fas fa-minus-square"></i>
+            <FaMinusSquare />
             Minimize &amp; Scan Another
           </button>
         </div>
@@ -4842,7 +4875,7 @@ const QRScanner = () => {
                 opacity: canSwitchAll ? 1 : 0.5
               }}
             >
-              <i className="fas fa-exchange-alt"></i> Switch All ({scannedSessions.length})
+              <FaExchangeAlt /> Switch All ({scannedSessions.length})
             </button>
           </div>
 
@@ -4880,7 +4913,7 @@ const QRScanner = () => {
               {bulkStartLoading ? (
                 <><span className="spinner-border spinner-border-sm" role="status"></span> Starting...</>
               ) : (
-                <><i className="fas fa-play-circle"></i> Start All ({scannedSessions.length})</>
+                <><FaPlayCircle /> Start All ({scannedSessions.length})</>
               )}
             </button>
           </div>
@@ -4912,7 +4945,7 @@ const QRScanner = () => {
                 {bulkPauseLoading ? (
                   <><span className="spinner-border spinner-border-sm" role="status"></span> Pausing...</>
                 ) : (
-                  <><i className="fas fa-pause-circle"></i> Pause All ({activeUnpausedRunningSessions.length})</>
+                  <><FaPauseCircle /> Pause All ({activeUnpausedRunningSessions.length})</>
                 )}
               </button>
             </div>
@@ -4952,7 +4985,7 @@ const QRScanner = () => {
               {bulkStopLoading ? (
                 <><span className="spinner-border spinner-border-sm" role="status"></span> Stopping...</>
               ) : (
-                <><i className="fas fa-stop-circle"></i> Stop All ({runningSessions.length})</>
+                <><FaStopCircle /> Stop All ({runningSessions.length})</>
               )}
             </button>
           </div>
@@ -5080,7 +5113,7 @@ const QRScanner = () => {
             <div className="card-header" style={{ backgroundColor: "#065f46", padding: "18px 20px" }}>
               <div className="d-flex justify-content-between align-items-center w-100">
                 <h4 className="card-title text-white mb-0 font-w700" style={{ fontSize: "1.1rem" }}>
-                  <i className="fas fa-qrcode mr-2"></i> QR Code Scanner
+                  <FaQrcode className="mr-2" /> QR Code Scanner
                 </h4>
                 <span className={`badge px-3 py-1.5 fs-12 font-w600 ${isCameraActive ? "badge-success" : "badge-light"}`} style={isCameraActive ? { backgroundColor: "#34d399", color: "#065f46" } : {}}>
                   {isCameraActive ? "● SCANNING ACTIVE" : "● OFFLINE"}
@@ -5090,7 +5123,7 @@ const QRScanner = () => {
             <div className="card-body text-center d-flex flex-column justify-content-between align-items-center" style={{ minHeight: "440px", padding: "20px 20px", position: "relative" }}>
               {fetchError && (
                 <div className="alert alert-danger w-100 mb-3 alert-dismissible fade show" role="alert" style={{ fontSize: "13px", borderRadius: "8px", textAlign: "left" }}>
-                  <i className="fas fa-exclamation-triangle mr-2"></i>
+                  <FaExclamationTriangle className="mr-2" />
                   <strong>Error:</strong> {fetchError}
                   <button type="button" className="btn-close" style={{ float: "right", background: "none", border: "none", color: "#721c24", fontWeight: "bold", fontSize: "16px", cursor: "pointer", padding: "0 5px" }} onClick={() => setFetchError(null)} aria-label="Close">
                     &times;
@@ -5153,7 +5186,7 @@ const QRScanner = () => {
                   }}
                   onClick={() => handleModeChange("camera")}
                 >
-                  <i className="fas fa-camera" style={{ marginRight: 6 }}></i>
+                  <FaCamera style={{ marginRight: 6 }} />
                   Live Camera
                 </button>
                 <button
@@ -5171,7 +5204,7 @@ const QRScanner = () => {
                   }}
                   onClick={() => handleModeChange("file")}
                 >
-                  <i className="fas fa-upload" style={{ marginRight: 6 }}></i>
+                  <FaUpload style={{ marginRight: 6 }} />
                   Upload Image
                 </button>
               </div>
@@ -5193,7 +5226,7 @@ const QRScanner = () => {
                   }}
                 >
                   <span style={{ fontSize: "12px", fontWeight: 700, color: "#334155" }}>
-                    <i className="fas fa-video mr-1.5" style={{ color: "#065f46" }}></i>
+                    <FaVideo className="mr-1.5" style={{ color: "#065f46" }} />
                     Camera: <span style={{ color: "#065f46" }}>{cameraFacingMode === "user" ? "Front (Selfie)" : "Back (Rear)"}</span>
                   </span>
 
@@ -5215,7 +5248,7 @@ const QRScanner = () => {
                       }}
                       title="Select Front Camera"
                     >
-                      <i className="fas fa-user mr-1"></i> Front
+                      <FaUser className="mr-1" /> Front
                     </button>
                     <button
                       type="button"
@@ -5234,7 +5267,7 @@ const QRScanner = () => {
                       }}
                       title="Select Back Camera"
                     >
-                      <i className="fas fa-camera mr-1"></i> Back
+                      <FaCamera className="mr-1" /> Back
                     </button>
                   </div>
                 </div>
@@ -5296,7 +5329,7 @@ const QRScanner = () => {
                     padding: "20px"
                   }}>
                     <div className="mb-3 d-flex justify-content-center align-items-center" style={{ width: "70px", height: "70px", borderRadius: "50%", backgroundColor: "#e6f4ea" }}>
-                      <i className="fas fa-camera" style={{ fontSize: "2rem", color: "#065f46" }}></i>
+                      <FaCamera style={{ fontSize: "2rem", color: "#065f46" }} />
                     </div>
                     <h5 className="font-w700 text-dark mb-1" style={{ fontSize: "1.1rem" }}>Camera is Offline</h5>
                     <p className="text-muted fs-13 text-center mb-0" style={{ maxWidth: "260px" }}>
@@ -5335,7 +5368,7 @@ const QRScanner = () => {
                   }}
                 >
                   <div className="mb-3 d-flex justify-content-center align-items-center" style={{ width: "70px", height: "70px", borderRadius: "50%", backgroundColor: "#e0f2fe" }}>
-                    <i className="fas fa-cloud-upload-alt" style={{ fontSize: "2rem", color: "#0284c7" }}></i>
+                    <FaCloudUploadAlt style={{ fontSize: "2rem", color: "#0284c7" }} />
                   </div>
                   <h5 className="font-w700 text-dark mb-1" style={{ fontSize: "1.1rem" }}>Upload QR Image</h5>
                   <p className="text-muted fs-13 text-center mb-0" style={{ maxWidth: "260px" }}>
@@ -5351,7 +5384,7 @@ const QRScanner = () => {
                     style={{ backgroundColor: "#0284c7", borderColor: "#0284c7", borderRadius: "6px", transition: "all 0.2s" }}
                     onClick={() => fileInputRef.current && fileInputRef.current.click()}
                   >
-                    <i className="fas fa-image mr-2"></i> SELECT IMAGE FILE
+                    <FaImage className="mr-2" /> SELECT IMAGE FILE
                   </button>
                 ) : !isCameraActive ? (
                   <button
@@ -5367,7 +5400,7 @@ const QRScanner = () => {
                       </>
                     ) : (
                       <>
-                        <i className="fas fa-power-off mr-2"></i> TURN ON CAMERA
+                        <FaPowerOff className="mr-2" /> TURN ON CAMERA
                       </>
                     )}
                   </button>
@@ -5394,7 +5427,7 @@ const QRScanner = () => {
                         </>
                       ) : (
                         <>
-                          <i className="fas fa-sync-alt mr-1.5"></i>
+                          <FaSyncAlt className="mr-1.5" />
                           {cameraFacingMode === "user" ? "Switch to Back" : "Switch to Front"}
                         </>
                       )}
@@ -5413,7 +5446,7 @@ const QRScanner = () => {
                         </>
                       ) : (
                         <>
-                          <i className="fas fa-stop mr-2"></i> TURN OFF
+                          <FaStop className="mr-2" /> TURN OFF
                         </>
                       )}
                     </button>

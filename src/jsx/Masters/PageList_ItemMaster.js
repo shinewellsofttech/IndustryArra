@@ -19,6 +19,7 @@ import { toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import JSZip from 'jszip';
 import usePagePermissions from '../../helpers/usePagePermissions';
+import { FaCheck, FaImage, FaDownload, FaTrash } from 'react-icons/fa';
 
 
 export const PageList_ItemMaster = () => {
@@ -662,7 +663,7 @@ export const PageList_ItemMaster = () => {
 						onClick={() => btnMarkAsUploaded(row.original)}
 						title="Mark as Uploaded"
 					  >
-						<i className="bi bi-check"></i>
+						<FaCheck />
 					  </Button>
 					</>
 				  )}
@@ -717,8 +718,8 @@ export const PageList_ItemMaster = () => {
 					onClick={() => btnDownloadImages(row.original)}
 					title="Download Images"
 				  >
-					<i className="bi bi-image me-1"></i>
-					<i className="bi bi-download"></i>
+					<FaImage className="me-1" />
+					<FaDownload />
 				  </Button>
 				  {row.original.IsDataUploaded === 1 && (
 					<Button
@@ -727,7 +728,7 @@ export const PageList_ItemMaster = () => {
 					  onClick={() => btnShowRowData(row.original)}
 					  title="Export to Excel"
 					>
-					  <i className="bi bi-download"></i> Export
+					  <FaDownload className="me-1" /> Export
 					</Button>
 				  )}
 				  {canDelete && (
@@ -737,7 +738,7 @@ export const PageList_ItemMaster = () => {
 					  onClick={() => btnDelete(row.original.Id)}
 					  title="Delete"
 					>
-					  <i className="bi bi-trash"></i>
+					  <FaTrash />
 					</Button>
 				  )}
 				</div>

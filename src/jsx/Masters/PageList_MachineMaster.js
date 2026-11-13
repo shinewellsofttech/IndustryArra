@@ -13,6 +13,7 @@ import { API_WEB_URLS } from '../../constants/constAPI';
 import usePagePermissions from '../../helpers/usePagePermissions';
 import axios from 'axios';
 import swal from 'sweetalert';
+import { FaCheckCircle, FaBan, FaPlus } from 'react-icons/fa';
 
 export const PageList_MachineMaster = () => {
 	const [gridData, setGridData] = useState([]);
@@ -156,11 +157,11 @@ export const PageList_MachineMaster = () => {
 							<span className="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>
 						) : isActive ? (
 							<>
-								<i className="fas fa-check-circle me-1"></i> Active
+								<FaCheckCircle className="me-1" /> Active
 							</>
 						) : (
 							<>
-								<i className="fas fa-ban me-1"></i> Band / Inactive
+								<FaBan className="me-1" /> Band / Inactive
 							</>
 						)}
 					</Button>
@@ -249,7 +250,7 @@ export const PageList_MachineMaster = () => {
 							size="sm"
 							className="w-100"
 						>
-							<i className="fas fa-plus me-1"></i>Add New
+							<FaPlus className="me-1" />Add New
 						</Button>
 					)}
 				</Col>
@@ -272,7 +273,7 @@ export const PageList_MachineMaster = () => {
 					className="rounded-pill px-3"
 					onClick={() => setStatusFilter("ACTIVE")}
 				>
-					<i className="fas fa-check-circle me-1"></i> Active Only ({activeCount})
+					<FaCheckCircle className="me-1" /> Active Only ({activeCount})
 				</Button>
 				<Button
 					variant={statusFilter === "INACTIVE" ? "danger" : "outline-danger"}
@@ -280,7 +281,7 @@ export const PageList_MachineMaster = () => {
 					className="rounded-pill px-3"
 					onClick={() => setStatusFilter("INACTIVE")}
 				>
-					<i className="fas fa-ban me-1"></i> Band / Inactive Only ({inactiveCount})
+					<FaBan className="me-1" /> Band / Inactive Only ({inactiveCount})
 				</Button>
 			</div>
 

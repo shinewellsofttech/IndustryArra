@@ -6,6 +6,7 @@ import * as Yup from "yup";
 import { useDispatch } from "react-redux";
 import { API_WEB_URLS } from "../../constants/constAPI";
 import { Fn_AddEditData, Fn_DisplayData, Fn_FillListData } from "../../store/Functions";
+import { FaCheckCircle, FaBan } from "react-icons/fa";
 
 const NameSchema = Yup.object().shape({
   Name: Yup.string().required("Name is required"),
@@ -174,9 +175,9 @@ const AddEdit_MachineMaster = () => {
                               />
                               <label className="form-check-label fw-bold ms-3" htmlFor="isActiveSwitch" style={{ cursor: 'pointer', fontSize: '1rem' }}>
                                 {values.IsActive !== false && values.IsActive !== 0 && values.IsActive !== "0" ? (
-                                  <span className="text-success"><i className="fas fa-check-circle me-1"></i> Active (Operational)</span>
+                                  <span className="text-success"><FaCheckCircle className="me-1" /> Active (Operational)</span>
                                 ) : (
-                                  <span className="text-danger"><i className="fas fa-ban me-1"></i> Inactive (Band / Closed)</span>
+                                  <span className="text-danger"><FaBan className="me-1" /> Inactive (Band / Closed)</span>
                                 )}
                               </label>
                             </div>

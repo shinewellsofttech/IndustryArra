@@ -16,6 +16,7 @@ import JSZip from 'jszip';
 import { Container } from 'reactstrap';
 import { ThemeContext } from '../../context/ThemeContext';
 import usePagePermissions from '../../helpers/usePagePermissions';
+import { FaPlus, FaExclamationTriangle } from 'react-icons/fa';
 
 export const PageList_ComponentMaster = ({ filterItemCode, filterIsActive, isModalView = false }) => {
 	const [State, setState] = useState({
@@ -730,7 +731,7 @@ export const PageList_ComponentMaster = ({ filterItemCode, filterIsActive, isMod
 								size="sm"
 								className="w-100"
 							>
-								<i className="fas fa-plus me-1"></i>Add New
+								<FaPlus className="me-1" />Add New
 							</Button>
 						)}
 					</Col>
@@ -835,7 +836,7 @@ export const PageList_ComponentMaster = ({ filterItemCode, filterIsActive, isMod
 				  <>
 					<div className="d-flex justify-content-between mb-1">
 					  <span className="text-warning">
-						<i className="fa fa-exclamation-triangle mr-1"></i>
+						<FaExclamationTriangle className="me-1" />
 						Retrying failed image: {state.saveProgress.currentImageName}
 					  </span>
 					  <span>{state.saveProgress.retryPercentComplete}% Complete</span>

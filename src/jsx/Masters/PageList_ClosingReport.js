@@ -8,6 +8,7 @@ import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import html2canvas from 'html2canvas';
 import ExcelJS from 'exceljs';
+import { FaTimes, FaSearch, FaFilePdf, FaFileExcel } from "react-icons/fa";
 import MetalJobCard from "./MetalJobCard";
 import MDFJobCard from "./MDFJobCard";
 import WoodJobCard from "./WoodJobCard";
@@ -551,7 +552,7 @@ const PageList_ClosingReport = ({F_ContainerMasterL: propF_ContainerMasterL, F_I
                 onClick={clearSearch}
                 title="Clear search"
               >
-                <i className="fas fa-times"></i>
+                <FaTimes />
               </button>
             )}
           </div>
@@ -560,7 +561,7 @@ const PageList_ClosingReport = ({F_ContainerMasterL: propF_ContainerMasterL, F_I
 
       {searchTerm && (
         <div className="alert alert-info mb-3">
-          <i className="fas fa-search me-2"></i>
+          <FaSearch className="me-2" />
           Found {filteredJobCards.length} of {jobCardArray.length} components matching "{searchTerm}"
         </div>
       )}
@@ -573,14 +574,14 @@ const PageList_ClosingReport = ({F_ContainerMasterL: propF_ContainerMasterL, F_I
             className="me-2"
             style={{ backgroundColor: '#dc3545', borderColor: '#dc3545' }}
           >
-            <i className="fas fa-file-pdf me-2"></i>Export to PDF
+            <FaFilePdf className="me-2" />Export to PDF
           </Button>
           <Button
             variant="success"
             onClick={exportToExcel}
             style={{ backgroundColor: '#28a745', borderColor: '#28a745' }}
           >
-            <i className="fas fa-file-excel me-2"></i>Export to Excel
+            <FaFileExcel className="me-2" />Export to Excel
           </Button>
         </div>
       )}

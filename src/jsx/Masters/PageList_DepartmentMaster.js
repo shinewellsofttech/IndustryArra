@@ -4,6 +4,11 @@ import axios from "axios";
 import { API_WEB_URLS } from "../../constants/constAPI";
 import PageTitle from "../layouts/PageTitle";
 import usePagePermissions from "../../helpers/usePagePermissions";
+import { 
+  FaSitemap, FaPlus, FaPlusCircle, FaEdit, FaTrash, 
+  FaSync, FaArrowUp, FaArrowDown, FaCogs, FaBoxes, 
+  FaFolderOpen, FaCheckCircle, FaExclamationTriangle 
+} from "react-icons/fa";
 
 export const PageList_DepartmentMaster = () => {
   const [departments, setDepartments] = useState([]);
@@ -236,14 +241,14 @@ export const PageList_DepartmentMaster = () => {
 
       {errorMsg && (
         <Alert variant="danger" dismissible onClose={() => setErrorMsg("")}>
-          <i className="fas fa-exclamation-triangle me-2"></i>
+          <FaExclamationTriangle className="me-2" />
           {errorMsg}
         </Alert>
       )}
 
       {successMsg && (
         <Alert variant="success" dismissible onClose={() => setSuccessMsg("")}>
-          <i className="fas fa-check-circle me-2"></i>
+          <FaCheckCircle className="me-2" />
           {successMsg}
         </Alert>
       )}
@@ -252,7 +257,7 @@ export const PageList_DepartmentMaster = () => {
         <Card.Header className="d-flex justify-content-between align-items-center">
           <div>
             <Card.Title className="mb-0">
-              <i className="fas fa-sitemap me-2 text-primary"></i>
+              <FaSitemap className="me-2 text-primary" />
               Department Workflow & Ordering Master
             </Card.Title>
             <small className="text-muted">
@@ -262,11 +267,11 @@ export const PageList_DepartmentMaster = () => {
           <div>
             {canAdd && (
               <Button variant="primary" size="sm" onClick={handleOpenAdd}>
-                <i className="fas fa-plus me-1"></i> Add Department
+                <FaPlus className="me-1" /> Add Department
               </Button>
             )}
             <Button variant="outline-secondary" size="sm" className="ms-2" onClick={fetchDepartments}>
-              <i className="fas fa-sync-alt"></i>
+              <FaSync />
             </Button>
           </div>
         </Card.Header>
@@ -279,7 +284,7 @@ export const PageList_DepartmentMaster = () => {
             </div>
           ) : departments.length === 0 ? (
             <div className="text-center py-5">
-              <i className="fas fa-folder-open fa-3x text-muted mb-3"></i>
+              <FaFolderOpen className="fa-3x text-muted mb-3" />
               <h5>No Departments Found</h5>
               <p className="text-muted">Click "Add Department" to create your first department.</p>
             </div>
@@ -314,7 +319,7 @@ export const PageList_DepartmentMaster = () => {
                             onClick={() => handleMove(index, "up")}
                             title="Move Up"
                           >
-                            <i className="fas fa-arrow-up"></i>
+                            <FaArrowUp />
                           </Button>
                           <Button
                             variant="outline-primary"
@@ -324,7 +329,7 @@ export const PageList_DepartmentMaster = () => {
                             onClick={() => handleMove(index, "down")}
                             title="Move Down"
                           >
-                            <i className="fas fa-arrow-down"></i>
+                            <FaArrowDown />
                           </Button>
                         </td>
                         <td style={{ textAlign: "center", fontWeight: "700" }}>
@@ -354,11 +359,11 @@ export const PageList_DepartmentMaster = () => {
                         <td>
                           {dept.IsMachineTracking ? (
                             <Badge bg="info" className="px-2 py-1">
-                              <i className="fas fa-cogs me-1"></i> Machine Level (Components)
+                              <FaCogs className="me-1" /> Machine Level (Components)
                             </Badge>
                           ) : (
                             <Badge bg="secondary" className="px-2 py-1">
-                              <i className="fas fa-boxes me-1"></i> Batch Transfer (Container)
+                              <FaBoxes className="me-1" /> Batch Transfer (Container)
                             </Badge>
                           )}
                         </td>
@@ -378,7 +383,7 @@ export const PageList_DepartmentMaster = () => {
                               onClick={() => handleOpenEdit(dept)}
                               title="Edit Department"
                             >
-                              <i className="fas fa-edit"></i> Edit
+                              <FaEdit className="me-1" /> Edit
                             </Button>
                           )}
                           <Button
@@ -387,7 +392,7 @@ export const PageList_DepartmentMaster = () => {
                             onClick={() => handleDelete(dept)}
                             title="Delete / Deactivate"
                           >
-                            <i className="fas fa-trash"></i>
+                            <FaTrash />
                           </Button>
                         </td>
                       </tr>
@@ -407,11 +412,11 @@ export const PageList_DepartmentMaster = () => {
             <Modal.Title>
               {modalMode === "add" ? (
                 <>
-                  <i className="fas fa-plus-circle me-2 text-primary"></i> Add New Department
+                  <FaPlusCircle className="me-2 text-primary" /> Add New Department
                 </>
               ) : (
                 <>
-                  <i className="fas fa-edit me-2 text-warning"></i> Edit Department
+                  <FaEdit className="me-2 text-warning" /> Edit Department
                 </>
               )}
             </Modal.Title>

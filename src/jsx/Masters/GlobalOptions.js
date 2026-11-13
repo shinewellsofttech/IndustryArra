@@ -3,6 +3,7 @@ import { Row, Col, Button, Card, Form, Spinner, Alert } from "react-bootstrap";
 import { useDispatch } from "react-redux";
 import { API_WEB_URLS } from "../../constants/constAPI";
 import { Fn_FillListData, Fn_AddEditData } from "../../store/Functions";
+import { FaExclamationTriangle, FaRedo, FaCheckCircle, FaExclamationCircle, FaSave } from "react-icons/fa";
 
 const GlobalOptions = () => {
   const [options, setOptions] = useState([]);
@@ -144,7 +145,7 @@ const GlobalOptions = () => {
     return (
       <Card className="mt-4 border-danger">
         <Card.Body className="text-center">
-          <i className="fas fa-exclamation-triangle text-danger fs-3 mb-3"></i>
+          <FaExclamationTriangle className="text-danger fs-3 mb-3" />
           <h4 className="text-danger">Error Loading Global Options</h4>
           <p>{error}</p>
           <Button variant="outline-danger" onClick={fetchOptions}>
@@ -163,13 +164,13 @@ const GlobalOptions = () => {
           <p className="text-muted mb-0">Manage system-wide configuration variables and machine exclusions</p>
         </div>
         <Button variant="outline-primary" className="btn-sm" onClick={fetchOptions}>
-          <i className="fas fa-redo me-1"></i> Refresh
+          <FaRedo className="me-1" /> Refresh
         </Button>
       </div>
 
       {successMessage && (
         <Alert variant="success" onClose={() => setSuccessMessage(null)} dismissible>
-          <i className="fas fa-check-circle me-2"></i>
+          <FaCheckCircle className="me-2" />
           {successMessage}
         </Alert>
       )}
@@ -226,7 +227,7 @@ const GlobalOptions = () => {
                       </div>
                     ) : machineError ? (
                       <div className="text-center py-4 col-span-full text-danger">
-                        <i className="fas fa-exclamation-circle me-2"></i>
+                        <FaExclamationCircle className="me-2" />
                         <span>{machineError}</span>
                         <Button variant="link" size="sm" className="ms-2 p-0 text-danger text-decoration-underline" onClick={fetchMachines}>
                           Retry
@@ -278,7 +279,7 @@ const GlobalOptions = () => {
                   </>
                 ) : (
                   <>
-                    <i className="fas fa-save me-2"></i> Update Global Options
+                    <FaSave className="me-2" /> Update Global Options
                   </>
                 )}
               </Button>

@@ -4,6 +4,18 @@ import { useDispatch } from 'react-redux';
 import { API_WEB_URLS } from '../../constants/constAPI';
 import { Spinner, Modal, Table, Button, FormControl } from 'react-bootstrap';
 import { PageList_ComponentMaster } from './PageList_ComponentMaster';
+import {
+    FaCubes,
+    FaTools,
+    FaCheckCircle,
+    FaTimesCircle,
+    FaImage,
+    FaCamera,
+    FaFileImage,
+    FaCameraRetro,
+    FaExclamationTriangle,
+    FaArrowLeft
+} from 'react-icons/fa';
 
 function TotalItemSummary() {
     const [state, setState] = useState({})
@@ -133,7 +145,7 @@ function TotalItemSummary() {
               <div className="card-body p-4">
                 <div className="media">
                   <span className="me-3">
-                    <i className="la la-cubes"></i>
+                    <FaCubes />
                   </span>
                   <div className="media-body text-white">
                     <p className="mb-1">Total Items</p>
@@ -153,7 +165,7 @@ function TotalItemSummary() {
               <div className="card-body p-4">
                 <div className="media">
                   <span className="me-3">
-                    <i className="la la-tools"></i>
+                    <FaTools />
                   </span>
                   <div className="media-body text-white">
                     <p className="mb-1">Actual Components</p>
@@ -173,7 +185,7 @@ function TotalItemSummary() {
               <div className="card-body p-4">
                 <div className="media">
                   <span className="me-3">
-                    <i className="la la-check-circle"></i>
+                    <FaCheckCircle />
                   </span>
                   <div className="media-body text-white">
                     <p className="mb-1">Active Components</p>
@@ -194,7 +206,7 @@ function TotalItemSummary() {
               <div className="card-body p-4">
                 <div className="media">
                   <span className="me-3">
-                    <i className="la la-times-circle"></i>
+                    <FaTimesCircle />
                   </span>
                   <div className="media-body text-white">
                     <p className="mb-1">Inactive Components</p>
@@ -220,7 +232,7 @@ function TotalItemSummary() {
                         <div className="col-sm-6">
                             <div className="d-flex align-items-center mb-3">
                                 <div className="p-3 rounded bg-success-light me-3">
-                                    <i className="la la-image text-success fs-24"></i>
+                                    <FaImage className="text-success fs-24" />
                                 </div>
                                 <div className="media-body">
                                     <p className="mb-1">Components With Photo</p>
@@ -229,7 +241,7 @@ function TotalItemSummary() {
                             </div>
                             <div className="d-flex align-items-center mb-3">
                                 <div className="p-3 rounded bg-warning-light me-3">
-                                    <i className="la la-camera text-warning fs-24"></i>
+                                    <FaCamera className="text-warning fs-24" />
                                 </div>
                                 <div className="media-body">
                                     <p className="mb-1">Photo Pending Components</p>
@@ -258,7 +270,7 @@ function TotalItemSummary() {
                         <div className="col-sm-6">
                             <div className="d-flex align-items-center mb-3">
                                 <div className="p-3 rounded bg-info-light me-3">
-                                    <i className="la la-file-image text-info fs-24"></i>
+                                    <FaFileImage className="text-info fs-24" />
                                 </div>
                                 <div className="media-body">
                                     <p className="mb-1">Items With Photo</p>
@@ -267,7 +279,7 @@ function TotalItemSummary() {
                             </div>
                             <div className="d-flex align-items-center mb-3">
                                 <div className="p-3 rounded bg-danger-light me-3">
-                                    <i className="la la-camera-retro text-danger fs-24"></i>
+                                    <FaCameraRetro className="text-danger fs-24" />
                                 </div>
                                 <div className="media-body">
                                     <p className="mb-1">Photo Pending Items</p>
@@ -297,7 +309,7 @@ function TotalItemSummary() {
                         <div className="card-body p-4">
                             <div className="media">
                                 <span className="me-3">
-                                    <i className={`la ${summary.TotalShortOrExcessComponents < 0 ? 'la-exclamation-triangle' : 'la-check-circle'}`}></i>
+                                    {summary.TotalShortOrExcessComponents < 0 ? <FaExclamationTriangle /> : <FaCheckCircle />}
                                 </span>
                                 <div className="media-body text-white text-end">
                                     <p className="mb-1">Short / Excess Components</p>
@@ -380,9 +392,9 @@ function TotalItemSummary() {
                                             </td>
                                             <td className="text-center">
                                                 {item.ItemPhoto ? (
-                                                    <i className="la la-check-circle text-success fs-20"></i>
+                                                    <FaCheckCircle className="text-success fs-20" />
                                                 ) : (
-                                                    <i className="la la-times-circle text-danger fs-20"></i>
+                                                    <FaTimesCircle className="text-danger fs-20" />
                                                 )}
                                             </td>
                                         </tr>
@@ -409,7 +421,7 @@ function TotalItemSummary() {
         <Modal.Footer className="bg-light border-0">
             {viewMode === 'components' && selectedItem && (
                 <Button variant="outline-primary" className="me-auto" onClick={handleBackToItems}>
-                    <i className="la la-arrow-left"></i> Back to Items
+                    <FaArrowLeft /> Back to Items
                 </Button>
             )}
             <Button variant="secondary" onClick={() => { setShowModal(false); setViewMode('items'); setSelectedItem(null); setStatusFilter(null); }}>

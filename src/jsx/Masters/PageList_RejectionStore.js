@@ -14,6 +14,7 @@ import { API_WEB_URLS } from '../../constants/constAPI';
 import { Fn_FillListData, Fn_AddEditData } from '../../store/Functions';
 import JSZip from 'jszip';
 import { Container } from 'reactstrap';
+import { FaExclamationTriangle } from 'react-icons/fa';
 
 export const PageList_RejectionStore = () => {
 	const [State, setState] = useState({
@@ -235,7 +236,7 @@ export const PageList_RejectionStore = () => {
 				  <>
 					<div className="d-flex justify-content-between mb-1">
 					  <span className="text-warning">
-						<i className="fa fa-exclamation-triangle mr-1"></i>
+						<FaExclamationTriangle className="mr-1" />
 						Retrying failed batches...
 					  </span>
 					  <span>{state.saveProgress.retryPercentComplete}% Complete</span>

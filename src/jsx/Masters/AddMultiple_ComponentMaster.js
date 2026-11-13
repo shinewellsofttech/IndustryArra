@@ -6,6 +6,7 @@ import Select from "react-select";
 import { API_WEB_URLS } from '../../constants/constAPI';
 import { Fn_AddEditData, Fn_FillListData } from '../../store/Functions';
 import { Button, Table, FormControl } from "react-bootstrap";
+import { FaPlus, FaInfoCircle } from 'react-icons/fa';
 
 const AddMultiple_ComponentMaster = () => {
   const [state, setState] = useState({
@@ -327,7 +328,7 @@ const AddMultiple_ComponentMaster = () => {
                       onClick={handleAddRow}
                       className="me-2"
                     >
-                      <i className="fas fa-plus me-1"></i>Add Row
+                      <FaPlus className="me-1" />Add Row
                     </Button>
                     <Button
                       variant="primary"
@@ -349,7 +350,7 @@ const AddMultiple_ComponentMaster = () => {
                 {/* Dimension Units Guidance Banner */}
                 <div className="alert alert-info py-2 px-3 mb-3 d-flex align-items-center justify-content-between" style={{ fontSize: '0.85rem' }}>
                   <div>
-                    <strong><i className="bi bi-info-circle me-1"></i> Dimension Units Guide:</strong>
+                    <strong><FaInfoCircle className="me-1" /> Dimension Units Guide:</strong>
                     <span className="ms-2">
                       <span className="badge bg-primary me-1">L1, W1, T1</span> = Final Finished Size in <strong>Centimeters (cm)</strong> (Drawings & Assembly)
                     </span>

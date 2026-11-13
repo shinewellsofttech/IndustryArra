@@ -18,6 +18,7 @@ import { ToastContainer, toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import usePagePermissions from '../../helpers/usePagePermissions';
 import ProductionPlanningModal from "./ProductionPlanningModal";
+import { FaEdit, FaSave, FaExclamationTriangle, FaTrash } from 'react-icons/fa';
 
 const getAuthHeaders = () => {
   const token =
@@ -1534,7 +1535,7 @@ export const PageList_ContainerMaster = () => {
 				<Modal show={showEditModal} onHide={handleCloseEditModal} size="lg" className="custom-modal" centered>
 					<Modal.Header closeButton style={{ background: "linear-gradient(135deg, #1e293b 0%, #0f172a 100%)", color: "#fff" }}>
 						<Modal.Title style={{ color: "#fff", display: "flex", alignItems: "center", gap: "8px" }}>
-							<i className="fa fa-edit" style={{ color: "#f59e0b" }}></i> Edit Shipment Line
+							<FaEdit style={{ color: "#f59e0b" }} /> Edit Shipment Line
 						</Modal.Title>
 					</Modal.Header>
 					<Modal.Body style={{ padding: "20px" }}>
@@ -1665,7 +1666,7 @@ export const PageList_ContainerMaster = () => {
 								</>
 							) : (
 								<>
-									<i className="fa fa-save mr-1"></i> Save Changes
+									<FaSave className="me-1" /> Save Changes
 								</>
 							)}
 						</Button>
@@ -1678,7 +1679,7 @@ export const PageList_ContainerMaster = () => {
 				<Modal show={showDeleteModal} onHide={handleCloseDeleteModal} size="md" centered className="custom-modal">
 					<Modal.Header closeButton style={{ background: "linear-gradient(135deg, #b91c1c 0%, #7f1d1d 100%)", color: "#fff" }}>
 						<Modal.Title style={{ color: "#fff", display: "flex", alignItems: "center", gap: "8px", fontSize: "16px" }}>
-							<i className="fa fa-exclamation-triangle" style={{ color: "#fef08a" }}></i> Confirm Shipment Deletion
+							<FaExclamationTriangle style={{ color: "#fef08a" }} /> Confirm Shipment Deletion
 						</Modal.Title>
 					</Modal.Header>
 					<Modal.Body style={{ padding: "20px" }}>
@@ -1710,7 +1711,7 @@ export const PageList_ContainerMaster = () => {
 								</>
 							) : (
 								<>
-									<i className="fa fa-trash mr-1"></i> Delete Shipment
+									<FaTrash className="me-1" /> Delete Shipment
 								</>
 							)}
 						</Button>
