@@ -17,6 +17,7 @@ import axios from "axios";
 import { ToastContainer, toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import usePagePermissions from '../../helpers/usePagePermissions';
+import ProductionPlanningModal from "./ProductionPlanningModal";
 
 const getAuthHeaders = () => {
   const token =
@@ -60,6 +61,39 @@ export const PageList_ContainerMaster = () => {
 	const [showModal, setShowModal] = useState(false);
 	const [breakUpArray, setBreakUpArray] = useState([]);
 	const { canAdd, canEdit, canDelete } = usePagePermissions('ContainerMaster');
+
+	// Production Planning Target Modal States
+	const [showPlanningModal, setShowPlanningModal] = useState(false);
+	const [selectedPlanningContainer, setSelectedPlanningContainer] = useState({ id: 0, number: '' });
+
+	// Extract unique list of shipments/containers for switching in modal
+	const containerList = useMemo(() => {
+		if (!gridData || !Array.isArray(gridData)) return [];
+		const map = new Map();
+		gridData.forEach(item => {
+			if (item.F_ContainerMaster && !map.has(item.F_ContainerMaster)) {
+				map.set(item.F_ContainerMaster, {
+					id: item.F_ContainerMaster,
+					number: item.ContainerNumber || `Shipment #${item.F_ContainerMaster}`
+				});
+			}
+		});
+		return Array.from(map.values());
+	}, [gridData]);
+
+	const handleOpenPlanningModal = (containerId, containerNumber) => {
+		setSelectedPlanningContainer({ id: containerId, number: containerNumber });
+		setShowPlanningModal(true);
+	};
+
+	const handleOpenPlanningModalTop = () => {
+		if (containerList.length > 0) {
+			setSelectedPlanningContainer(containerList[0]);
+			setShowPlanningModal(true);
+		} else {
+			toast.warn("No shipments available to plan.");
+		}
+	};
 
 	useEffect(() => {
 		const fetchData = async () => {
@@ -834,6 +868,21 @@ export const PageList_ContainerMaster = () => {
 		},
 
 		{
+			Header: "Target Plan",
+			Cell: ({ row }) => (
+				<Button
+					variant="outline-primary"
+					size="sm"
+					onClick={() => handleOpenPlanningModal(row.original.F_ContainerMaster, row.original.ContainerNumber)}
+					style={{ fontWeight: 600, padding: "3px 8px", fontSize: "11px", whiteSpace: "nowrap" }}
+					title="Open Production Planning Target"
+				>
+					🎯 Target Plan
+				</Button>
+			),
+		},
+
+		{
 			Header: "Break",
 			Cell: ({ row }) => (
 			  <Button
@@ -1167,8 +1216,18 @@ export const PageList_ContainerMaster = () => {
 			</Row>
 		<div className="card">
 			
-			<div className="card-header">
-				<h4 className="card-title">Shipment Master</h4>
+			<div className="card-header d-flex justify-content-between align-items-center">
+				<h4 className="card-title mb-0">Shipment Master</h4>
+				<Button
+					variant="primary"
+					size="sm"
+					onClick={handleOpenPlanningModalTop}
+					className="d-flex align-items-center gap-1 shadow-sm"
+					style={{ fontWeight: 600 }}
+					title="Open Target Planning for Shipment"
+				>
+					🎯 Production Target Planning
+				</Button>
             </div>
 			<div className="card-body">
 				<div className="table-responsive">
@@ -1597,6 +1656,20 @@ export const PageList_ContainerMaster = () => {
 					</Modal.Footer>
 				</Modal>
 			)}
+			{/* Production Planning Target Modal */}
+			{showPlanningModal && (
+				<ProductionPlanningModal
+					show={showPlanningModal}
+					onHide={() => setShowPlanningModal(false)}
+					containerId={selectedPlanningContainer.id}
+					containerNumber={selectedPlanningContainer.number}
+					containerList={containerList}
+					onSuccess={() => {
+						// Success callback
+					}}
+				/>
+			)}
+
 			<ToastContainer position="top-right" autoClose={3000} />
 		</>
 	)
