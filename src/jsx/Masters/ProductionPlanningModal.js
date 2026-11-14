@@ -77,35 +77,41 @@ const addWorkDays = (dateInput, days) => {
     return formatLocalDate(d);
 };
 
-// Difference in working days between date1 and date2 (date1 - date2), excluding Sundays
-const getWorkDayDifference = (dateStr1, dateStr2) => {
-    if (!dateStr1 || !dateStr2) return 0;
-    let d1 = parseLocalDate(dateStr1);
-    let d2 = parseLocalDate(dateStr2);
-    if (!d1 || !d2) return 0;
-
-    if (d1.getTime() === d2.getTime()) return 0;
-
-    let sign = 1;
-    if (d1 < d2) {
-        sign = -1;
-        const temp = d1;
-        d1 = d2;
-        d2 = temp;
-    }
+// Inclusive working days count between dateIn and dateOut (strictly excluding Sundays)
+// e.g. Mon to Mon = 1 day; Mon to Tue = 2 days; Fri to Mon = 3 days (skipping Sun)
+const getWorkDaysCount = (dateOut, dateIn) => {
+    if (!dateOut || !dateIn) return 0;
+    let d1 = parseLocalDate(dateOut);
+    let d2 = parseLocalDate(dateIn);
+    if (!d1 || !d2 || d1 < d2) return 0;
 
     let count = 0;
     const curr = new Date(d2.getTime());
-    curr.setDate(curr.getDate() + 1);
-
     while (curr <= d1) {
-        if (curr.getDay() !== 0) {
+        if (curr.getDay() !== 0) { // Skip Sunday
             count++;
         }
         curr.setDate(curr.getDate() + 1);
     }
+    return count;
+};
 
-    return sign * count;
+// Forward stage date calculator (Inclusive: Day 1 is stageIn, Day N is stageIn + (days-1) work days)
+const getStageOut = (stageIn, days) => {
+    if (!stageIn) return null;
+    const d = parseInt(days || 0, 10);
+    const validIn = getNextWorkDay(stageIn);
+    if (d <= 0) return validIn;
+    return addWorkDays(validIn, d - 1);
+};
+
+// Backward stage date calculator (Inclusive: Last day is stageOut, First day is stageOut - (days-1) work days)
+const getStageIn = (stageOut, days) => {
+    if (!stageOut) return null;
+    const d = parseInt(days || 0, 10);
+    const validOut = getPrevWorkDay(stageOut);
+    if (d <= 0) return validOut;
+    return addWorkDays(validOut, -(d - 1));
 };
 
 // 13 Active Production Stages (including new Component Store, Metal & Upholstery)
@@ -352,90 +358,90 @@ export const ProductionPlanningModal = ({
         if (inspectionDate) {
             // Final QC OUT must be <= InspectionDate (if InspectionDate is Sunday, lands on Saturday)
             finalQcOut = getPrevWorkDay(inspectionDate);
-            finalQcIn = addWorkDays(finalQcOut, -finalQcDays);
+            finalQcIn = getStageIn(finalQcOut, finalQcDays);
 
             qcOut = addWorkDays(finalQcIn, -1);
-            qcIn = addWorkDays(qcOut, -qcDays);
+            qcIn = getStageIn(qcOut, qcDays);
 
             fitOut = addWorkDays(qcIn, -1);
-            fitIn = addWorkDays(fitOut, -fitDays);
+            fitIn = getStageIn(fitOut, fitDays);
 
             polishOut = addWorkDays(fitIn, -1);
-            polishIn = addWorkDays(polishOut, -polishDays);
+            polishIn = getStageIn(polishOut, polishDays);
 
             sandOut = addWorkDays(polishIn, -1);
-            sandIn = addWorkDays(sandOut, -sandDays);
+            sandIn = getStageIn(sandOut, sandDays);
 
             assemOut = addWorkDays(sandIn, -1);
-            assemIn = addWorkDays(assemOut, -assemDays);
+            assemIn = getStageIn(assemOut, assemDays);
 
             compStoreOut = addWorkDays(assemIn, -1);
-            compStoreIn = addWorkDays(compStoreOut, -compStoreDays);
+            compStoreIn = getStageIn(compStoreOut, compStoreDays);
 
             machOut = addWorkDays(compStoreIn, -1);
-            machIn = addWorkDays(machOut, -machDays);
+            machIn = getStageIn(machOut, machDays);
 
             preCutOut = addWorkDays(machIn, -1);
-            preCutIn = addWorkDays(preCutOut, -preCutDays);
+            preCutIn = getStageIn(preCutOut, preCutDays);
 
             woodIssueOut = addWorkDays(preCutIn, -1);
-            woodIssueIn = addWorkDays(woodIssueOut, -woodDays);
+            woodIssueIn = getStageIn(woodIssueOut, woodDays);
 
             // Forward Packing stage (after Final QC):
             packIn = addWorkDays(finalQcOut, 1);
-            packOut = addWorkDays(packIn, packDays);
+            packOut = getStageOut(packIn, packDays);
 
             // Parallel branches: Metal & Upholstery
             metalIn = compStoreIn;
-            metalOut = addWorkDays(fitIn, metalDays);
+            metalOut = getStageOut(metalIn, metalDays);
 
             upholsteryIn = sandIn;
-            upholsteryOut = addWorkDays(fitIn, upholsteryDays);
+            upholsteryOut = getStageOut(upholsteryIn, upholsteryDays);
         } else if (item.WoodIssueIn) {
             // Fallback if no InspectionDate: forward schedule starting from WoodIssueIn
             woodIssueIn = getNextWorkDay(item.WoodIssueIn);
-            woodIssueOut = addWorkDays(woodIssueIn, woodDays);
+            woodIssueOut = getStageOut(woodIssueIn, woodDays);
 
             preCutIn = addWorkDays(woodIssueOut, 1);
-            preCutOut = addWorkDays(preCutIn, preCutDays);
+            preCutOut = getStageOut(preCutIn, preCutDays);
 
             machIn = addWorkDays(preCutOut, 1);
-            machOut = addWorkDays(machIn, machDays);
+            machOut = getStageOut(machIn, machDays);
 
             compStoreIn = addWorkDays(machOut, 1);
-            compStoreOut = addWorkDays(compStoreIn, compStoreDays);
+            compStoreOut = getStageOut(compStoreIn, compStoreDays);
 
             assemIn = addWorkDays(compStoreOut, 1);
-            assemOut = addWorkDays(assemIn, assemDays);
+            assemOut = getStageOut(assemIn, assemDays);
 
             sandIn = addWorkDays(assemOut, 1);
-            sandOut = addWorkDays(sandIn, sandDays);
+            sandOut = getStageOut(sandIn, sandDays);
 
             polishIn = addWorkDays(sandOut, 1);
-            polishOut = addWorkDays(polishIn, polishDays);
+            polishOut = getStageOut(polishIn, polishDays);
 
             fitIn = addWorkDays(polishOut, 1);
-            fitOut = addWorkDays(fitIn, fitDays);
+            fitOut = getStageOut(fitIn, fitDays);
 
             qcIn = addWorkDays(fitOut, 1);
-            qcOut = addWorkDays(qcIn, qcDays);
+            qcOut = getStageOut(qcIn, qcDays);
 
             finalQcIn = addWorkDays(qcOut, 1);
-            finalQcOut = addWorkDays(finalQcIn, finalQcDays);
+            finalQcOut = getStageOut(finalQcIn, finalQcDays);
 
             packIn = addWorkDays(finalQcOut, 1);
-            packOut = addWorkDays(packIn, packDays);
+            packOut = getStageOut(packIn, packDays);
 
             metalIn = compStoreIn;
-            metalOut = addWorkDays(fitIn, metalDays);
+            metalOut = getStageOut(metalIn, metalDays);
 
             upholsteryIn = sandIn;
-            upholsteryOut = addWorkDays(fitIn, upholsteryDays);
+            upholsteryOut = getStageOut(upholsteryIn, upholsteryDays);
         }
 
         let daysWithBuffer = 0;
         if (packOut && woodIssueIn) {
-            daysWithBuffer = getWorkDayDifference(packOut, woodIssueIn);
+            daysWithBuffer = getWorkDaysCount(packOut, woodIssueIn);
         }
 
         const isFinalQcDelayed = (inspectionDate && finalQcOut) ? (finalQcOut > inspectionDate) : false;
@@ -541,35 +547,35 @@ export const ProductionPlanningModal = ({
                 const packDays = parseInt(updated.PackingDays, 10) || 0;
 
                 if (val) {
-                    updated.WoodIssueOut = addWorkDays(val, woodDays);
+                    updated.WoodIssueOut = getStageOut(val, woodDays);
                     updated.PreCuttingIn = addWorkDays(updated.WoodIssueOut, 1);
-                    updated.PreCuttingOut = addWorkDays(updated.PreCuttingIn, preCutDays);
+                    updated.PreCuttingOut = getStageOut(updated.PreCuttingIn, preCutDays);
                     updated.MachiningIn = addWorkDays(updated.PreCuttingOut, 1);
-                    updated.MachiningOut = addWorkDays(updated.MachiningIn, machDays);
+                    updated.MachiningOut = getStageOut(updated.MachiningIn, machDays);
                     updated.ComponentStoreIn = addWorkDays(updated.MachiningOut, 1);
-                    updated.ComponentStoreOut = addWorkDays(updated.ComponentStoreIn, compStoreDays);
+                    updated.ComponentStoreOut = getStageOut(updated.ComponentStoreIn, compStoreDays);
                     updated.AssemblyIn = addWorkDays(updated.ComponentStoreOut, 1);
-                    updated.AssemblyOut = addWorkDays(updated.AssemblyIn, assemDays);
+                    updated.AssemblyOut = getStageOut(updated.AssemblyIn, assemDays);
                     updated.SandingIn = addWorkDays(updated.AssemblyOut, 1);
-                    updated.SandingOut = addWorkDays(updated.SandingIn, sandDays);
+                    updated.SandingOut = getStageOut(updated.SandingIn, sandDays);
                     updated.PolishIn = addWorkDays(updated.SandingOut, 1);
-                    updated.PolishOut = addWorkDays(updated.PolishIn, polishDays);
+                    updated.PolishOut = getStageOut(updated.PolishIn, polishDays);
                     updated.FittingIn = addWorkDays(updated.PolishOut, 1);
-                    updated.FittingOut = addWorkDays(updated.FittingIn, fitDays);
+                    updated.FittingOut = getStageOut(updated.FittingIn, fitDays);
                     updated.QcIn = addWorkDays(updated.FittingOut, 1);
-                    updated.QcOut = addWorkDays(updated.QcIn, qcDays);
+                    updated.QcOut = getStageOut(updated.QcIn, qcDays);
                     updated.FinalQcIn = addWorkDays(updated.QcOut, 1);
-                    updated.FinalQcOut = addWorkDays(updated.FinalQcIn, finalQcDays);
+                    updated.FinalQcOut = getStageOut(updated.FinalQcIn, finalQcDays);
                     updated.PackingIn = addWorkDays(updated.FinalQcOut, 1);
-                    updated.PackingOut = addWorkDays(updated.PackingIn, packDays);
+                    updated.PackingOut = getStageOut(updated.PackingIn, packDays);
 
                     updated.MetalIn = updated.ComponentStoreIn;
-                    updated.MetalOut = addWorkDays(updated.FittingIn, metalDays);
+                    updated.MetalOut = getStageOut(updated.MetalIn, metalDays);
                     updated.UpholsteryIn = updated.SandingIn;
-                    updated.UpholsteryOut = addWorkDays(updated.FittingIn, upholsteryDays);
+                    updated.UpholsteryOut = getStageOut(updated.UpholsteryIn, upholsteryDays);
 
                     if (updated.PackingOut && updated.WoodIssueIn) {
-                        updated.DaysWithBuffer = getWorkDayDifference(updated.PackingOut, updated.WoodIssueIn);
+                        updated.DaysWithBuffer = getWorkDaysCount(updated.PackingOut, updated.WoodIssueIn);
                     }
                     updated.IsFinalQcDelayed = (updated.InspectionDate && updated.FinalQcOut) ? (updated.FinalQcOut > updated.InspectionDate) : false;
                     updated.IsDeadlineExceeded = updated.IsFinalQcDelayed;
@@ -581,13 +587,13 @@ export const ProductionPlanningModal = ({
             if (fieldKey === 'MetalIn' || fieldKey === 'MetalOut') {
                 if (fieldKey === 'MetalOut') {
                     if (val && updated.MetalIn) {
-                        updated.MetalDays = Math.max(0, getWorkDayDifference(val, updated.MetalIn));
+                        updated.MetalDays = Math.max(1, getWorkDaysCount(val, updated.MetalIn));
                     }
                 } else {
                     if (val && updated.MetalOut && val <= updated.MetalOut) {
-                        updated.MetalDays = Math.max(0, getWorkDayDifference(updated.MetalOut, val));
+                        updated.MetalDays = Math.max(1, getWorkDaysCount(updated.MetalOut, val));
                     } else if (val) {
-                        updated.MetalOut = addWorkDays(val, updated.MetalDays);
+                        updated.MetalOut = getStageOut(val, updated.MetalDays);
                     }
                 }
                 return updated;
@@ -596,13 +602,13 @@ export const ProductionPlanningModal = ({
             if (fieldKey === 'UpholsteryIn' || fieldKey === 'UpholsteryOut') {
                 if (fieldKey === 'UpholsteryOut') {
                     if (val && updated.UpholsteryIn) {
-                        updated.UpholsteryDays = Math.max(0, getWorkDayDifference(val, updated.UpholsteryIn));
+                        updated.UpholsteryDays = Math.max(1, getWorkDaysCount(val, updated.UpholsteryIn));
                     }
                 } else {
                     if (val && updated.UpholsteryOut && val <= updated.UpholsteryOut) {
-                        updated.UpholsteryDays = Math.max(0, getWorkDayDifference(updated.UpholsteryOut, val));
+                        updated.UpholsteryDays = Math.max(1, getWorkDaysCount(updated.UpholsteryOut, val));
                     } else if (val) {
-                        updated.UpholsteryOut = addWorkDays(val, updated.UpholsteryDays);
+                        updated.UpholsteryOut = getStageOut(val, updated.UpholsteryDays);
                     }
                 }
                 return updated;
@@ -619,18 +625,18 @@ export const ProductionPlanningModal = ({
                 const isOutField = currentStage.outKey === fieldKey;
 
                 if (isOutField) {
-                    // User edited OUT date: Match days = OUT - IN in work days
+                    // User edited OUT date: Match days = OUT - IN in inclusive work days
                     if (val && updated[currentStage.inKey]) {
-                        const daysDiff = getWorkDayDifference(val, updated[currentStage.inKey]);
-                        updated[currentStage.daysKey] = Math.max(0, daysDiff);
+                        const daysDiff = getWorkDaysCount(val, updated[currentStage.inKey]);
+                        updated[currentStage.daysKey] = Math.max(1, daysDiff);
                     }
                 } else {
                     // User edited IN date:
                     if (val && updated[currentStage.outKey] && val <= updated[currentStage.outKey]) {
-                        const daysDiff = getWorkDayDifference(updated[currentStage.outKey], val);
-                        updated[currentStage.daysKey] = Math.max(0, daysDiff);
+                        const daysDiff = getWorkDaysCount(updated[currentStage.outKey], val);
+                        updated[currentStage.daysKey] = Math.max(1, daysDiff);
                     } else if (val) {
-                        updated[currentStage.outKey] = addWorkDays(val, updated[currentStage.daysKey]);
+                        updated[currentStage.outKey] = getStageOut(val, updated[currentStage.daysKey]);
                     }
                 }
 
@@ -640,7 +646,7 @@ export const ProductionPlanningModal = ({
                     const stage = serialStages[i];
                     if (prevOut) {
                         updated[stage.inKey] = addWorkDays(prevOut, 1);
-                        updated[stage.outKey] = addWorkDays(updated[stage.inKey], updated[stage.daysKey]);
+                        updated[stage.outKey] = getStageOut(updated[stage.inKey], updated[stage.daysKey]);
                         prevOut = updated[stage.outKey];
                     }
                 }
@@ -648,15 +654,11 @@ export const ProductionPlanningModal = ({
                 // Re-align parallel branches: Metal & Upholstery
                 if (updated.ComponentStoreIn) {
                     updated.MetalIn = updated.ComponentStoreIn;
-                }
-                if (updated.FittingIn) {
-                    updated.MetalOut = addWorkDays(updated.FittingIn, updated.MetalDays);
+                    updated.MetalOut = getStageOut(updated.MetalIn, updated.MetalDays);
                 }
                 if (updated.SandingIn) {
                     updated.UpholsteryIn = updated.SandingIn;
-                }
-                if (updated.FittingIn) {
-                    updated.UpholsteryOut = addWorkDays(updated.FittingIn, updated.UpholsteryDays);
+                    updated.UpholsteryOut = getStageOut(updated.UpholsteryIn, updated.UpholsteryDays);
                 }
 
                 // Re-calculate total days (INCLUDES OutSourceDays in total lead days, dates unaffected)
@@ -677,7 +679,7 @@ export const ProductionPlanningModal = ({
                 updated.TotalLeadDays = prodTotal + outSourceDays;
 
                 if (updated.PackingOut && updated.WoodIssueIn) {
-                    updated.DaysWithBuffer = getWorkDayDifference(updated.PackingOut, updated.WoodIssueIn);
+                    updated.DaysWithBuffer = getWorkDaysCount(updated.PackingOut, updated.WoodIssueIn);
                 }
 
                 updated.IsFinalQcDelayed = (updated.InspectionDate && updated.FinalQcOut) ? (updated.FinalQcOut > updated.InspectionDate) : false;
@@ -1050,68 +1052,38 @@ export const ProductionPlanningModal = ({
             const userId = localStorage.getItem('userId') || '0';
             const url = `${API_WEB_URLS.BASE}ShipmentPlanning/SavePlan/${userId}/token`;
 
+            const getEffectiveDays = (inDate, outDate, currentDays) => {
+                const raw = parseInt(currentDays, 10) || 0;
+                if (raw === 0) return 0;
+                if (inDate && outDate) {
+                    return Math.max(1, getWorkDaysCount(outDate, inDate));
+                }
+                return raw;
+            };
+
             const payloadData = planItems.map(item => {
-                // Ensure days match dates if both IN and OUT are set (excluding Sundays)
-                const wood = (item.WoodIssueIn && item.WoodIssueOut) 
-                    ? Math.max(0, getWorkDayDifference(item.WoodIssueOut, item.WoodIssueIn))
-                    : (parseInt(item.WoodIssueDays, 10) || 0);
-
-                const preCut = (item.PreCuttingIn && item.PreCuttingOut)
-                    ? Math.max(0, getWorkDayDifference(item.PreCuttingOut, item.PreCuttingIn))
-                    : (parseInt(item.PreCuttingDays, 10) || 0);
-
+                // Ensure days match dates if both IN and OUT are set (inclusive working days, excluding Sundays)
+                const wood = getEffectiveDays(item.WoodIssueIn, item.WoodIssueOut, item.WoodIssueDays);
+                const preCut = getEffectiveDays(item.PreCuttingIn, item.PreCuttingOut, item.PreCuttingDays);
                 const outSource = parseInt(item.OutSourceDays, 10) || 0; // Strictly informational
-
-                const mach = (item.MachiningIn && item.MachiningOut)
-                    ? Math.max(0, getWorkDayDifference(item.MachiningOut, item.MachiningIn))
-                    : (parseInt(item.MachiningDays, 10) || 0);
-
-                const compStore = (item.ComponentStoreIn && item.ComponentStoreOut)
-                    ? Math.max(0, getWorkDayDifference(item.ComponentStoreOut, item.ComponentStoreIn))
-                    : (parseInt(item.ComponentStoreDays, 10) || 0);
-
-                const assem = (item.AssemblyIn && item.AssemblyOut)
-                    ? Math.max(0, getWorkDayDifference(item.AssemblyOut, item.AssemblyIn))
-                    : (parseInt(item.AssemblyDays, 10) || 0);
-
-                const metal = (item.MetalIn && item.MetalOut)
-                    ? Math.max(0, getWorkDayDifference(item.MetalOut, item.MetalIn))
-                    : (parseInt(item.MetalDays, 10) || 0);
-
-                const upholstery = (item.UpholsteryIn && item.UpholsteryOut)
-                    ? Math.max(0, getWorkDayDifference(item.UpholsteryOut, item.UpholsteryIn))
-                    : (parseInt(item.UpholsteryDays, 10) || 0);
-
-                const sand = (item.SandingIn && item.SandingOut)
-                    ? Math.max(0, getWorkDayDifference(item.SandingOut, item.SandingIn))
-                    : (parseInt(item.SandingDays, 10) || 0);
-
-                const polish = (item.PolishIn && item.PolishOut)
-                    ? Math.max(0, getWorkDayDifference(item.PolishOut, item.PolishIn))
-                    : (parseInt(item.PolishDays, 10) || 0);
-
-                const fit = (item.FittingIn && item.FittingOut)
-                    ? Math.max(0, getWorkDayDifference(item.FittingOut, item.FittingIn))
-                    : (parseInt(item.FittingDays, 10) || 0);
-
-                const qc = (item.QcIn && item.QcOut)
-                    ? Math.max(0, getWorkDayDifference(item.QcOut, item.QcIn))
-                    : (parseInt(item.QcDays, 10) || 0);
-
-                const finalQc = (item.FinalQcIn && item.FinalQcOut)
-                    ? Math.max(0, getWorkDayDifference(item.FinalQcOut, item.FinalQcIn))
-                    : (parseInt(item.FinalQcDays, 10) || 0);
-
-                const pack = (item.PackingIn && item.PackingOut)
-                    ? Math.max(0, getWorkDayDifference(item.PackingOut, item.PackingIn))
-                    : (parseInt(item.PackingDays, 10) || 0);
+                const mach = getEffectiveDays(item.MachiningIn, item.MachiningOut, item.MachiningDays);
+                const compStore = getEffectiveDays(item.ComponentStoreIn, item.ComponentStoreOut, item.ComponentStoreDays);
+                const assem = getEffectiveDays(item.AssemblyIn, item.AssemblyOut, item.AssemblyDays);
+                const metal = getEffectiveDays(item.MetalIn, item.MetalOut, item.MetalDays);
+                const upholstery = getEffectiveDays(item.UpholsteryIn, item.UpholsteryOut, item.UpholsteryDays);
+                const sand = getEffectiveDays(item.SandingIn, item.SandingOut, item.SandingDays);
+                const polish = getEffectiveDays(item.PolishIn, item.PolishOut, item.PolishDays);
+                const fit = getEffectiveDays(item.FittingIn, item.FittingOut, item.FittingDays);
+                const qc = getEffectiveDays(item.QcIn, item.QcOut, item.QcDays);
+                const finalQc = getEffectiveDays(item.FinalQcIn, item.FinalQcOut, item.FinalQcDays);
+                const pack = getEffectiveDays(item.PackingIn, item.PackingOut, item.PackingDays);
 
                 // TOTAL LEAD DAYS INCLUDES OutSourceDays as requested, dates unaffected
                 const totalLead = wood + preCut + outSource + mach + compStore + assem + sand + polish + fit + qc + finalQc + pack;
 
                 let daysWithBuffer = 0;
                 if (item.PackingOut && item.WoodIssueIn) {
-                    daysWithBuffer = getWorkDayDifference(item.PackingOut, item.WoodIssueIn);
+                    daysWithBuffer = getWorkDaysCount(item.PackingOut, item.WoodIssueIn);
                 }
 
                 return {
