@@ -28,31 +28,37 @@ const getDayDifference = (dateStr1, dateStr2) => {
     return Math.round(diffTime / (1000 * 60 * 60 * 24));
 };
 
-// 10 Standard Active Production Stages in Chronological Order
+// 13 Active Production Stages (including new Component Store, Metal & Upholstery)
 const STAGE_ORDER = [
-    { key: 'WoodIssue', inKey: 'WoodIssueIn', outKey: 'WoodIssueOut', daysKey: 'WoodIssueDays', label: 'Wood Issue' },
-    { key: 'PreCutting', inKey: 'PreCuttingIn', outKey: 'PreCuttingOut', daysKey: 'PreCuttingDays', label: 'Pre Cutting' },
-    { key: 'Machining', inKey: 'MachiningIn', outKey: 'MachiningOut', daysKey: 'MachiningDays', label: 'Machining' },
-    { key: 'Assembly', inKey: 'AssemblyIn', outKey: 'AssemblyOut', daysKey: 'AssemblyDays', label: 'Assembly' },
-    { key: 'Sanding', inKey: 'SandingIn', outKey: 'SandingOut', daysKey: 'SandingDays', label: 'Sanding' },
-    { key: 'Polish', inKey: 'PolishIn', outKey: 'PolishOut', daysKey: 'PolishDays', label: 'Polish' },
-    { key: 'Fitting', inKey: 'FittingIn', outKey: 'FittingOut', daysKey: 'FittingDays', label: 'Fitting' },
-    { key: 'Qc', inKey: 'QcIn', outKey: 'QcOut', daysKey: 'QcDays', label: 'QC' },
-    { key: 'FinalQc', inKey: 'FinalQcIn', outKey: 'FinalQcOut', daysKey: 'FinalQcDays', label: 'Final QC' },
-    { key: 'Packing', inKey: 'PackingIn', outKey: 'PackingOut', daysKey: 'PackingDays', label: 'Packing' },
+    { key: 'WoodIssue', inKey: 'WoodIssueIn', outKey: 'WoodIssueOut', daysKey: 'WoodIssueDays', label: 'Wood Issue', isSerial: true },
+    { key: 'PreCutting', inKey: 'PreCuttingIn', outKey: 'PreCuttingOut', daysKey: 'PreCuttingDays', label: 'Pre Cutting', isSerial: true },
+    { key: 'Machining', inKey: 'MachiningIn', outKey: 'MachiningOut', daysKey: 'MachiningDays', label: 'Machining', isSerial: true },
+    { key: 'ComponentStore', inKey: 'ComponentStoreIn', outKey: 'ComponentStoreOut', daysKey: 'ComponentStoreDays', label: 'Component Store', isSerial: true },
+    { key: 'Assembly', inKey: 'AssemblyIn', outKey: 'AssemblyOut', daysKey: 'AssemblyDays', label: 'Assembly', isSerial: true },
+    { key: 'Metal', inKey: 'MetalIn', outKey: 'MetalOut', daysKey: 'MetalDays', label: 'Metal', isSerial: false },
+    { key: 'Upholstery', inKey: 'UpholsteryIn', outKey: 'UpholsteryOut', daysKey: 'UpholsteryDays', label: 'Upholstery', isSerial: false },
+    { key: 'Sanding', inKey: 'SandingIn', outKey: 'SandingOut', daysKey: 'SandingDays', label: 'Sanding', isSerial: true },
+    { key: 'Polish', inKey: 'PolishIn', outKey: 'PolishOut', daysKey: 'PolishDays', label: 'Polish', isSerial: true },
+    { key: 'Fitting', inKey: 'FittingIn', outKey: 'FittingOut', daysKey: 'FittingDays', label: 'Fitting', isSerial: true },
+    { key: 'Qc', inKey: 'QcIn', outKey: 'QcOut', daysKey: 'QcDays', label: 'QC', isSerial: true },
+    { key: 'FinalQc', inKey: 'FinalQcIn', outKey: 'FinalQcOut', daysKey: 'FinalQcDays', label: 'Final QC', isSerial: true },
+    { key: 'Packing', inKey: 'PackingIn', outKey: 'PackingOut', daysKey: 'PackingDays', label: 'Packing', isSerial: true },
 ];
 
-// 32 Editable columns specification for desktop keyboard navigation (Arrow keys, Tab, Enter, Ctrl+D)
+// 41 Editable columns specification for desktop keyboard navigation (Arrow keys, Tab, Enter, Ctrl+D)
 const EDITABLE_COLS = [
     // Col 0: Target Date
     { key: 'InspectionDate', label: 'Insp Date', isDate: true },
 
-    // Cols 1 to 11: Department Days
+    // Cols 1 to 14: Department Days (14 columns)
     { key: 'WoodIssueDays', label: 'Wood Days', isDay: true },
     { key: 'PreCuttingDays', label: 'PreCut Days', isDay: true },
     { key: 'OutSourceDays', label: 'OutSrc Days', isDay: true, isInfo: true },
     { key: 'MachiningDays', label: 'Mach Days', isDay: true },
+    { key: 'ComponentStoreDays', label: 'CompStore Days', isDay: true },
     { key: 'AssemblyDays', label: 'Assem Days', isDay: true },
+    { key: 'MetalDays', label: 'Metal Days', isDay: true },
+    { key: 'UpholsteryDays', label: 'Upholstery Days', isDay: true },
     { key: 'SandingDays', label: 'Sand Days', isDay: true },
     { key: 'PolishDays', label: 'Polish Days', isDay: true },
     { key: 'FittingDays', label: 'Fit Days', isDay: true },
@@ -60,15 +66,21 @@ const EDITABLE_COLS = [
     { key: 'FinalQcDays', label: 'FinalQC Days', isDay: true },
     { key: 'PackingDays', label: 'Pack Days', isDay: true },
 
-    // Cols 12 to 31: Department Dates (10 stages IN & OUT)
+    // Cols 15 to 40: Department Dates (13 stages IN & OUT = 26 columns)
     { key: 'WoodIssueIn', label: 'Wood IN', isDate: true },
     { key: 'WoodIssueOut', label: 'Wood OUT', isDate: true },
     { key: 'PreCuttingIn', label: 'PreCut IN', isDate: true },
     { key: 'PreCuttingOut', label: 'PreCut OUT', isDate: true },
     { key: 'MachiningIn', label: 'Mach IN', isDate: true },
     { key: 'MachiningOut', label: 'Mach OUT', isDate: true },
+    { key: 'ComponentStoreIn', label: 'CompStore IN', isDate: true },
+    { key: 'ComponentStoreOut', label: 'CompStore OUT', isDate: true },
     { key: 'AssemblyIn', label: 'Assem IN', isDate: true },
     { key: 'AssemblyOut', label: 'Assem OUT', isDate: true },
+    { key: 'MetalIn', label: 'Metal IN', isDate: true },
+    { key: 'MetalOut', label: 'Metal OUT', isDate: true },
+    { key: 'UpholsteryIn', label: 'Upholstery IN', isDate: true },
+    { key: 'UpholsteryOut', label: 'Upholstery OUT', isDate: true },
     { key: 'SandingIn', label: 'Sand IN', isDate: true },
     { key: 'SandingOut', label: 'Sand OUT', isDate: true },
     { key: 'PolishIn', label: 'Polish IN', isDate: true },
@@ -156,7 +168,10 @@ export const ProductionPlanningModal = ({
                     PreCuttingDays: saved.PreCuttingDays !== undefined ? saved.PreCuttingDays : 0,
                     OutSourceDays: saved.OutSourceDays !== undefined ? saved.OutSourceDays : 0,
                     MachiningDays: saved.MachiningDays !== undefined ? saved.MachiningDays : 0,
+                    ComponentStoreDays: saved.ComponentStoreDays !== undefined ? saved.ComponentStoreDays : 0,
                     AssemblyDays: saved.AssemblyDays !== undefined ? saved.AssemblyDays : 0,
+                    MetalDays: saved.MetalDays !== undefined ? saved.MetalDays : 0,
+                    UpholsteryDays: saved.UpholsteryDays !== undefined ? saved.UpholsteryDays : 0,
                     SandingDays: saved.SandingDays !== undefined ? saved.SandingDays : 0,
                     PolishDays: saved.PolishDays !== undefined ? saved.PolishDays : 0,
                     FittingDays: saved.FittingDays !== undefined ? saved.FittingDays : 0,
@@ -169,8 +184,14 @@ export const ProductionPlanningModal = ({
                     PreCuttingOut: saved.PreCuttingOut ? String(saved.PreCuttingOut).split('T')[0] : null,
                     MachiningIn: saved.MachiningIn ? String(saved.MachiningIn).split('T')[0] : null,
                     MachiningOut: saved.MachiningOut ? String(saved.MachiningOut).split('T')[0] : null,
+                    ComponentStoreIn: saved.ComponentStoreIn ? String(saved.ComponentStoreIn).split('T')[0] : null,
+                    ComponentStoreOut: saved.ComponentStoreOut ? String(saved.ComponentStoreOut).split('T')[0] : null,
                     AssemblyIn: saved.AssemblyIn ? String(saved.AssemblyIn).split('T')[0] : null,
                     AssemblyOut: saved.AssemblyOut ? String(saved.AssemblyOut).split('T')[0] : null,
+                    MetalIn: saved.MetalIn ? String(saved.MetalIn).split('T')[0] : null,
+                    MetalOut: saved.MetalOut ? String(saved.MetalOut).split('T')[0] : null,
+                    UpholsteryIn: saved.UpholsteryIn ? String(saved.UpholsteryIn).split('T')[0] : null,
+                    UpholsteryOut: saved.UpholsteryOut ? String(saved.UpholsteryOut).split('T')[0] : null,
                     SandingIn: saved.SandingIn ? String(saved.SandingIn).split('T')[0] : null,
                     SandingOut: saved.SandingOut ? String(saved.SandingOut).split('T')[0] : null,
                     PolishIn: saved.PolishIn ? String(saved.PolishIn).split('T')[0] : null,
@@ -201,7 +222,8 @@ export const ProductionPlanningModal = ({
     /**
      * Scheduling Engine (Days -> Dates):
      * Reverse schedules from InspectionDate to determine WoodIssueIn,
-     * then cascades forward through all 10 stages with +1 day buffer.
+     * then cascades forward through serial stages with +1 day buffer.
+     * Parallel stages (Metal & Upholstery) run in parallel and merge at Fitting.
      * OUT SOURCE JOB days are added to TotalLeadDays as requested,
      * but strictly excluded from stage date cascades (dates remain unaffected).
      */
@@ -210,7 +232,10 @@ export const ProductionPlanningModal = ({
         const preCutDays = parseInt(item.PreCuttingDays, 10) || 0;
         const outSourceDays = parseInt(item.OutSourceDays, 10) || 0;
         const machDays = parseInt(item.MachiningDays, 10) || 0;
+        const compStoreDays = parseInt(item.ComponentStoreDays, 10) || 0;
         const assemDays = parseInt(item.AssemblyDays, 10) || 0;
+        const metalDays = parseInt(item.MetalDays, 10) || 0;
+        const upholsteryDays = parseInt(item.UpholsteryDays, 10) || 0;
         const sandDays = parseInt(item.SandingDays, 10) || 0;
         const polishDays = parseInt(item.PolishDays, 10) || 0;
         const fitDays = parseInt(item.FittingDays, 10) || 0;
@@ -218,28 +243,28 @@ export const ProductionPlanningModal = ({
         const finalQcDays = parseInt(item.FinalQcDays, 10) || 0;
         const packDays = parseInt(item.PackingDays, 10) || 0;
 
-        // Internal production lead days used ONLY for stage date cascading & reverse scheduling (strictly excludes OutSourceDays so dates are NOT affected):
-        const productionLeadDays = woodDays + preCutDays + machDays + assemDays + sandDays + 
-                              polishDays + fitDays + qcDays + finalQcDays + packDays;
+        // Serial production lead days (strictly excludes OutSourceDays and parallel Metal/Upholstery):
+        const serialProductionDays = woodDays + preCutDays + machDays + compStoreDays + assemDays + sandDays + 
+                                     polishDays + fitDays + qcDays + finalQcDays + packDays;
 
         // Total Lead Days displayed in the Total column before dates (includes OutSourceDays as requested):
-        const totalLeadDays = productionLeadDays + outSourceDays;
+        const totalLeadDays = serialProductionDays + outSourceDays;
 
         const inspectionDate = item.InspectionDate ? String(item.InspectionDate).split('T')[0] : null;
 
         let woodIssueIn = item.WoodIssueIn ? String(item.WoodIssueIn).split('T')[0] : null;
 
-        // Reverse scheduling: Wood Issue IN = InspectionDate - productionLeadDays
-        // (Dates par koi farak nahi padega - Outsource days is NOT subtracted from InspectionDate!)
-        if (inspectionDate && productionLeadDays > 0) {
+        // Reverse scheduling: Wood Issue IN = InspectionDate - serialProductionDays
+        if (inspectionDate && serialProductionDays > 0) {
             if (!woodIssueIn) {
-                woodIssueIn = addDays(inspectionDate, -productionLeadDays);
+                woodIssueIn = addDays(inspectionDate, -serialProductionDays);
             }
         }
 
         let woodIssueOut = null;
         let preCutIn = null, preCutOut = null;
         let machIn = null, machOut = null;
+        let compStoreIn = null, compStoreOut = null;
         let assemIn = null, assemOut = null;
         let sandIn = null, sandOut = null;
         let polishIn = null, polishOut = null;
@@ -247,6 +272,10 @@ export const ProductionPlanningModal = ({
         let qcIn = null, qcOut = null;
         let finalQcIn = null, finalQcOut = null;
         let packIn = null, packOut = null;
+        let metalIn = item.MetalIn ? String(item.MetalIn).split('T')[0] : null;
+        let metalOut = item.MetalOut ? String(item.MetalOut).split('T')[0] : null;
+        let upholsteryIn = item.UpholsteryIn ? String(item.UpholsteryIn).split('T')[0] : null;
+        let upholsteryOut = item.UpholsteryOut ? String(item.UpholsteryOut).split('T')[0] : null;
 
         if (woodIssueIn) {
             woodIssueOut = addDays(woodIssueIn, woodDays);
@@ -258,7 +287,10 @@ export const ProductionPlanningModal = ({
             machIn = addDays(preCutOut, 1);
             machOut = addDays(machIn, machDays);
 
-            assemIn = addDays(machOut, 1);
+            compStoreIn = addDays(machOut, 1);
+            compStoreOut = addDays(compStoreIn, compStoreDays);
+
+            assemIn = addDays(compStoreOut, 1);
             assemOut = addDays(assemIn, assemDays);
 
             sandIn = addDays(assemOut, 1);
@@ -278,6 +310,23 @@ export const ProductionPlanningModal = ({
 
             packIn = addDays(finalQcOut, 1);
             packOut = addDays(packIn, packDays);
+
+            // Parallel branches: Metal & Upholstery
+            // Metal: IN = ComponentStoreIn, OUT = FittingIn + MetalDays (=AN3+M3)
+            if (!metalIn && compStoreIn) {
+                metalIn = compStoreIn;
+            }
+            if (!metalOut && fitIn) {
+                metalOut = addDays(fitIn, metalDays);
+            }
+
+            // Upholstery: IN = SandingIn, OUT = FittingIn + UpholsteryDays (=AN3+N3)
+            if (!upholsteryIn && sandIn) {
+                upholsteryIn = sandIn;
+            }
+            if (!upholsteryOut && fitIn) {
+                upholsteryOut = addDays(fitIn, upholsteryDays);
+            }
         }
 
         let daysWithBuffer = 0;
@@ -291,7 +340,10 @@ export const ProductionPlanningModal = ({
             PreCuttingDays: preCutDays,
             OutSourceDays: outSourceDays,
             MachiningDays: machDays,
+            ComponentStoreDays: compStoreDays,
             AssemblyDays: assemDays,
+            MetalDays: metalDays,
+            UpholsteryDays: upholsteryDays,
             SandingDays: sandDays,
             PolishDays: polishDays,
             FittingDays: fitDays,
@@ -308,8 +360,14 @@ export const ProductionPlanningModal = ({
             PreCuttingOut: preCutOut,
             MachiningIn: machIn,
             MachiningOut: machOut,
+            ComponentStoreIn: compStoreIn,
+            ComponentStoreOut: compStoreOut,
             AssemblyIn: assemIn,
             AssemblyOut: assemOut,
+            MetalIn: metalIn,
+            MetalOut: metalOut,
+            UpholsteryIn: upholsteryIn,
+            UpholsteryOut: upholsteryOut,
             SandingIn: sandIn,
             SandingOut: sandOut,
             PolishIn: polishIn,
@@ -352,10 +410,11 @@ export const ProductionPlanningModal = ({
 
             // 1. If user changes Target Inspection Date:
             if (fieldKey === 'InspectionDate') {
-                const prodDays = 
+                const serialProdDays = 
                     (parseInt(updated.WoodIssueDays, 10) || 0) +
                     (parseInt(updated.PreCuttingDays, 10) || 0) +
                     (parseInt(updated.MachiningDays, 10) || 0) +
+                    (parseInt(updated.ComponentStoreDays, 10) || 0) +
                     (parseInt(updated.AssemblyDays, 10) || 0) +
                     (parseInt(updated.SandingDays, 10) || 0) +
                     (parseInt(updated.PolishDays, 10) || 0) +
@@ -364,8 +423,8 @@ export const ProductionPlanningModal = ({
                     (parseInt(updated.FinalQcDays, 10) || 0) +
                     (parseInt(updated.PackingDays, 10) || 0);
 
-                if (val && prodDays > 0) {
-                    updated.WoodIssueIn = addDays(val, -prodDays);
+                if (val && serialProdDays > 0) {
+                    updated.WoodIssueIn = addDays(val, -serialProdDays);
                 }
                 return calculateScheduleFromDays(updated);
             }
@@ -375,13 +434,45 @@ export const ProductionPlanningModal = ({
                 return calculateScheduleFromDays(updated);
             }
 
-            // 3. If user changes any stage OUT date or IN date:
-            const changedStageIdx = STAGE_ORDER.findIndex(
+            // 3. Parallel stage dates: Metal & Upholstery
+            if (fieldKey === 'MetalIn' || fieldKey === 'MetalOut') {
+                if (fieldKey === 'MetalOut') {
+                    if (val && updated.MetalIn) {
+                        updated.MetalDays = Math.max(0, getDayDifference(val, updated.MetalIn));
+                    }
+                } else {
+                    if (val && updated.MetalOut && val <= updated.MetalOut) {
+                        updated.MetalDays = Math.max(0, getDayDifference(updated.MetalOut, val));
+                    } else if (val) {
+                        updated.MetalOut = addDays(val, updated.MetalDays);
+                    }
+                }
+                return updated;
+            }
+
+            if (fieldKey === 'UpholsteryIn' || fieldKey === 'UpholsteryOut') {
+                if (fieldKey === 'UpholsteryOut') {
+                    if (val && updated.UpholsteryIn) {
+                        updated.UpholsteryDays = Math.max(0, getDayDifference(val, updated.UpholsteryIn));
+                    }
+                } else {
+                    if (val && updated.UpholsteryOut && val <= updated.UpholsteryOut) {
+                        updated.UpholsteryDays = Math.max(0, getDayDifference(updated.UpholsteryOut, val));
+                    } else if (val) {
+                        updated.UpholsteryOut = addDays(val, updated.UpholsteryDays);
+                    }
+                }
+                return updated;
+            }
+
+            // 4. Serial Stages
+            const serialStages = STAGE_ORDER.filter(s => s.isSerial);
+            const changedStageIdx = serialStages.findIndex(
                 s => s.inKey === fieldKey || s.outKey === fieldKey
             );
 
             if (changedStageIdx >= 0) {
-                const currentStage = STAGE_ORDER[changedStageIdx];
+                const currentStage = serialStages[changedStageIdx];
                 const isOutField = currentStage.outKey === fieldKey;
 
                 if (isOutField) {
@@ -400,10 +491,10 @@ export const ProductionPlanningModal = ({
                     }
                 }
 
-                // Cascade forward to all subsequent stages (+1 day buffer)
+                // Cascade forward to all subsequent serial stages (+1 day buffer)
                 let prevOut = updated[currentStage.outKey];
-                for (let i = changedStageIdx + 1; i < STAGE_ORDER.length; i++) {
-                    const stage = STAGE_ORDER[i];
+                for (let i = changedStageIdx + 1; i < serialStages.length; i++) {
+                    const stage = serialStages[i];
                     if (prevOut) {
                         updated[stage.inKey] = addDays(prevOut, 1);
                         updated[stage.outKey] = addDays(updated[stage.inKey], updated[stage.daysKey]);
@@ -411,11 +502,26 @@ export const ProductionPlanningModal = ({
                     }
                 }
 
+                // Re-align parallel branches: Metal & Upholstery
+                if (updated.ComponentStoreIn) {
+                    updated.MetalIn = updated.ComponentStoreIn;
+                }
+                if (updated.FittingIn) {
+                    updated.MetalOut = addDays(updated.FittingIn, updated.MetalDays);
+                }
+                if (updated.SandingIn) {
+                    updated.UpholsteryIn = updated.SandingIn;
+                }
+                if (updated.FittingIn) {
+                    updated.UpholsteryOut = addDays(updated.FittingIn, updated.UpholsteryDays);
+                }
+
                 // Re-calculate total days (INCLUDES OutSourceDays in total lead days, dates unaffected)
                 const prodTotal = 
                     (parseInt(updated.WoodIssueDays, 10) || 0) +
                     (parseInt(updated.PreCuttingDays, 10) || 0) +
                     (parseInt(updated.MachiningDays, 10) || 0) +
+                    (parseInt(updated.ComponentStoreDays, 10) || 0) +
                     (parseInt(updated.AssemblyDays, 10) || 0) +
                     (parseInt(updated.SandingDays, 10) || 0) +
                     (parseInt(updated.PolishDays, 10) || 0) +
@@ -544,7 +650,10 @@ export const ProductionPlanningModal = ({
             PreCuttingDays: row1.PreCuttingDays,
             OutSourceDays: row1.OutSourceDays,
             MachiningDays: row1.MachiningDays,
+            ComponentStoreDays: row1.ComponentStoreDays,
             AssemblyDays: row1.AssemblyDays,
+            MetalDays: row1.MetalDays,
+            UpholsteryDays: row1.UpholsteryDays,
             SandingDays: row1.SandingDays,
             PolishDays: row1.PolishDays,
             FittingDays: row1.FittingDays,
@@ -565,7 +674,7 @@ export const ProductionPlanningModal = ({
         }
     };
 
-    // Download Pre-filled Template (.xlsx) matching the 39-column standard for all selected shipments
+    // Download Pre-filled Template (.xlsx) matching the 47-column standard for all selected shipments
     const handleDownloadTemplate = () => {
         if (!planItems || planItems.length === 0) {
             toast.warn('No items to export.');
@@ -573,25 +682,29 @@ export const ProductionPlanningModal = ({
         }
 
         const row1 = [
-            'ShipmentNo', 'ItemCode', 'ContractNo', 'ItemName', 'Quantity QTY', 'InspectionDate',
-            'WOOD ISSUE', 'PRE CUTTING', 'OUT SOURCE JOB', 'MACHINING', 'ASSEMBLY', 'SANDING', 'POLISH', 'FITTING', 'QC', 'FINAL QC INSPECTION', 'PACKING',
+            'CONT \nNO.', 'ITEM NO.', 'CONTRACT NO.', 'ITEM DESCRIPTION', 'ITEM \n QTY', 'INSPECTION DATE',
+            'PRE CUTTING', 'PRE CUTTING', 'OUT SOURCE JOB', 'MACHINING', 'COMPONENT\nSTORE', 'ASSEMBLY',
+            'METAL', 'UPHOLSTERY', 'SANDING', 'POLISH', 'FITTING', 'QC', 'FINAL QC', 'PACKING',
             'TOTAL DAYS',
-            'WOOD ISSUE', 'WOOD ISSUE',
+            'WOOD ISSUE DATE', 'WOOD ISSUE',
             'PRE CUTTING', 'PRE CUTTING',
             'MACHINING', 'MACHINING',
+            'COMPONENT STORE', 'COMPONENT STORE',
             'ASSEMBLY', 'ASSEMBLY',
+            'METAL', 'METAL',
+            'UPHOLSTERY', 'UPHOLSTERY',
             'SANDING', 'SANDING',
             'POLISH', 'POLISH',
             'FITTING', 'FITTING',
             'QC', 'QC',
             'FINAL QC', 'FINAL QC',
-            'PACKING', 'PACKING',
-            'DAYS WITH BUFFER'
+            'PACKING', 'PACKING'
         ];
 
         const row2 = [
             '', '', '', '', '', '',
-            '', '', '', '', '', '', '', '', '', '', '',
+            '', '', '', '', '', '',
+            '', '', '', '', '', '', '', '',
             '',
             'IN', 'OUT',
             'IN', 'OUT',
@@ -603,7 +716,9 @@ export const ProductionPlanningModal = ({
             'IN', 'OUT',
             'IN', 'OUT',
             'IN', 'OUT',
-            ''
+            'IN', 'OUT',
+            'IN', 'OUT',
+            'IN', 'OUT'
         ];
 
         const rowsData = planItems.map(item => [
@@ -617,7 +732,10 @@ export const ProductionPlanningModal = ({
             item.PreCuttingDays || 0,
             item.OutSourceDays || 0,
             item.MachiningDays || 0,
+            item.ComponentStoreDays || 0,
             item.AssemblyDays || 0,
+            item.MetalDays || 0,
+            item.UpholsteryDays || 0,
             item.SandingDays || 0,
             item.PolishDays || 0,
             item.FittingDays || 0,
@@ -628,14 +746,16 @@ export const ProductionPlanningModal = ({
             item.WoodIssueIn || '', item.WoodIssueOut || '',
             item.PreCuttingIn || '', item.PreCuttingOut || '',
             item.MachiningIn || '', item.MachiningOut || '',
+            item.ComponentStoreIn || '', item.ComponentStoreOut || '',
             item.AssemblyIn || '', item.AssemblyOut || '',
+            item.MetalIn || '', item.MetalOut || '',
+            item.UpholsteryIn || '', item.UpholsteryOut || '',
             item.SandingIn || '', item.SandingOut || '',
             item.PolishIn || '', item.PolishOut || '',
             item.FittingIn || '', item.FittingOut || '',
             item.QcIn || '', item.QcOut || '',
             item.FinalQcIn || '', item.FinalQcOut || '',
-            item.PackingIn || '', item.PackingOut || '',
-            item.DaysWithBuffer || 0
+            item.PackingIn || '', item.PackingOut || ''
         ]);
 
         const fullAOA = [row1, row2, ...rowsData];
@@ -643,11 +763,14 @@ export const ProductionPlanningModal = ({
 
         ws['!cols'] = [
             { wch: 14 }, { wch: 12 }, { wch: 15 }, { wch: 35 }, { wch: 10 }, { wch: 14 },
-            { wch: 10 }, { wch: 10 }, { wch: 12 }, { wch: 10 }, { wch: 10 }, { wch: 10 }, { wch: 10 }, { wch: 10 }, { wch: 10 }, { wch: 14 }, { wch: 10 },
+            { wch: 10 }, { wch: 10 }, { wch: 12 }, { wch: 10 }, { wch: 12 }, { wch: 10 },
+            { wch: 10 }, { wch: 12 }, { wch: 10 }, { wch: 10 }, { wch: 10 }, { wch: 10 }, { wch: 12 }, { wch: 10 },
             { wch: 11 },
-            { wch: 12 }, { wch: 12 }, { wch: 12 }, { wch: 12 }, { wch: 12 }, { wch: 12 }, { wch: 12 }, { wch: 12 },
-            { wch: 12 }, { wch: 12 }, { wch: 12 }, { wch: 12 }, { wch: 12 }, { wch: 12 }, { wch: 12 }, { wch: 12 }, { wch: 12 }, { wch: 12 }, { wch: 12 }, { wch: 12 },
-            { wch: 14 }
+            { wch: 12 }, { wch: 12 }, { wch: 12 }, { wch: 12 }, { wch: 12 }, { wch: 12 },
+            { wch: 12 }, { wch: 12 }, { wch: 12 }, { wch: 12 }, { wch: 12 }, { wch: 12 },
+            { wch: 12 }, { wch: 12 }, { wch: 12 }, { wch: 12 }, { wch: 12 }, { wch: 12 },
+            { wch: 12 }, { wch: 12 }, { wch: 12 }, { wch: 12 }, { wch: 12 }, { wch: 12 },
+            { wch: 12 }, { wch: 12 }
         ];
 
         const wb = XLSX.utils.book_new();
@@ -697,15 +820,22 @@ export const ProductionPlanningModal = ({
                             const preCutDays = parseInt(row[7], 10) || 0;
                             const outSourceDays = parseInt(row[8], 10) || 0; // Excluded from calculation
                             const machDays = parseInt(row[9], 10) || 0;
-                            const assemDays = parseInt(row[10], 10) || 0;
-                            const sandDays = parseInt(row[11], 10) || 0;
-                            const polishDays = parseInt(row[12], 10) || 0;
-                            const fitDays = parseInt(row[13], 10) || 0;
-                            const qcDays = parseInt(row[14], 10) || 0;
-                            const finalQcDays = parseInt(row[15], 10) || 0;
-                            const packDays = parseInt(row[16], 10) || 0;
+                            const compStoreDays = parseInt(row[10], 10) || 0;
+                            const assemDays = parseInt(row[11], 10) || 0;
+                            const metalDays = parseInt(row[12], 10) || 0;
+                            const upholsteryDays = parseInt(row[13], 10) || 0;
+                            const sandDays = parseInt(row[14], 10) || 0;
+                            const polishDays = parseInt(row[15], 10) || 0;
+                            const fitDays = parseInt(row[16], 10) || 0;
+                            const qcDays = parseInt(row[17], 10) || 0;
+                            const finalQcDays = parseInt(row[18], 10) || 0;
+                            const packDays = parseInt(row[19], 10) || 0;
 
-                            const woodIn = row[18] ? String(row[18]).trim().split('T')[0] : item.WoodIssueIn;
+                            const woodIn = row[21] ? String(row[21]).trim().split('T')[0] : item.WoodIssueIn;
+                            const metalIn = row[31] ? String(row[31]).trim().split('T')[0] : item.MetalIn;
+                            const metalOut = row[32] ? String(row[32]).trim().split('T')[0] : item.MetalOut;
+                            const upholsteryIn = row[33] ? String(row[33]).trim().split('T')[0] : item.UpholsteryIn;
+                            const upholsteryOut = row[34] ? String(row[34]).trim().split('T')[0] : item.UpholsteryOut;
 
                             return calculateScheduleFromDays({
                                 ...item,
@@ -714,7 +844,10 @@ export const ProductionPlanningModal = ({
                                 PreCuttingDays: preCutDays,
                                 OutSourceDays: outSourceDays,
                                 MachiningDays: machDays,
+                                ComponentStoreDays: compStoreDays,
                                 AssemblyDays: assemDays,
+                                MetalDays: metalDays,
+                                UpholsteryDays: upholsteryDays,
                                 SandingDays: sandDays,
                                 PolishDays: polishDays,
                                 FittingDays: fitDays,
@@ -722,6 +855,10 @@ export const ProductionPlanningModal = ({
                                 FinalQcDays: finalQcDays,
                                 PackingDays: packDays,
                                 WoodIssueIn: woodIn,
+                                MetalIn: metalIn,
+                                MetalOut: metalOut,
+                                UpholsteryIn: upholsteryIn,
+                                UpholsteryOut: upholsteryOut,
                             });
                         }
                     }
@@ -773,9 +910,21 @@ export const ProductionPlanningModal = ({
                     ? Math.max(0, getDayDifference(item.MachiningOut, item.MachiningIn))
                     : (parseInt(item.MachiningDays, 10) || 0);
 
+                const compStore = (item.ComponentStoreIn && item.ComponentStoreOut)
+                    ? Math.max(0, getDayDifference(item.ComponentStoreOut, item.ComponentStoreIn))
+                    : (parseInt(item.ComponentStoreDays, 10) || 0);
+
                 const assem = (item.AssemblyIn && item.AssemblyOut)
                     ? Math.max(0, getDayDifference(item.AssemblyOut, item.AssemblyIn))
                     : (parseInt(item.AssemblyDays, 10) || 0);
+
+                const metal = (item.MetalIn && item.MetalOut)
+                    ? Math.max(0, getDayDifference(item.MetalOut, item.MetalIn))
+                    : (parseInt(item.MetalDays, 10) || 0);
+
+                const upholstery = (item.UpholsteryIn && item.UpholsteryOut)
+                    ? Math.max(0, getDayDifference(item.UpholsteryOut, item.UpholsteryIn))
+                    : (parseInt(item.UpholsteryDays, 10) || 0);
 
                 const sand = (item.SandingIn && item.SandingOut)
                     ? Math.max(0, getDayDifference(item.SandingOut, item.SandingIn))
@@ -802,7 +951,7 @@ export const ProductionPlanningModal = ({
                     : (parseInt(item.PackingDays, 10) || 0);
 
                 // TOTAL LEAD DAYS INCLUDES OutSourceDays as requested, dates unaffected
-                const totalLead = wood + preCut + outSource + mach + assem + sand + polish + fit + qc + finalQc + pack;
+                const totalLead = wood + preCut + outSource + mach + compStore + assem + sand + polish + fit + qc + finalQc + pack;
 
                 let daysWithBuffer = 0;
                 if (item.PackingOut && item.WoodIssueIn) {
@@ -816,7 +965,10 @@ export const ProductionPlanningModal = ({
                     PreCuttingDays: preCut,
                     OutSourceDays: outSource,
                     MachiningDays: mach,
+                    ComponentStoreDays: compStore,
                     AssemblyDays: assem,
+                    MetalDays: metal,
+                    UpholsteryDays: upholstery,
                     SandingDays: sand,
                     PolishDays: polish,
                     FittingDays: fit,
@@ -832,8 +984,14 @@ export const ProductionPlanningModal = ({
                     PreCuttingOut: item.PreCuttingOut,
                     MachiningIn: item.MachiningIn,
                     MachiningOut: item.MachiningOut,
+                    ComponentStoreIn: item.ComponentStoreIn,
+                    ComponentStoreOut: item.ComponentStoreOut,
                     AssemblyIn: item.AssemblyIn,
                     AssemblyOut: item.AssemblyOut,
+                    MetalIn: item.MetalIn,
+                    MetalOut: item.MetalOut,
+                    UpholsteryIn: item.UpholsteryIn,
+                    UpholsteryOut: item.UpholsteryOut,
                     SandingIn: item.SandingIn,
                     SandingOut: item.SandingOut,
                     PolishIn: item.PolishIn,
@@ -1099,18 +1257,21 @@ export const ProductionPlanningModal = ({
                                         <th rowSpan="2" style={{ padding: '4px 6px', border: '1px solid #cbd5e1', textAlign: 'center', width: '45px' }}>Qty</th>
                                         <th rowSpan="2" style={{ padding: '4px 6px', border: '1px solid #cbd5e1', textAlign: 'center', width: '105px' }}>Insp Date</th>
                                         
-                                        {/* Department Days Group (ColSpan 11) */}
-                                        <th colSpan="11" style={{ padding: '4px 6px', border: '1px solid #cbd5e1', textAlign: 'center', backgroundColor: '#e2e8f0' }}>
+                                        {/* Department Days Group (ColSpan 14) */}
+                                        <th colSpan="14" style={{ padding: '4px 6px', border: '1px solid #cbd5e1', textAlign: 'center', backgroundColor: '#e2e8f0' }}>
                                             Department Lead Times (Days)
                                         </th>
                                         
                                         <th rowSpan="2" style={{ padding: '4px 6px', border: '1px solid #cbd5e1', textAlign: 'center', width: '50px', backgroundColor: '#f1f5f9' }}>Total</th>
 
-                                        {/* 10 Department Stage Dates (IN & OUT) */}
+                                        {/* 13 Department Stage Dates (IN & OUT - ColSpan 26) */}
                                         <th colSpan="2" style={{ padding: '4px 6px', border: '1px solid #cbd5e1', textAlign: 'center', backgroundColor: '#e2e8f0' }}>Wood Issue</th>
                                         <th colSpan="2" style={{ padding: '4px 6px', border: '1px solid #cbd5e1', textAlign: 'center', backgroundColor: '#e2e8f0' }}>Pre Cutting</th>
                                         <th colSpan="2" style={{ padding: '4px 6px', border: '1px solid #cbd5e1', textAlign: 'center', backgroundColor: '#e2e8f0' }}>Machining</th>
+                                        <th colSpan="2" style={{ padding: '4px 6px', border: '1px solid #cbd5e1', textAlign: 'center', backgroundColor: '#e2e8f0' }}>Comp Store</th>
                                         <th colSpan="2" style={{ padding: '4px 6px', border: '1px solid #cbd5e1', textAlign: 'center', backgroundColor: '#e2e8f0' }}>Assembly</th>
+                                        <th colSpan="2" style={{ padding: '4px 6px', border: '1px solid #cbd5e1', textAlign: 'center', backgroundColor: '#e2e8f0' }}>Metal</th>
+                                        <th colSpan="2" style={{ padding: '4px 6px', border: '1px solid #cbd5e1', textAlign: 'center', backgroundColor: '#e2e8f0' }}>Upholstery</th>
                                         <th colSpan="2" style={{ padding: '4px 6px', border: '1px solid #cbd5e1', textAlign: 'center', backgroundColor: '#e2e8f0' }}>Sanding</th>
                                         <th colSpan="2" style={{ padding: '4px 6px', border: '1px solid #cbd5e1', textAlign: 'center', backgroundColor: '#e2e8f0' }}>Polish</th>
                                         <th colSpan="2" style={{ padding: '4px 6px', border: '1px solid #cbd5e1', textAlign: 'center', backgroundColor: '#e2e8f0' }}>Fitting</th>
@@ -1128,7 +1289,10 @@ export const ProductionPlanningModal = ({
                                         <th style={{ padding: '3px 4px', border: '1px solid #cbd5e1', textAlign: 'center', width: '42px' }}>PreCut</th>
                                         <th style={{ padding: '3px 4px', border: '1px solid #cbd5e1', textAlign: 'center', width: '45px' }} title="Outsource Days (Included in Total Days, dates unaffected)">OutSrc</th>
                                         <th style={{ padding: '3px 4px', border: '1px solid #cbd5e1', textAlign: 'center', width: '42px' }}>Mach</th>
+                                        <th style={{ padding: '3px 4px', border: '1px solid #cbd5e1', textAlign: 'center', width: '48px' }}>CompStore</th>
                                         <th style={{ padding: '3px 4px', border: '1px solid #cbd5e1', textAlign: 'center', width: '42px' }}>Assem</th>
+                                        <th style={{ padding: '3px 4px', border: '1px solid #cbd5e1', textAlign: 'center', width: '42px' }}>Metal</th>
+                                        <th style={{ padding: '3px 4px', border: '1px solid #cbd5e1', textAlign: 'center', width: '48px' }}>Upholstery</th>
                                         <th style={{ padding: '3px 4px', border: '1px solid #cbd5e1', textAlign: 'center', width: '42px' }}>Sand</th>
                                         <th style={{ padding: '3px 4px', border: '1px solid #cbd5e1', textAlign: 'center', width: '42px' }}>Polish</th>
                                         <th style={{ padding: '3px 4px', border: '1px solid #cbd5e1', textAlign: 'center', width: '42px' }}>Fit</th>
@@ -1136,7 +1300,13 @@ export const ProductionPlanningModal = ({
                                         <th style={{ padding: '3px 4px', border: '1px solid #cbd5e1', textAlign: 'center', width: '45px' }}>FinalQC</th>
                                         <th style={{ padding: '3px 4px', border: '1px solid #cbd5e1', textAlign: 'center', width: '42px' }}>Pack</th>
 
-                                        {/* 10 Stages IN / OUT Headers */}
+                                        {/* 13 Stages IN / OUT Headers (26 cols) */}
+                                        <th style={{ padding: '3px 4px', border: '1px solid #cbd5e1', textAlign: 'center', minWidth: '95px' }}>IN</th>
+                                        <th style={{ padding: '3px 4px', border: '1px solid #cbd5e1', textAlign: 'center', minWidth: '95px' }}>OUT</th>
+                                        <th style={{ padding: '3px 4px', border: '1px solid #cbd5e1', textAlign: 'center', minWidth: '95px' }}>IN</th>
+                                        <th style={{ padding: '3px 4px', border: '1px solid #cbd5e1', textAlign: 'center', minWidth: '95px' }}>OUT</th>
+                                        <th style={{ padding: '3px 4px', border: '1px solid #cbd5e1', textAlign: 'center', minWidth: '95px' }}>IN</th>
+                                        <th style={{ padding: '3px 4px', border: '1px solid #cbd5e1', textAlign: 'center', minWidth: '95px' }}>OUT</th>
                                         <th style={{ padding: '3px 4px', border: '1px solid #cbd5e1', textAlign: 'center', minWidth: '95px' }}>IN</th>
                                         <th style={{ padding: '3px 4px', border: '1px solid #cbd5e1', textAlign: 'center', minWidth: '95px' }}>OUT</th>
                                         <th style={{ padding: '3px 4px', border: '1px solid #cbd5e1', textAlign: 'center', minWidth: '95px' }}>IN</th>
@@ -1163,7 +1333,7 @@ export const ProductionPlanningModal = ({
                                 <tbody>
                                     {filteredItems.length === 0 ? (
                                         <tr>
-                                            <td colSpan="41" style={{ textAlign: 'center', padding: '20px', color: '#64748b' }}>
+                                            <td colSpan="50" style={{ textAlign: 'center', padding: '20px', color: '#64748b' }}>
                                                 No items match your filter.
                                             </td>
                                         </tr>
@@ -1220,9 +1390,9 @@ export const ProductionPlanningModal = ({
                                                         />
                                                     </td>
 
-                                                    {/* Department Inputs: Wood to Pack (Col Indices 1 to 11) */}
-                                                    {EDITABLE_COLS.slice(1, 12).map((dept, deptIdx) => {
-                                                        const colIdx = deptIdx + 1; // 1 to 11
+                                                    {/* Department Inputs: Wood to Pack (Col Indices 1 to 14) */}
+                                                    {EDITABLE_COLS.slice(1, 15).map((dept, deptIdx) => {
+                                                        const colIdx = deptIdx + 1; // 1 to 14
                                                         return (
                                                             <td key={dept.key} style={{ border: '1px solid #e2e8f0', padding: '1px 2px' }}>
                                                                 <input 
@@ -1255,9 +1425,9 @@ export const ProductionPlanningModal = ({
                                                         {item.TotalLeadDays}d
                                                     </td>
 
-                                                    {/* Department Date Inputs (Col Indices 12 to 31) */}
-                                                    {EDITABLE_COLS.slice(12).map((dateCol, dateIdx) => {
-                                                        const colIdx = dateIdx + 12; // 12 to 31
+                                                    {/* Department Date Inputs (Col Indices 15 to 40) */}
+                                                    {EDITABLE_COLS.slice(15).map((dateCol, dateIdx) => {
+                                                        const colIdx = dateIdx + 15; // 15 to 40
                                                         const rawVal = item[dateCol.key];
                                                         const dateVal = rawVal ? String(rawVal).split('T')[0] : '';
                                                         return (
