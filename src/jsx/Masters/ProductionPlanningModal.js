@@ -905,7 +905,18 @@ export const ProductionPlanningModal = ({
         }
     };
 
-    // Download Pre-filled Template (.xlsx) matching the 47-column standard for all selected shipments
+    // Helper to convert date string to Excel serial date number
+    const toExcelSerialDate = (dateStr) => {
+        const std = toStandardDateStr(dateStr);
+        if (!std) return null;
+        const parts = std.split('-').map(Number);
+        if (parts.length < 3 || isNaN(parts[0])) return null;
+        const utc = Date.UTC(parts[0], parts[1] - 1, parts[2]);
+        const excelEpoch = Date.UTC(1899, 11, 30);
+        return Math.round((utc - excelEpoch) / 86400000);
+    };
+
+    // Download Pre-filled Template (.xlsx) matching the 47-column standard with live dynamic micro-programming formulas
     const handleDownloadTemplate = () => {
         if (!planItems || planItems.length === 0) {
             toast.warn('No items to export.');
@@ -914,7 +925,7 @@ export const ProductionPlanningModal = ({
 
         const row1 = [
             'CONT \nNO.', 'ITEM NO.', 'CONTRACT NO.', 'ITEM DESCRIPTION', 'ITEM \n QTY', 'INSPECTION DATE',
-            'PRE CUTTING', 'PRE CUTTING', 'OUT SOURCE JOB', 'MACHINING', 'COMPONENT\nSTORE', 'ASSEMBLY',
+            'WOOD ISSUE', 'PRE CUTTING', 'OUT SOURCE JOB', 'MACHINING', 'COMPONENT\nSTORE', 'ASSEMBLY',
             'METAL', 'UPHOLSTERY', 'SANDING', 'POLISH', 'FITTING', 'QC', 'FINAL QC', 'PACKING',
             'TOTAL DAYS',
             'WOOD ISSUE DATE', 'WOOD ISSUE',
@@ -952,46 +963,142 @@ export const ProductionPlanningModal = ({
             'IN', 'OUT'
         ];
 
-        const rowsData = planItems.map(item => [
-            item.ContainerNumber || '',
-            item.ItemCode || '',
-            item.ContractNo || '',
-            item.ItemName || '',
-            item.Quantity || 0,
-            item.InspectionDate ? String(item.InspectionDate).split('T')[0] : '',
-            item.WoodIssueDays || 0,
-            item.PreCuttingDays || 0,
-            item.OutSourceDays || 0,
-            item.MachiningDays || 0,
-            item.ComponentStoreDays || 0,
-            item.AssemblyDays || 0,
-            item.MetalDays || 0,
-            item.UpholsteryDays || 0,
-            item.SandingDays || 0,
-            item.PolishDays || 0,
-            item.FittingDays || 0,
-            item.QcDays || 0,
-            item.FinalQcDays || 0,
-            item.PackingDays || 0,
-            item.TotalLeadDays || 0,
-            item.WoodIssueIn || '', item.WoodIssueOut || '',
-            item.PreCuttingIn || '', item.PreCuttingOut || '',
-            item.MachiningIn || '', item.MachiningOut || '',
-            item.ComponentStoreIn || '', item.ComponentStoreOut || '',
-            item.AssemblyIn || '', item.AssemblyOut || '',
-            item.MetalIn || '', item.MetalOut || '',
-            item.UpholsteryIn || '', item.UpholsteryOut || '',
-            item.SandingIn || '', item.SandingOut || '',
-            item.PolishIn || '', item.PolishOut || '',
-            item.FittingIn || '', item.FittingOut || '',
-            item.QcIn || '', item.QcOut || '',
-            item.FinalQcIn || '', item.FinalQcOut || '',
-            item.PackingIn || '', item.PackingOut || ''
-        ]);
+        const ws = XLSX.utils.aoa_to_sheet([row1, row2]);
 
-        const fullAOA = [row1, row2, ...rowsData];
-        const ws = XLSX.utils.aoa_to_sheet(fullAOA);
+        planItems.forEach((item, idx) => {
+            const r = idx + 3; // 1-based row index in Excel (data begins at row 3)
 
+            // Cols A to E: Core identification
+            ws['A' + r] = { t: 's', v: item.ContainerNumber || '' };
+            ws['B' + r] = { t: 's', v: item.ItemCode || '' };
+            ws['C' + r] = { t: 's', v: item.ContractNo || '' };
+            ws['D' + r] = { t: 's', v: item.ItemName || '' };
+            ws['E' + r] = { t: 'n', v: item.Quantity || 0 };
+
+            // Col F: Inspection Date
+            const inspSerial = toExcelSerialDate(item.InspectionDate);
+            if (inspSerial) {
+                ws['F' + r] = { t: 'n', v: inspSerial, z: 'yyyy-mm-dd' };
+            } else {
+                ws['F' + r] = { t: 's', v: '' };
+            }
+
+            // Cols G to T: Department Days inputs
+            ws['G' + r] = { t: 'n', v: parseInt(item.WoodIssueDays, 10) || 0 };
+            ws['H' + r] = { t: 'n', v: parseInt(item.PreCuttingDays, 10) || 0 };
+            ws['I' + r] = { t: 'n', v: parseInt(item.OutSourceDays, 10) || 0 };
+            ws['J' + r] = { t: 'n', v: parseInt(item.MachiningDays, 10) || 0 };
+            ws['K' + r] = { t: 'n', v: parseInt(item.ComponentStoreDays, 10) || 0 };
+            ws['L' + r] = { t: 'n', v: parseInt(item.AssemblyDays, 10) || 0 };
+            ws['M' + r] = { t: 'n', v: parseInt(item.MetalDays, 10) || 0 };
+            ws['N' + r] = { t: 'n', v: parseInt(item.UpholsteryDays, 10) || 0 };
+            ws['O' + r] = { t: 'n', v: parseInt(item.SandingDays, 10) || 0 };
+            ws['P' + r] = { t: 'n', v: parseInt(item.PolishDays, 10) || 0 };
+            ws['Q' + r] = { t: 'n', v: parseInt(item.FittingDays, 10) || 0 };
+            ws['R' + r] = { t: 'n', v: parseInt(item.QcDays, 10) || 0 };
+            ws['S' + r] = { t: 'n', v: parseInt(item.FinalQcDays, 10) || 0 };
+            ws['T' + r] = { t: 'n', v: parseInt(item.PackingDays, 10) || 0 };
+
+            // Col U: Total Lead Days Formula (serial production + OutSourceDays; Metal & Upholstery parallel excluded)
+            ws['U' + r] = { 
+                t: 'n', 
+                f: `G${r}+H${r}+I${r}+J${r}+K${r}+L${r}+O${r}+P${r}+Q${r}+R${r}+S${r}+T${r}`, 
+                v: item.TotalLeadDays || 0 
+            };
+
+            // Helper to populate dynamic date cells with formula, evaluated value and yyyy-mm-dd date formatting
+            const addDateCell = (colLetter, formula, fallbackDateStr) => {
+                const serial = toExcelSerialDate(fallbackDateStr);
+                ws[colLetter + r] = {
+                    t: 'n',
+                    f: formula,
+                    v: serial || 0,
+                    z: 'yyyy-mm-dd'
+                };
+            };
+
+            // Col V: Wood Issue IN = WORKDAY.INTL(F{r}, -U{r}, 11) (skips Sunday backwards from target inspection date)
+            addDateCell('V', `WORKDAY.INTL(F${r}, -U${r}, 11)`, item.WoodIssueIn);
+
+            // Col W: Wood Issue OUT = IF(G{r}<=1, V{r}, WORKDAY.INTL(V{r}, G${r}-1, 11))
+            addDateCell('W', `IF(G${r}<=1, V${r}, WORKDAY.INTL(V${r}, G${r}-1, 11))`, item.WoodIssueOut);
+
+            // Col X: Pre Cutting IN = WORKDAY.INTL(W{r}, 1, 11) (+1 workday buffer)
+            addDateCell('X', `WORKDAY.INTL(W${r}, 1, 11)`, item.PreCuttingIn);
+
+            // Col Y: Pre Cutting OUT = IF(H{r}<=1, X{r}, WORKDAY.INTL(X${r}, H${r}-1, 11))
+            addDateCell('Y', `IF(H${r}<=1, X${r}, WORKDAY.INTL(X${r}, H${r}-1, 11))`, item.PreCuttingOut);
+
+            // Col Z: Machining IN = WORKDAY.INTL(Y{r}, 1, 11)
+            addDateCell('Z', `WORKDAY.INTL(Y${r}, 1, 11)`, item.MachiningIn);
+
+            // Col AA: Machining OUT = IF(J{r}<=1, Z{r}, WORKDAY.INTL(Z${r}, J${r}-1, 11))
+            addDateCell('AA', `IF(J${r}<=1, Z${r}, WORKDAY.INTL(Z${r}, J${r}-1, 11))`, item.MachiningOut);
+
+            // Col AB: Component Store IN = WORKDAY.INTL(AA{r}, 1, 11)
+            addDateCell('AB', `WORKDAY.INTL(AA${r}, 1, 11)`, item.ComponentStoreIn);
+
+            // Col AC: Component Store OUT = IF(K{r}<=1, AB${r}, WORKDAY.INTL(AB${r}, K${r}-1, 11))
+            addDateCell('AC', `IF(K${r}<=1, AB${r}, WORKDAY.INTL(AB${r}, K${r}-1, 11))`, item.ComponentStoreOut);
+
+            // Col AD: Assembly IN = WORKDAY.INTL(AC{r}, 1, 11)
+            addDateCell('AD', `WORKDAY.INTL(AC${r}, 1, 11)`, item.AssemblyIn);
+
+            // Col AE: Assembly OUT = IF(L{r}<=1, AD${r}, WORKDAY.INTL(AD${r}, L${r}-1, 11))
+            addDateCell('AE', `IF(L${r}<=1, AD${r}, WORKDAY.INTL(AD${r}, L${r}-1, 11))`, item.AssemblyOut);
+
+            // Parallel Stage 1: Metal start date = Machine start date
+            // Col AF: Metal IN = Z{r} (Machining IN)
+            addDateCell('AF', `Z${r}`, item.MetalIn);
+
+            // Col AG: Metal OUT = IF(M{r}<=1, AF${r}, WORKDAY.INTL(AF${r}, M${r}-1, 11))
+            addDateCell('AG', `IF(M${r}<=1, AF${r}, WORKDAY.INTL(AF${r}, M${r}-1, 11))`, item.MetalOut);
+
+            // Parallel Stage 2: Upholstery start date = Assembly start date
+            // Col AH: Upholstery IN = AD{r} (Assembly IN)
+            addDateCell('AH', `AD${r}`, item.UpholsteryIn);
+
+            // Col AI: Upholstery OUT = IF(N{r}<=1, AH${r}, WORKDAY.INTL(AH${r}, N${r}-1, 11))
+            addDateCell('AI', `IF(N${r}<=1, AH${r}, WORKDAY.INTL(AH${r}, N${r}-1, 11))`, item.UpholsteryOut);
+
+            // Col AJ: Sanding IN = WORKDAY.INTL(AE{r}, 1, 11) (After Assembly OUT)
+            addDateCell('AJ', `WORKDAY.INTL(AE${r}, 1, 11)`, item.SandingIn);
+
+            // Col AK: Sanding OUT = IF(O{r}<=1, AJ${r}, WORKDAY.INTL(AJ${r}, O${r}-1, 11))
+            addDateCell('AK', `IF(O${r}<=1, AJ${r}, WORKDAY.INTL(AJ${r}, O${r}-1, 11))`, item.SandingOut);
+
+            // Col AL: Polish IN = WORKDAY.INTL(AK{r}, 1, 11)
+            addDateCell('AL', `WORKDAY.INTL(AK${r}, 1, 11)`, item.PolishIn);
+
+            // Col AM: Polish OUT = IF(P{r}<=1, AL${r}, WORKDAY.INTL(AL${r}, P${r}-1, 11))
+            addDateCell('AM', `IF(P${r}<=1, AL${r}, WORKDAY.INTL(AL${r}, P${r}-1, 11))`, item.PolishOut);
+
+            // Col AN: Fitting IN = WORKDAY.INTL(AM{r}, 1, 11)
+            addDateCell('AN', `WORKDAY.INTL(AM${r}, 1, 11)`, item.FittingIn);
+
+            // Col AO: Fitting OUT = IF(Q{r}<=1, AN${r}, WORKDAY.INTL(AN${r}, Q${r}-1, 11))
+            addDateCell('AO', `IF(Q${r}<=1, AN${r}, WORKDAY.INTL(AN${r}, Q${r}-1, 11))`, item.FittingOut);
+
+            // Col AP: QC IN = WORKDAY.INTL(AO{r}, 1, 11)
+            addDateCell('AP', `WORKDAY.INTL(AO${r}, 1, 11)`, item.QcIn);
+
+            // Col AQ: QC OUT = IF(R{r}<=1, AP{r}, WORKDAY.INTL(AP${r}, R{r}-1, 11))
+            addDateCell('AQ', `IF(R${r}<=1, AP${r}, WORKDAY.INTL(AP${r}, R${r}-1, 11))`, item.QcOut);
+
+            // Col AR: Final QC IN = WORKDAY.INTL(AQ{r}, 1, 11)
+            addDateCell('AR', `WORKDAY.INTL(AQ${r}, 1, 11)`, item.FinalQcIn);
+
+            // Col AS: Final QC OUT = IF(S{r}<=1, AR{r}, WORKDAY.INTL(AR${r}, S{r}-1, 11))
+            addDateCell('AS', `IF(S${r}<=1, AR${r}, WORKDAY.INTL(AR${r}, S${r}-1, 11))`, item.FinalQcOut);
+
+            // Col AT: Packing IN = WORKDAY.INTL(AS{r}, 1, 11)
+            addDateCell('AT', `WORKDAY.INTL(AS${r}, 1, 11)`, item.PackingIn);
+
+            // Col AU: Packing OUT = IF(T{r}<=1, AT${r}, WORKDAY.INTL(AT${r}, T${r}-1, 11))
+            addDateCell('AU', `IF(T${r}<=1, AT${r}, WORKDAY.INTL(AT${r}, T${r}-1, 11))`, item.PackingOut);
+        });
+
+        ws['!ref'] = `A1:AU${planItems.length + 2}`;
         ws['!cols'] = [
             { wch: 14 }, { wch: 12 }, { wch: 15 }, { wch: 35 }, { wch: 10 }, { wch: 14 },
             { wch: 10 }, { wch: 10 }, { wch: 12 }, { wch: 10 }, { wch: 12 }, { wch: 10 },
@@ -1004,10 +1111,10 @@ export const ProductionPlanningModal = ({
             { wch: 12 }, { wch: 12 }
         ];
 
-        const wb = XLSX.utils.book_new();
-        XLSX.utils.book_append_sheet(wb, ws, 'PRODUCTION TARGET');
-        XLSX.writeFile(wb, `AARA_Multi_Shipment_Target_Template.xlsx`);
-        toast.success(`📥 Template downloaded with ${planItems.length} items!`);
+        const wbOut = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wbOut, ws, 'PRODUCTION TARGET');
+        XLSX.writeFile(wbOut, `AARA_Multi_Shipment_Target_Template.xlsx`);
+        toast.success(`📥 Template downloaded with ${planItems.length} items with dynamic formulas!`);
     };
 
     // Excel Upload Handler: Direct inline update into the table!
