@@ -11,14 +11,25 @@ import { API_WEB_URLS } from '../../constants/constAPI';
 
 // Local Date parser & formatter to avoid UTC offset issues & robustly handle all date formats
 const parseLocalDate = (dateInput) => {
-    if (!dateInput) return null;
+    if (!dateInput && dateInput !== 0) return null;
     if (dateInput instanceof Date) {
         if (isNaN(dateInput.getTime())) return null;
         return new Date(dateInput.getFullYear(), dateInput.getMonth(), dateInput.getDate());
     }
 
+    if (typeof dateInput === 'number' && dateInput > 30000 && dateInput < 70000) {
+        const utcDate = new Date((dateInput - 25569) * 86400 * 1000);
+        return new Date(utcDate.getUTCFullYear(), utcDate.getUTCMonth(), utcDate.getUTCDate());
+    }
+
     const str = String(dateInput).trim();
     if (!str || str.toLowerCase() === 'null' || str.toLowerCase() === 'undefined') return null;
+
+    if (/^\d{5}$/.test(str)) {
+        const num = parseInt(str, 10);
+        const utcDate = new Date((num - 25569) * 86400 * 1000);
+        return new Date(utcDate.getUTCFullYear(), utcDate.getUTCMonth(), utcDate.getUTCDate());
+    }
 
     // Remove any time part (e.g., ' 00:00:00' or 'T00:00:00...')
     const datePart = str.split(/[ T]/)[0].trim();
@@ -34,7 +45,7 @@ const parseLocalDate = (dateInput) => {
         }
     }
 
-    // Check for MM/DD/YYYY or DD/MM/YYYY
+    // Check for DD/MM/YYYY or MM/DD/YYYY
     const slashMatch = datePart.match(/^(\d{1,2})[-/](\d{1,2})[-/](\d{4})$/);
     if (slashMatch) {
         let p1 = parseInt(slashMatch[1], 10);
@@ -42,16 +53,14 @@ const parseLocalDate = (dateInput) => {
         const y = parseInt(slashMatch[3], 10);
 
         let m, d;
-        if (p1 > 12) {
-            d = p1;
-            m = p2;
-        } else if (p2 > 12) {
+        // In Indian ERP standard: DD-MM-YYYY / DD/MM/YYYY (Day first, Month second)
+        // Only if second part > 12 can it be MM-DD-YYYY (e.g. 05-25-2026)
+        if (p2 > 12) {
             m = p1;
             d = p2;
         } else {
-            // Default to MM/DD/YYYY from SQL Server
-            m = p1;
-            d = p2;
+            d = p1;
+            m = p2;
         }
 
         if (y > 1900 && m >= 1 && m <= 12 && d >= 1 && d <= 31) {
@@ -345,6 +354,7 @@ export const ProductionPlanningModal = ({
                     FinalQcOut: toStandardDateStr(saved.FinalQcOut),
                     PackingIn: toStandardDateStr(saved.PackingIn),
                     PackingOut: toStandardDateStr(saved.PackingOut),
+                    IsManualWoodIssueIn: false,
                 };
 
                 return calculateScheduleFromDays(initialObj);
@@ -412,9 +422,9 @@ export const ProductionPlanningModal = ({
         let metalIn = null, metalOut = null;
         let upholsteryIn = null, upholsteryOut = null;
 
-        // Primary scheduling mode: If user has explicitly provided WoodIssueIn, forward schedule from WoodIssueIn.
+        // Primary scheduling mode: If user has explicitly provided WoodIssueIn manually, forward schedule from WoodIssueIn.
         // Otherwise, reverse schedule from InspectionDate so FinalQcOut <= InspectionDate.
-        if (woodIssueInAnchor) {
+        if (item.IsManualWoodIssueIn && woodIssueInAnchor) {
             woodIssueIn = getNextWorkDay(woodIssueInAnchor);
             woodIssueOut = getStageOut(woodIssueIn, woodDays);
 
@@ -504,6 +514,46 @@ export const ProductionPlanningModal = ({
             // 2. Upholstery start date = Assembly start date
             upholsteryIn = assemIn;
             upholsteryOut = getStageOut(upholsteryIn, upholsteryDays);
+        } else if (woodIssueInAnchor) {
+            woodIssueIn = getNextWorkDay(woodIssueInAnchor);
+            woodIssueOut = getStageOut(woodIssueIn, woodDays);
+
+            preCutIn = addWorkDays(woodIssueOut, 1);
+            preCutOut = getStageOut(preCutIn, preCutDays);
+
+            const outSourceGap = outSourceDays > 0 ? outSourceDays : 1;
+            machIn = addWorkDays(preCutOut, outSourceGap);
+            machOut = getStageOut(machIn, machDays);
+
+            compStoreIn = addWorkDays(machOut, 1);
+            compStoreOut = getStageOut(compStoreIn, compStoreDays);
+
+            assemIn = addWorkDays(compStoreOut, 1);
+            assemOut = getStageOut(assemIn, assemDays);
+
+            metalIn = machIn;
+            metalOut = getStageOut(metalIn, metalDays);
+
+            upholsteryIn = assemIn;
+            upholsteryOut = getStageOut(upholsteryIn, upholsteryDays);
+
+            sandIn = addWorkDays(assemOut, 1);
+            sandOut = getStageOut(sandIn, sandDays);
+
+            polishIn = addWorkDays(sandOut, 1);
+            polishOut = getStageOut(polishIn, polishDays);
+
+            fitIn = addWorkDays(polishOut, 1);
+            fitOut = getStageOut(fitIn, fitDays);
+
+            qcIn = addWorkDays(fitOut, 1);
+            qcOut = getStageOut(qcIn, qcDays);
+
+            finalQcIn = addWorkDays(qcOut, 1);
+            finalQcOut = getStageOut(finalQcIn, finalQcDays);
+
+            packIn = addWorkDays(finalQcOut, 1);
+            packOut = getStageOut(packIn, packDays);
         }
 
         let daysWithBuffer = 0;
@@ -534,6 +584,7 @@ export const ProductionPlanningModal = ({
             IsFinalQcDelayed: isFinalQcDelayed,
             IsDeadlineExceeded: isFinalQcDelayed,
             OverdueDays: 0,
+            IsManualWoodIssueIn: !!item.IsManualWoodIssueIn,
             InspectionDate: inspectionDate,
             WoodIssueIn: woodIssueIn,
             WoodIssueOut: woodIssueOut,
@@ -601,12 +652,12 @@ export const ProductionPlanningModal = ({
 
             // 1. If user changes Target Inspection Date:
             if (fieldKey === 'InspectionDate') {
-                return calculateScheduleFromDays(updated);
+                return calculateScheduleFromDays({ ...updated, IsManualWoodIssueIn: false });
             }
 
             // 2. If user changes WoodIssueIn directly:
             if (fieldKey === 'WoodIssueIn') {
-                return calculateScheduleFromDays(updated);
+                return calculateScheduleFromDays({ ...updated, IsManualWoodIssueIn: true });
             }
 
             // 3. Parallel stage dates: Metal & Upholstery
@@ -812,10 +863,11 @@ export const ProductionPlanningModal = ({
                 const prevRowItem = filteredItems[rowIdx - 1];
                 if (prevRowItem && filteredItems[rowIdx]) {
                     const prevVal = prevRowItem[colDef.key];
+                    const targetRowKey = filteredItems[rowIdx]._rowKey || filteredItems[rowIdx].ContainerMasterLId;
                     if (colDef.isDate) {
-                        handleDateCellChange(filteredItems[rowIdx].ContainerMasterLId, colDef.key, prevVal);
+                        handleDateCellChange(targetRowKey, colDef.key, prevVal);
                     } else {
-                        handleDayChange(filteredItems[rowIdx].ContainerMasterLId, colDef.key, prevVal);
+                        handleDayChange(targetRowKey, colDef.key, prevVal);
                     }
                 }
             }
@@ -1200,6 +1252,7 @@ export const ProductionPlanningModal = ({
                                 FinalQcDays: finalQcDays,
                                 PackingDays: packDays,
                                 WoodIssueIn: woodIn,
+                                IsManualWoodIssueIn: false,
                                 MetalIn: metalIn,
                                 MetalOut: metalOut,
                                 UpholsteryIn: upholsteryIn,
