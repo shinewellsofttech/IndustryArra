@@ -285,13 +285,6 @@ export const ProductionPlanningModal = ({
             daysWithBuffer = getDayDifference(packOut, woodIssueIn);
         }
 
-        let overdueDays = 0;
-        let isDeadlineExceeded = false;
-        if (packOut && inspectionDate) {
-            overdueDays = getDayDifference(packOut, inspectionDate);
-            isDeadlineExceeded = overdueDays > 0;
-        }
-
         return {
             ...item,
             WoodIssueDays: woodDays,
@@ -307,8 +300,8 @@ export const ProductionPlanningModal = ({
             PackingDays: packDays,
             TotalLeadDays: totalLeadDays,
             DaysWithBuffer: daysWithBuffer,
-            IsDeadlineExceeded: isDeadlineExceeded,
-            OverdueDays: overdueDays,
+            IsDeadlineExceeded: false,
+            OverdueDays: 0,
             WoodIssueIn: woodIssueIn,
             WoodIssueOut: woodIssueOut,
             PreCuttingIn: preCutIn,
@@ -437,10 +430,8 @@ export const ProductionPlanningModal = ({
                 if (updated.PackingOut && updated.WoodIssueIn) {
                     updated.DaysWithBuffer = getDayDifference(updated.PackingOut, updated.WoodIssueIn);
                 }
-                if (updated.PackingOut && updated.InspectionDate) {
-                    updated.OverdueDays = Math.max(0, getDayDifference(updated.PackingOut, updated.InspectionDate));
-                    updated.IsDeadlineExceeded = updated.OverdueDays > 0;
-                }
+                updated.OverdueDays = 0;
+                updated.IsDeadlineExceeded = false;
 
                 return updated;
             }
@@ -760,14 +751,6 @@ export const ProductionPlanningModal = ({
             return;
         }
 
-        const overdueItems = planItems.filter(p => p.IsDeadlineExceeded);
-        if (overdueItems.length > 0) {
-            const proceed = window.confirm(
-                `⚠️ Note: ${overdueItems.length} item(s) have packing finish dates exceeding their Target Inspection Date!\n\nDo you want to proceed and save this target plan?`
-            );
-            if (!proceed) return;
-        }
-
         setSaving(true);
         try {
             const token = localStorage.getItem('token') || localStorage.getItem('authToken') || '';
@@ -826,8 +809,6 @@ export const ProductionPlanningModal = ({
                     daysWithBuffer = getDayDifference(item.PackingOut, item.WoodIssueIn);
                 }
 
-                const isDeadlineExceeded = item.InspectionDate && item.PackingOut && item.PackingOut > item.InspectionDate;
-
                 return {
                     ContainerMasterLId: item.ContainerMasterLId,
                     ContainerId: item.ContainerId,
@@ -844,7 +825,7 @@ export const ProductionPlanningModal = ({
                     PackingDays: pack,
                     TotalLeadDays: totalLead,
                     DaysWithBuffer: daysWithBuffer,
-                    IsDeadlineExceeded: isDeadlineExceeded ? true : false,
+                    IsDeadlineExceeded: false,
                     WoodIssueIn: item.WoodIssueIn,
                     WoodIssueOut: item.WoodIssueOut,
                     PreCuttingIn: item.PreCuttingIn,
@@ -921,9 +902,8 @@ export const ProductionPlanningModal = ({
     const stats = useMemo(() => {
         const total = planItems.length;
         const planned = planItems.filter(p => p.TotalLeadDays > 0).length;
-        const overdue = planItems.filter(p => p.IsDeadlineExceeded).length;
         const shipmentsCount = uniqueShipments.length;
-        return { total, planned, overdue, shipmentsCount };
+        return { total, planned, shipmentsCount };
     }, [planItems, uniqueShipments]);
 
     return (
@@ -964,15 +944,6 @@ export const ProductionPlanningModal = ({
                         <span style={{ padding: '3px 8px', background: '#064e3b', color: '#6ee7b7', borderRadius: '3px', border: '1px solid #047857' }}>
                             Planned: <strong>{stats.planned}</strong>
                         </span>
-                        {stats.overdue > 0 ? (
-                            <span style={{ padding: '3px 8px', background: '#7f1d1d', color: '#fca5a5', borderRadius: '3px', border: '1px solid #b91c1c' }}>
-                                Late: <strong>{stats.overdue}</strong>
-                            </span>
-                        ) : (
-                            <span style={{ padding: '3px 8px', background: '#1e3a8a', color: '#93c5fd', borderRadius: '3px', border: '1px solid #1d4ed8' }}>
-                                On-Time
-                            </span>
-                        )}
                     </div>
                 </div>
             </Modal.Header>
@@ -1198,8 +1169,7 @@ export const ProductionPlanningModal = ({
                                         </tr>
                                     ) : (
                                         filteredItems.map((item, idx) => {
-                                            const isLate = item.IsDeadlineExceeded;
-                                            const rowBg = isLate ? '#fef2f2' : (idx % 2 === 0 ? '#ffffff' : '#f8fafc');
+                                            const rowBg = idx % 2 === 0 ? '#ffffff' : '#f8fafc';
 
                                             return (
                                                 <tr 
@@ -1324,11 +1294,7 @@ export const ProductionPlanningModal = ({
 
                                                     {/* Status Badge */}
                                                     <td style={{ textAlign: 'center', border: '1px solid #e2e8f0', backgroundColor: '#f8fafc' }}>
-                                                        {isLate ? (
-                                                            <span style={{ color: '#b91c1c', fontWeight: 600, fontSize: '10px' }}>
-                                                                Late +{item.OverdueDays}d
-                                                            </span>
-                                                        ) : item.TotalLeadDays > 0 ? (
+                                                        {item.TotalLeadDays > 0 ? (
                                                             <span style={{ color: '#15803d', fontWeight: 600, fontSize: '10px' }}>
                                                                 OK
                                                             </span>
