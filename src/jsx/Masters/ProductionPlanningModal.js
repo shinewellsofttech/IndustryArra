@@ -354,9 +354,52 @@ export const ProductionPlanningModal = ({
         let metalIn = null, metalOut = null;
         let upholsteryIn = null, upholsteryOut = null;
 
-        // Primary scheduling mode: Reverse schedule from InspectionDate so FinalQcOut <= InspectionDate
-        if (inspectionDate) {
-            // Final QC OUT must be <= InspectionDate (if InspectionDate is Sunday, lands on Saturday)
+        // Primary scheduling mode: If user has explicitly provided WoodIssueIn, forward schedule from WoodIssueIn.
+        // Otherwise, reverse schedule from InspectionDate so FinalQcOut <= InspectionDate.
+        if (item.WoodIssueIn) {
+            woodIssueIn = getNextWorkDay(item.WoodIssueIn);
+            woodIssueOut = getStageOut(woodIssueIn, woodDays);
+
+            preCutIn = addWorkDays(woodIssueOut, 1);
+            preCutOut = getStageOut(preCutIn, preCutDays);
+
+            machIn = addWorkDays(preCutOut, 1);
+            machOut = getStageOut(machIn, machDays);
+
+            compStoreIn = addWorkDays(machOut, 1);
+            compStoreOut = getStageOut(compStoreIn, compStoreDays);
+
+            assemIn = addWorkDays(compStoreOut, 1);
+            assemOut = getStageOut(assemIn, assemDays);
+
+            // Parallel branches:
+            // 1. Metal start date = Machine start date
+            metalIn = machIn;
+            metalOut = getStageOut(metalIn, metalDays);
+
+            // 2. Upholstery start date = Assembly start date
+            upholsteryIn = assemIn;
+            upholsteryOut = getStageOut(upholsteryIn, upholsteryDays);
+
+            sandIn = addWorkDays(assemOut, 1);
+            sandOut = getStageOut(sandIn, sandDays);
+
+            polishIn = addWorkDays(sandOut, 1);
+            polishOut = getStageOut(polishIn, polishDays);
+
+            fitIn = addWorkDays(polishOut, 1);
+            fitOut = getStageOut(fitIn, fitDays);
+
+            qcIn = addWorkDays(fitOut, 1);
+            qcOut = getStageOut(qcIn, qcDays);
+
+            finalQcIn = addWorkDays(qcOut, 1);
+            finalQcOut = getStageOut(finalQcIn, finalQcDays);
+
+            packIn = addWorkDays(finalQcOut, 1);
+            packOut = getStageOut(packIn, packDays);
+        } else if (inspectionDate) {
+            // Reverse schedule from InspectionDate so FinalQcOut <= InspectionDate
             finalQcOut = getPrevWorkDay(inspectionDate);
             finalQcIn = getStageIn(finalQcOut, finalQcDays);
 
@@ -391,51 +434,13 @@ export const ProductionPlanningModal = ({
             packIn = addWorkDays(finalQcOut, 1);
             packOut = getStageOut(packIn, packDays);
 
-            // Parallel branches: Metal & Upholstery
-            metalIn = compStoreIn;
+            // Parallel branches:
+            // 1. Metal start date = Machine start date
+            metalIn = machIn;
             metalOut = getStageOut(metalIn, metalDays);
 
-            upholsteryIn = sandIn;
-            upholsteryOut = getStageOut(upholsteryIn, upholsteryDays);
-        } else if (item.WoodIssueIn) {
-            // Fallback if no InspectionDate: forward schedule starting from WoodIssueIn
-            woodIssueIn = getNextWorkDay(item.WoodIssueIn);
-            woodIssueOut = getStageOut(woodIssueIn, woodDays);
-
-            preCutIn = addWorkDays(woodIssueOut, 1);
-            preCutOut = getStageOut(preCutIn, preCutDays);
-
-            machIn = addWorkDays(preCutOut, 1);
-            machOut = getStageOut(machIn, machDays);
-
-            compStoreIn = addWorkDays(machOut, 1);
-            compStoreOut = getStageOut(compStoreIn, compStoreDays);
-
-            assemIn = addWorkDays(compStoreOut, 1);
-            assemOut = getStageOut(assemIn, assemDays);
-
-            sandIn = addWorkDays(assemOut, 1);
-            sandOut = getStageOut(sandIn, sandDays);
-
-            polishIn = addWorkDays(sandOut, 1);
-            polishOut = getStageOut(polishIn, polishDays);
-
-            fitIn = addWorkDays(polishOut, 1);
-            fitOut = getStageOut(fitIn, fitDays);
-
-            qcIn = addWorkDays(fitOut, 1);
-            qcOut = getStageOut(qcIn, qcDays);
-
-            finalQcIn = addWorkDays(qcOut, 1);
-            finalQcOut = getStageOut(finalQcIn, finalQcDays);
-
-            packIn = addWorkDays(finalQcOut, 1);
-            packOut = getStageOut(packIn, packDays);
-
-            metalIn = compStoreIn;
-            metalOut = getStageOut(metalIn, metalDays);
-
-            upholsteryIn = sandIn;
+            // 2. Upholstery start date = Assembly start date
+            upholsteryIn = assemIn;
             upholsteryOut = getStageOut(upholsteryIn, upholsteryDays);
         }
 
@@ -569,9 +574,12 @@ export const ProductionPlanningModal = ({
                     updated.PackingIn = addWorkDays(updated.FinalQcOut, 1);
                     updated.PackingOut = getStageOut(updated.PackingIn, packDays);
 
-                    updated.MetalIn = updated.ComponentStoreIn;
+                    // Metal start date = Machine start date
+                    updated.MetalIn = updated.MachiningIn;
                     updated.MetalOut = getStageOut(updated.MetalIn, metalDays);
-                    updated.UpholsteryIn = updated.SandingIn;
+
+                    // Upholstery start date = Assembly start date
+                    updated.UpholsteryIn = updated.AssemblyIn;
                     updated.UpholsteryOut = getStageOut(updated.UpholsteryIn, upholsteryDays);
 
                     if (updated.PackingOut && updated.WoodIssueIn) {
@@ -584,37 +592,88 @@ export const ProductionPlanningModal = ({
             }
 
             // 3. Parallel stage dates: Metal & Upholstery
-            if (fieldKey === 'MetalIn' || fieldKey === 'MetalOut') {
-                if (fieldKey === 'MetalOut') {
-                    if (val && updated.MetalIn) {
-                        updated.MetalDays = Math.max(1, getWorkDaysCount(val, updated.MetalIn));
+            // Rule 1: Metal start date = Machine start date, and vice versa
+            if (fieldKey === 'MetalIn') {
+                if (val) {
+                    updated.MetalIn = val;
+                    updated.MetalOut = getStageOut(val, updated.MetalDays);
+                    // Vice versa: Machine start date = Metal start date
+                    updated.MachiningIn = val;
+                    updated.MachiningOut = getStageOut(val, updated.MachiningDays);
+
+                    // Cascade forward from MachiningOut to all downstream serial stages
+                    const serialStages = STAGE_ORDER.filter(s => s.isSerial);
+                    const machIdx = serialStages.findIndex(s => s.key === 'Machining');
+                    let prevOut = updated.MachiningOut;
+                    for (let i = machIdx + 1; i < serialStages.length; i++) {
+                        const stage = serialStages[i];
+                        if (prevOut) {
+                            updated[stage.inKey] = addWorkDays(prevOut, 1);
+                            updated[stage.outKey] = getStageOut(updated[stage.inKey], updated[stage.daysKey]);
+                            prevOut = updated[stage.outKey];
+                        }
                     }
-                } else {
-                    if (val && updated.MetalOut && val <= updated.MetalOut) {
-                        updated.MetalDays = Math.max(1, getWorkDaysCount(updated.MetalOut, val));
-                    } else if (val) {
-                        updated.MetalOut = getStageOut(val, updated.MetalDays);
+                    // Keep Upholstery aligned to Assembly start date
+                    if (updated.AssemblyIn) {
+                        updated.UpholsteryIn = updated.AssemblyIn;
+                        updated.UpholsteryOut = getStageOut(updated.UpholsteryIn, updated.UpholsteryDays);
                     }
+                }
+                if (updated.PackingOut && updated.WoodIssueIn) {
+                    updated.DaysWithBuffer = getWorkDaysCount(updated.PackingOut, updated.WoodIssueIn);
+                }
+                updated.IsFinalQcDelayed = (updated.InspectionDate && updated.FinalQcOut) ? (updated.FinalQcOut > updated.InspectionDate) : false;
+                updated.IsDeadlineExceeded = updated.IsFinalQcDelayed;
+                return updated;
+            }
+
+            if (fieldKey === 'MetalOut') {
+                if (val && updated.MetalIn) {
+                    updated.MetalOut = val;
+                    updated.MetalDays = Math.max(1, getWorkDaysCount(val, updated.MetalIn));
                 }
                 return updated;
             }
 
-            if (fieldKey === 'UpholsteryIn' || fieldKey === 'UpholsteryOut') {
-                if (fieldKey === 'UpholsteryOut') {
-                    if (val && updated.UpholsteryIn) {
-                        updated.UpholsteryDays = Math.max(1, getWorkDaysCount(val, updated.UpholsteryIn));
+            // Rule 2: Upholstery start date = Assembly start date, and vice versa
+            if (fieldKey === 'UpholsteryIn') {
+                if (val) {
+                    updated.UpholsteryIn = val;
+                    updated.UpholsteryOut = getStageOut(val, updated.UpholsteryDays);
+                    // Vice versa: Assembly start date = Upholstery start date
+                    updated.AssemblyIn = val;
+                    updated.AssemblyOut = getStageOut(val, updated.AssemblyDays);
+
+                    // Cascade forward from AssemblyOut to all downstream serial stages
+                    const serialStages = STAGE_ORDER.filter(s => s.isSerial);
+                    const assemIdx = serialStages.findIndex(s => s.key === 'Assembly');
+                    let prevOut = updated.AssemblyOut;
+                    for (let i = assemIdx + 1; i < serialStages.length; i++) {
+                        const stage = serialStages[i];
+                        if (prevOut) {
+                            updated[stage.inKey] = addWorkDays(prevOut, 1);
+                            updated[stage.outKey] = getStageOut(updated[stage.inKey], updated[stage.daysKey]);
+                            prevOut = updated[stage.outKey];
+                        }
                     }
-                } else {
-                    if (val && updated.UpholsteryOut && val <= updated.UpholsteryOut) {
-                        updated.UpholsteryDays = Math.max(1, getWorkDaysCount(updated.UpholsteryOut, val));
-                    } else if (val) {
-                        updated.UpholsteryOut = getStageOut(val, updated.UpholsteryDays);
-                    }
+                }
+                if (updated.PackingOut && updated.WoodIssueIn) {
+                    updated.DaysWithBuffer = getWorkDaysCount(updated.PackingOut, updated.WoodIssueIn);
+                }
+                updated.IsFinalQcDelayed = (updated.InspectionDate && updated.FinalQcOut) ? (updated.FinalQcOut > updated.InspectionDate) : false;
+                updated.IsDeadlineExceeded = updated.IsFinalQcDelayed;
+                return updated;
+            }
+
+            if (fieldKey === 'UpholsteryOut') {
+                if (val && updated.UpholsteryIn) {
+                    updated.UpholsteryOut = val;
+                    updated.UpholsteryDays = Math.max(1, getWorkDaysCount(val, updated.UpholsteryIn));
                 }
                 return updated;
             }
 
-            // 4. Serial Stages
+            // 4. Serial Stages (WoodIssue, PreCutting, Machining, ComponentStore, Assembly, Sanding, Polish, Fitting, QC, FinalQC, Packing)
             const serialStages = STAGE_ORDER.filter(s => s.isSerial);
             const changedStageIdx = serialStages.findIndex(
                 s => s.inKey === fieldKey || s.outKey === fieldKey
@@ -627,17 +686,28 @@ export const ProductionPlanningModal = ({
                 if (isOutField) {
                     // User edited OUT date: Match days = OUT - IN in inclusive work days
                     if (val && updated[currentStage.inKey]) {
+                        updated[currentStage.outKey] = val;
                         const daysDiff = getWorkDaysCount(val, updated[currentStage.inKey]);
                         updated[currentStage.daysKey] = Math.max(1, daysDiff);
                     }
                 } else {
                     // User edited IN date:
-                    if (val && updated[currentStage.outKey] && val <= updated[currentStage.outKey]) {
-                        const daysDiff = getWorkDaysCount(updated[currentStage.outKey], val);
-                        updated[currentStage.daysKey] = Math.max(1, daysDiff);
-                    } else if (val) {
+                    // Always calculate OUT = getStageOut(IN, days) and cascade forward!
+                    if (val) {
+                        updated[currentStage.inKey] = val;
                         updated[currentStage.outKey] = getStageOut(val, updated[currentStage.daysKey]);
                     }
+                }
+
+                // If Machining was edited directly, sync Metal start date = Machining start date
+                if (currentStage.key === 'Machining') {
+                    updated.MetalIn = updated.MachiningIn;
+                    updated.MetalOut = getStageOut(updated.MetalIn, updated.MetalDays);
+                }
+                // If Assembly was edited directly, sync Upholstery start date = Assembly start date
+                if (currentStage.key === 'Assembly') {
+                    updated.UpholsteryIn = updated.AssemblyIn;
+                    updated.UpholsteryOut = getStageOut(updated.UpholsteryIn, updated.UpholsteryDays);
                 }
 
                 // Cascade forward to all subsequent serial stages (+1 work day buffer)
@@ -648,17 +718,18 @@ export const ProductionPlanningModal = ({
                         updated[stage.inKey] = addWorkDays(prevOut, 1);
                         updated[stage.outKey] = getStageOut(updated[stage.inKey], updated[stage.daysKey]);
                         prevOut = updated[stage.outKey];
-                    }
-                }
 
-                // Re-align parallel branches: Metal & Upholstery
-                if (updated.ComponentStoreIn) {
-                    updated.MetalIn = updated.ComponentStoreIn;
-                    updated.MetalOut = getStageOut(updated.MetalIn, updated.MetalDays);
-                }
-                if (updated.SandingIn) {
-                    updated.UpholsteryIn = updated.SandingIn;
-                    updated.UpholsteryOut = getStageOut(updated.UpholsteryIn, updated.UpholsteryDays);
+                        // Keep Metal aligned to Machine start date
+                        if (stage.key === 'Machining') {
+                            updated.MetalIn = updated.MachiningIn;
+                            updated.MetalOut = getStageOut(updated.MetalIn, updated.MetalDays);
+                        }
+                        // Keep Upholstery aligned to Assembly start date
+                        if (stage.key === 'Assembly') {
+                            updated.UpholsteryIn = updated.AssemblyIn;
+                            updated.UpholsteryOut = getStageOut(updated.UpholsteryIn, updated.UpholsteryDays);
+                        }
+                    }
                 }
 
                 // Re-calculate total days (INCLUDES OutSourceDays in total lead days, dates unaffected)
