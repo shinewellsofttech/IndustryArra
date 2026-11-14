@@ -9,23 +9,103 @@ import axios from 'axios';
 import { toast } from 'react-toastify';
 import { API_WEB_URLS } from '../../constants/constAPI';
 
-// Helper to safely add integer days to a Date object or YYYY-MM-DD string
-const addDays = (dateInput, days) => {
+// Local Date parser & formatter to avoid UTC offset issues
+const parseLocalDate = (dateInput) => {
     if (!dateInput) return null;
-    const d = new Date(dateInput);
-    if (isNaN(d.getTime())) return null;
-    d.setDate(d.getDate() + parseInt(days || 0, 10));
-    return d.toISOString().split('T')[0];
+    if (dateInput instanceof Date) return new Date(dateInput.getFullYear(), dateInput.getMonth(), dateInput.getDate());
+    const str = String(dateInput).split('T')[0];
+    const parts = str.split('-').map(Number);
+    if (parts.length < 3 || isNaN(parts[0])) return null;
+    return new Date(parts[0], parts[1] - 1, parts[2]);
 };
 
-// Helper to calculate difference in calendar days between two dates (dateStr1 - dateStr2)
-const getDayDifference = (dateStr1, dateStr2) => {
+const formatLocalDate = (dateObj) => {
+    if (!dateObj || isNaN(dateObj.getTime())) return null;
+    const y = dateObj.getFullYear();
+    const m = String(dateObj.getMonth() + 1).padStart(2, '0');
+    const d = String(dateObj.getDate()).padStart(2, '0');
+    return `${y}-${m}-${d}`;
+};
+
+// Check if a date falls on a Sunday (day 0)
+const isSunday = (dateInput) => {
+    const d = parseLocalDate(dateInput);
+    return d ? d.getDay() === 0 : false;
+};
+
+// Next working day skipping Sunday (e.g., Sunday -> Monday)
+const getNextWorkDay = (dateInput) => {
+    let d = parseLocalDate(dateInput);
+    if (!d) return null;
+    while (d.getDay() === 0) {
+        d.setDate(d.getDate() + 1);
+    }
+    return formatLocalDate(d);
+};
+
+// Previous working day skipping Sunday (e.g., Sunday -> Saturday)
+const getPrevWorkDay = (dateInput) => {
+    let d = parseLocalDate(dateInput);
+    if (!d) return null;
+    while (d.getDay() === 0) {
+        d.setDate(d.getDate() - 1);
+    }
+    return formatLocalDate(d);
+};
+
+// Add or subtract work days, strictly skipping Sundays
+const addWorkDays = (dateInput, days) => {
+    if (!dateInput) return null;
+    const intDays = parseInt(days || 0, 10);
+    let d = parseLocalDate(dateInput);
+    if (!d) return null;
+
+    if (intDays === 0) {
+        return getNextWorkDay(d);
+    }
+
+    const step = intDays > 0 ? 1 : -1;
+    let added = 0;
+    const target = Math.abs(intDays);
+
+    while (added < target) {
+        d.setDate(d.getDate() + step);
+        if (d.getDay() !== 0) { // Skip Sunday
+            added++;
+        }
+    }
+    return formatLocalDate(d);
+};
+
+// Difference in working days between date1 and date2 (date1 - date2), excluding Sundays
+const getWorkDayDifference = (dateStr1, dateStr2) => {
     if (!dateStr1 || !dateStr2) return 0;
-    const d1 = new Date(dateStr1);
-    const d2 = new Date(dateStr2);
-    if (isNaN(d1.getTime()) || isNaN(d2.getTime())) return 0;
-    const diffTime = d1.getTime() - d2.getTime();
-    return Math.round(diffTime / (1000 * 60 * 60 * 24));
+    let d1 = parseLocalDate(dateStr1);
+    let d2 = parseLocalDate(dateStr2);
+    if (!d1 || !d2) return 0;
+
+    if (d1.getTime() === d2.getTime()) return 0;
+
+    let sign = 1;
+    if (d1 < d2) {
+        sign = -1;
+        const temp = d1;
+        d1 = d2;
+        d2 = temp;
+    }
+
+    let count = 0;
+    const curr = new Date(d2.getTime());
+    curr.setDate(curr.getDate() + 1);
+
+    while (curr <= d1) {
+        if (curr.getDay() !== 0) {
+            count++;
+        }
+        curr.setDate(curr.getDate() + 1);
+    }
+
+    return sign * count;
 };
 
 // 13 Active Production Stages (including new Component Store, Metal & Upholstery)
@@ -221,11 +301,13 @@ export const ProductionPlanningModal = ({
 
     /**
      * Scheduling Engine (Days -> Dates):
-     * Reverse schedules from InspectionDate to determine WoodIssueIn,
-     * then cascades forward through serial stages with +1 day buffer.
-     * Parallel stages (Metal & Upholstery) run in parallel and merge at Fitting.
-     * OUT SOURCE JOB days are added to TotalLeadDays as requested,
-     * but strictly excluded from stage date cascades (dates remain unaffected).
+     * - Strictly skips Sundays when scheduling all stage dates.
+     * - Enforces rule: FinalQcOut <= InspectionDate!
+     * - Reverse schedules all 10 stages up to Final QC from InspectionDate (or previous workday if Sunday).
+     * - Forward schedules Packing after Final QC.
+     * - Schedules parallel stages (Metal & Upholstery) in parallel, merging at Fitting.
+     * - OUT SOURCE JOB days are added to TotalLeadDays as requested,
+     *   but strictly excluded from stage date cascades (dates remain unaffected).
      */
     const calculateScheduleFromDays = (item) => {
         const woodDays = parseInt(item.WoodIssueDays, 10) || 0;
@@ -252,16 +334,7 @@ export const ProductionPlanningModal = ({
 
         const inspectionDate = item.InspectionDate ? String(item.InspectionDate).split('T')[0] : null;
 
-        let woodIssueIn = item.WoodIssueIn ? String(item.WoodIssueIn).split('T')[0] : null;
-
-        // Reverse scheduling: Wood Issue IN = InspectionDate - serialProductionDays
-        if (inspectionDate && serialProductionDays > 0) {
-            if (!woodIssueIn) {
-                woodIssueIn = addDays(inspectionDate, -serialProductionDays);
-            }
-        }
-
-        let woodIssueOut = null;
+        let woodIssueIn = null, woodIssueOut = null;
         let preCutIn = null, preCutOut = null;
         let machIn = null, machOut = null;
         let compStoreIn = null, compStoreOut = null;
@@ -272,67 +345,100 @@ export const ProductionPlanningModal = ({
         let qcIn = null, qcOut = null;
         let finalQcIn = null, finalQcOut = null;
         let packIn = null, packOut = null;
-        let metalIn = item.MetalIn ? String(item.MetalIn).split('T')[0] : null;
-        let metalOut = item.MetalOut ? String(item.MetalOut).split('T')[0] : null;
-        let upholsteryIn = item.UpholsteryIn ? String(item.UpholsteryIn).split('T')[0] : null;
-        let upholsteryOut = item.UpholsteryOut ? String(item.UpholsteryOut).split('T')[0] : null;
+        let metalIn = null, metalOut = null;
+        let upholsteryIn = null, upholsteryOut = null;
 
-        if (woodIssueIn) {
-            woodIssueOut = addDays(woodIssueIn, woodDays);
+        // Primary scheduling mode: Reverse schedule from InspectionDate so FinalQcOut <= InspectionDate
+        if (inspectionDate) {
+            // Final QC OUT must be <= InspectionDate (if InspectionDate is Sunday, lands on Saturday)
+            finalQcOut = getPrevWorkDay(inspectionDate);
+            finalQcIn = addWorkDays(finalQcOut, -finalQcDays);
 
-            // Forward cascades (+1 day buffer for each department transition)
-            preCutIn = addDays(woodIssueOut, 1);
-            preCutOut = addDays(preCutIn, preCutDays);
+            qcOut = addWorkDays(finalQcIn, -1);
+            qcIn = addWorkDays(qcOut, -qcDays);
 
-            machIn = addDays(preCutOut, 1);
-            machOut = addDays(machIn, machDays);
+            fitOut = addWorkDays(qcIn, -1);
+            fitIn = addWorkDays(fitOut, -fitDays);
 
-            compStoreIn = addDays(machOut, 1);
-            compStoreOut = addDays(compStoreIn, compStoreDays);
+            polishOut = addWorkDays(fitIn, -1);
+            polishIn = addWorkDays(polishOut, -polishDays);
 
-            assemIn = addDays(compStoreOut, 1);
-            assemOut = addDays(assemIn, assemDays);
+            sandOut = addWorkDays(polishIn, -1);
+            sandIn = addWorkDays(sandOut, -sandDays);
 
-            sandIn = addDays(assemOut, 1);
-            sandOut = addDays(sandIn, sandDays);
+            assemOut = addWorkDays(sandIn, -1);
+            assemIn = addWorkDays(assemOut, -assemDays);
 
-            polishIn = addDays(sandOut, 1);
-            polishOut = addDays(polishIn, polishDays);
+            compStoreOut = addWorkDays(assemIn, -1);
+            compStoreIn = addWorkDays(compStoreOut, -compStoreDays);
 
-            fitIn = addDays(polishOut, 1);
-            fitOut = addDays(fitIn, fitDays);
+            machOut = addWorkDays(compStoreIn, -1);
+            machIn = addWorkDays(machOut, -machDays);
 
-            qcIn = addDays(fitOut, 1);
-            qcOut = addDays(qcIn, qcDays);
+            preCutOut = addWorkDays(machIn, -1);
+            preCutIn = addWorkDays(preCutOut, -preCutDays);
 
-            finalQcIn = addDays(qcOut, 1);
-            finalQcOut = addDays(finalQcIn, finalQcDays);
+            woodIssueOut = addWorkDays(preCutIn, -1);
+            woodIssueIn = addWorkDays(woodIssueOut, -woodDays);
 
-            packIn = addDays(finalQcOut, 1);
-            packOut = addDays(packIn, packDays);
+            // Forward Packing stage (after Final QC):
+            packIn = addWorkDays(finalQcOut, 1);
+            packOut = addWorkDays(packIn, packDays);
 
             // Parallel branches: Metal & Upholstery
-            // Metal: IN = ComponentStoreIn, OUT = FittingIn + MetalDays (=AN3+M3)
-            if (!metalIn && compStoreIn) {
-                metalIn = compStoreIn;
-            }
-            if (!metalOut && fitIn) {
-                metalOut = addDays(fitIn, metalDays);
-            }
+            metalIn = compStoreIn;
+            metalOut = addWorkDays(fitIn, metalDays);
 
-            // Upholstery: IN = SandingIn, OUT = FittingIn + UpholsteryDays (=AN3+N3)
-            if (!upholsteryIn && sandIn) {
-                upholsteryIn = sandIn;
-            }
-            if (!upholsteryOut && fitIn) {
-                upholsteryOut = addDays(fitIn, upholsteryDays);
-            }
+            upholsteryIn = sandIn;
+            upholsteryOut = addWorkDays(fitIn, upholsteryDays);
+        } else if (item.WoodIssueIn) {
+            // Fallback if no InspectionDate: forward schedule starting from WoodIssueIn
+            woodIssueIn = getNextWorkDay(item.WoodIssueIn);
+            woodIssueOut = addWorkDays(woodIssueIn, woodDays);
+
+            preCutIn = addWorkDays(woodIssueOut, 1);
+            preCutOut = addWorkDays(preCutIn, preCutDays);
+
+            machIn = addWorkDays(preCutOut, 1);
+            machOut = addWorkDays(machIn, machDays);
+
+            compStoreIn = addWorkDays(machOut, 1);
+            compStoreOut = addWorkDays(compStoreIn, compStoreDays);
+
+            assemIn = addWorkDays(compStoreOut, 1);
+            assemOut = addWorkDays(assemIn, assemDays);
+
+            sandIn = addWorkDays(assemOut, 1);
+            sandOut = addWorkDays(sandIn, sandDays);
+
+            polishIn = addWorkDays(sandOut, 1);
+            polishOut = addWorkDays(polishIn, polishDays);
+
+            fitIn = addWorkDays(polishOut, 1);
+            fitOut = addWorkDays(fitIn, fitDays);
+
+            qcIn = addWorkDays(fitOut, 1);
+            qcOut = addWorkDays(qcIn, qcDays);
+
+            finalQcIn = addWorkDays(qcOut, 1);
+            finalQcOut = addWorkDays(finalQcIn, finalQcDays);
+
+            packIn = addWorkDays(finalQcOut, 1);
+            packOut = addWorkDays(packIn, packDays);
+
+            metalIn = compStoreIn;
+            metalOut = addWorkDays(fitIn, metalDays);
+
+            upholsteryIn = sandIn;
+            upholsteryOut = addWorkDays(fitIn, upholsteryDays);
         }
 
         let daysWithBuffer = 0;
         if (packOut && woodIssueIn) {
-            daysWithBuffer = getDayDifference(packOut, woodIssueIn);
+            daysWithBuffer = getWorkDayDifference(packOut, woodIssueIn);
         }
+
+        const isFinalQcDelayed = (inspectionDate && finalQcOut) ? (finalQcOut > inspectionDate) : false;
 
         return {
             ...item,
@@ -352,7 +458,8 @@ export const ProductionPlanningModal = ({
             PackingDays: packDays,
             TotalLeadDays: totalLeadDays,
             DaysWithBuffer: daysWithBuffer,
-            IsDeadlineExceeded: false,
+            IsFinalQcDelayed: isFinalQcDelayed,
+            IsDeadlineExceeded: isFinalQcDelayed,
             OverdueDays: 0,
             WoodIssueIn: woodIssueIn,
             WoodIssueOut: woodIssueOut,
@@ -396,55 +503,91 @@ export const ProductionPlanningModal = ({
 
     /**
      * Smart Bi-Directional Date Cell Change Handler:
-     * Allows user to change dates freely!
-     * Automatically matches Days = (Date OUT - Date IN),
-     * cascades forward with +1 day buffer, and recalculates Total Lead Days
-     * (keeping OUT SOURCE JOB completely out of lead calculation).
+     * - Allows user to change dates freely!
+     * - Automatically skips Sundays and matches Days = (Date OUT - Date IN in workdays).
+     * - Cascades forward with +1 workday buffer.
+     * - Tracks IsFinalQcDelayed (FinalQcOut <= InspectionDate).
      */
     const handleDateCellChange = (itemKey, fieldKey, newDateValue) => {
         setPlanItems(prev => prev.map(p => {
             if (p.ContainerMasterLId !== itemKey) return p;
 
-            const val = newDateValue ? String(newDateValue).split('T')[0] : null;
+            let val = newDateValue ? String(newDateValue).split('T')[0] : null;
+            if (val && isSunday(val)) {
+                val = getNextWorkDay(val);
+            }
+
             let updated = { ...p, [fieldKey]: val };
 
             // 1. If user changes Target Inspection Date:
             if (fieldKey === 'InspectionDate') {
-                const serialProdDays = 
-                    (parseInt(updated.WoodIssueDays, 10) || 0) +
-                    (parseInt(updated.PreCuttingDays, 10) || 0) +
-                    (parseInt(updated.MachiningDays, 10) || 0) +
-                    (parseInt(updated.ComponentStoreDays, 10) || 0) +
-                    (parseInt(updated.AssemblyDays, 10) || 0) +
-                    (parseInt(updated.SandingDays, 10) || 0) +
-                    (parseInt(updated.PolishDays, 10) || 0) +
-                    (parseInt(updated.FittingDays, 10) || 0) +
-                    (parseInt(updated.QcDays, 10) || 0) +
-                    (parseInt(updated.FinalQcDays, 10) || 0) +
-                    (parseInt(updated.PackingDays, 10) || 0);
-
-                if (val && serialProdDays > 0) {
-                    updated.WoodIssueIn = addDays(val, -serialProdDays);
-                }
                 return calculateScheduleFromDays(updated);
             }
 
             // 2. If user changes WoodIssueIn directly:
             if (fieldKey === 'WoodIssueIn') {
-                return calculateScheduleFromDays(updated);
+                const woodDays = parseInt(updated.WoodIssueDays, 10) || 0;
+                const preCutDays = parseInt(updated.PreCuttingDays, 10) || 0;
+                const machDays = parseInt(updated.MachiningDays, 10) || 0;
+                const compStoreDays = parseInt(updated.ComponentStoreDays, 10) || 0;
+                const assemDays = parseInt(updated.AssemblyDays, 10) || 0;
+                const metalDays = parseInt(updated.MetalDays, 10) || 0;
+                const upholsteryDays = parseInt(updated.UpholsteryDays, 10) || 0;
+                const sandDays = parseInt(updated.SandingDays, 10) || 0;
+                const polishDays = parseInt(updated.PolishDays, 10) || 0;
+                const fitDays = parseInt(updated.FittingDays, 10) || 0;
+                const qcDays = parseInt(updated.QcDays, 10) || 0;
+                const finalQcDays = parseInt(updated.FinalQcDays, 10) || 0;
+                const packDays = parseInt(updated.PackingDays, 10) || 0;
+
+                if (val) {
+                    updated.WoodIssueOut = addWorkDays(val, woodDays);
+                    updated.PreCuttingIn = addWorkDays(updated.WoodIssueOut, 1);
+                    updated.PreCuttingOut = addWorkDays(updated.PreCuttingIn, preCutDays);
+                    updated.MachiningIn = addWorkDays(updated.PreCuttingOut, 1);
+                    updated.MachiningOut = addWorkDays(updated.MachiningIn, machDays);
+                    updated.ComponentStoreIn = addWorkDays(updated.MachiningOut, 1);
+                    updated.ComponentStoreOut = addWorkDays(updated.ComponentStoreIn, compStoreDays);
+                    updated.AssemblyIn = addWorkDays(updated.ComponentStoreOut, 1);
+                    updated.AssemblyOut = addWorkDays(updated.AssemblyIn, assemDays);
+                    updated.SandingIn = addWorkDays(updated.AssemblyOut, 1);
+                    updated.SandingOut = addWorkDays(updated.SandingIn, sandDays);
+                    updated.PolishIn = addWorkDays(updated.SandingOut, 1);
+                    updated.PolishOut = addWorkDays(updated.PolishIn, polishDays);
+                    updated.FittingIn = addWorkDays(updated.PolishOut, 1);
+                    updated.FittingOut = addWorkDays(updated.FittingIn, fitDays);
+                    updated.QcIn = addWorkDays(updated.FittingOut, 1);
+                    updated.QcOut = addWorkDays(updated.QcIn, qcDays);
+                    updated.FinalQcIn = addWorkDays(updated.QcOut, 1);
+                    updated.FinalQcOut = addWorkDays(updated.FinalQcIn, finalQcDays);
+                    updated.PackingIn = addWorkDays(updated.FinalQcOut, 1);
+                    updated.PackingOut = addWorkDays(updated.PackingIn, packDays);
+
+                    updated.MetalIn = updated.ComponentStoreIn;
+                    updated.MetalOut = addWorkDays(updated.FittingIn, metalDays);
+                    updated.UpholsteryIn = updated.SandingIn;
+                    updated.UpholsteryOut = addWorkDays(updated.FittingIn, upholsteryDays);
+
+                    if (updated.PackingOut && updated.WoodIssueIn) {
+                        updated.DaysWithBuffer = getWorkDayDifference(updated.PackingOut, updated.WoodIssueIn);
+                    }
+                    updated.IsFinalQcDelayed = (updated.InspectionDate && updated.FinalQcOut) ? (updated.FinalQcOut > updated.InspectionDate) : false;
+                    updated.IsDeadlineExceeded = updated.IsFinalQcDelayed;
+                }
+                return updated;
             }
 
             // 3. Parallel stage dates: Metal & Upholstery
             if (fieldKey === 'MetalIn' || fieldKey === 'MetalOut') {
                 if (fieldKey === 'MetalOut') {
                     if (val && updated.MetalIn) {
-                        updated.MetalDays = Math.max(0, getDayDifference(val, updated.MetalIn));
+                        updated.MetalDays = Math.max(0, getWorkDayDifference(val, updated.MetalIn));
                     }
                 } else {
                     if (val && updated.MetalOut && val <= updated.MetalOut) {
-                        updated.MetalDays = Math.max(0, getDayDifference(updated.MetalOut, val));
+                        updated.MetalDays = Math.max(0, getWorkDayDifference(updated.MetalOut, val));
                     } else if (val) {
-                        updated.MetalOut = addDays(val, updated.MetalDays);
+                        updated.MetalOut = addWorkDays(val, updated.MetalDays);
                     }
                 }
                 return updated;
@@ -453,13 +596,13 @@ export const ProductionPlanningModal = ({
             if (fieldKey === 'UpholsteryIn' || fieldKey === 'UpholsteryOut') {
                 if (fieldKey === 'UpholsteryOut') {
                     if (val && updated.UpholsteryIn) {
-                        updated.UpholsteryDays = Math.max(0, getDayDifference(val, updated.UpholsteryIn));
+                        updated.UpholsteryDays = Math.max(0, getWorkDayDifference(val, updated.UpholsteryIn));
                     }
                 } else {
                     if (val && updated.UpholsteryOut && val <= updated.UpholsteryOut) {
-                        updated.UpholsteryDays = Math.max(0, getDayDifference(updated.UpholsteryOut, val));
+                        updated.UpholsteryDays = Math.max(0, getWorkDayDifference(updated.UpholsteryOut, val));
                     } else if (val) {
-                        updated.UpholsteryOut = addDays(val, updated.UpholsteryDays);
+                        updated.UpholsteryOut = addWorkDays(val, updated.UpholsteryDays);
                     }
                 }
                 return updated;
@@ -476,28 +619,28 @@ export const ProductionPlanningModal = ({
                 const isOutField = currentStage.outKey === fieldKey;
 
                 if (isOutField) {
-                    // User edited OUT date: Match days = OUT - IN
+                    // User edited OUT date: Match days = OUT - IN in work days
                     if (val && updated[currentStage.inKey]) {
-                        const daysDiff = getDayDifference(val, updated[currentStage.inKey]);
+                        const daysDiff = getWorkDayDifference(val, updated[currentStage.inKey]);
                         updated[currentStage.daysKey] = Math.max(0, daysDiff);
                     }
                 } else {
                     // User edited IN date:
                     if (val && updated[currentStage.outKey] && val <= updated[currentStage.outKey]) {
-                        const daysDiff = getDayDifference(updated[currentStage.outKey], val);
+                        const daysDiff = getWorkDayDifference(updated[currentStage.outKey], val);
                         updated[currentStage.daysKey] = Math.max(0, daysDiff);
                     } else if (val) {
-                        updated[currentStage.outKey] = addDays(val, updated[currentStage.daysKey]);
+                        updated[currentStage.outKey] = addWorkDays(val, updated[currentStage.daysKey]);
                     }
                 }
 
-                // Cascade forward to all subsequent serial stages (+1 day buffer)
+                // Cascade forward to all subsequent serial stages (+1 work day buffer)
                 let prevOut = updated[currentStage.outKey];
                 for (let i = changedStageIdx + 1; i < serialStages.length; i++) {
                     const stage = serialStages[i];
                     if (prevOut) {
-                        updated[stage.inKey] = addDays(prevOut, 1);
-                        updated[stage.outKey] = addDays(updated[stage.inKey], updated[stage.daysKey]);
+                        updated[stage.inKey] = addWorkDays(prevOut, 1);
+                        updated[stage.outKey] = addWorkDays(updated[stage.inKey], updated[stage.daysKey]);
                         prevOut = updated[stage.outKey];
                     }
                 }
@@ -507,13 +650,13 @@ export const ProductionPlanningModal = ({
                     updated.MetalIn = updated.ComponentStoreIn;
                 }
                 if (updated.FittingIn) {
-                    updated.MetalOut = addDays(updated.FittingIn, updated.MetalDays);
+                    updated.MetalOut = addWorkDays(updated.FittingIn, updated.MetalDays);
                 }
                 if (updated.SandingIn) {
                     updated.UpholsteryIn = updated.SandingIn;
                 }
                 if (updated.FittingIn) {
-                    updated.UpholsteryOut = addDays(updated.FittingIn, updated.UpholsteryDays);
+                    updated.UpholsteryOut = addWorkDays(updated.FittingIn, updated.UpholsteryDays);
                 }
 
                 // Re-calculate total days (INCLUDES OutSourceDays in total lead days, dates unaffected)
@@ -534,10 +677,11 @@ export const ProductionPlanningModal = ({
                 updated.TotalLeadDays = prodTotal + outSourceDays;
 
                 if (updated.PackingOut && updated.WoodIssueIn) {
-                    updated.DaysWithBuffer = getDayDifference(updated.PackingOut, updated.WoodIssueIn);
+                    updated.DaysWithBuffer = getWorkDayDifference(updated.PackingOut, updated.WoodIssueIn);
                 }
-                updated.OverdueDays = 0;
-                updated.IsDeadlineExceeded = false;
+
+                updated.IsFinalQcDelayed = (updated.InspectionDate && updated.FinalQcOut) ? (updated.FinalQcOut > updated.InspectionDate) : false;
+                updated.IsDeadlineExceeded = updated.IsFinalQcDelayed;
 
                 return updated;
             }
@@ -888,6 +1032,18 @@ export const ProductionPlanningModal = ({
             return;
         }
 
+        // Strict Validation: Final QC Date must be on or before Target Inspection Date
+        const lateQcItems = planItems.filter(item => 
+            item.InspectionDate && item.FinalQcOut && item.FinalQcOut > String(item.InspectionDate).split('T')[0]
+        );
+
+        if (lateQcItems.length > 0) {
+            toast.error(
+                `❌ Validation Failed: Final QC Date must be on or before Inspection Date! Found ${lateQcItems.length} item(s) where Final QC exceeds Inspection Date. Please adjust dates before saving.`
+            );
+            return;
+        }
+
         setSaving(true);
         try {
             const token = localStorage.getItem('token') || localStorage.getItem('authToken') || '';
@@ -895,59 +1051,59 @@ export const ProductionPlanningModal = ({
             const url = `${API_WEB_URLS.BASE}ShipmentPlanning/SavePlan/${userId}/token`;
 
             const payloadData = planItems.map(item => {
-                // Ensure days match dates if both IN and OUT are set
+                // Ensure days match dates if both IN and OUT are set (excluding Sundays)
                 const wood = (item.WoodIssueIn && item.WoodIssueOut) 
-                    ? Math.max(0, getDayDifference(item.WoodIssueOut, item.WoodIssueIn))
+                    ? Math.max(0, getWorkDayDifference(item.WoodIssueOut, item.WoodIssueIn))
                     : (parseInt(item.WoodIssueDays, 10) || 0);
 
                 const preCut = (item.PreCuttingIn && item.PreCuttingOut)
-                    ? Math.max(0, getDayDifference(item.PreCuttingOut, item.PreCuttingIn))
+                    ? Math.max(0, getWorkDayDifference(item.PreCuttingOut, item.PreCuttingIn))
                     : (parseInt(item.PreCuttingDays, 10) || 0);
 
                 const outSource = parseInt(item.OutSourceDays, 10) || 0; // Strictly informational
 
                 const mach = (item.MachiningIn && item.MachiningOut)
-                    ? Math.max(0, getDayDifference(item.MachiningOut, item.MachiningIn))
+                    ? Math.max(0, getWorkDayDifference(item.MachiningOut, item.MachiningIn))
                     : (parseInt(item.MachiningDays, 10) || 0);
 
                 const compStore = (item.ComponentStoreIn && item.ComponentStoreOut)
-                    ? Math.max(0, getDayDifference(item.ComponentStoreOut, item.ComponentStoreIn))
+                    ? Math.max(0, getWorkDayDifference(item.ComponentStoreOut, item.ComponentStoreIn))
                     : (parseInt(item.ComponentStoreDays, 10) || 0);
 
                 const assem = (item.AssemblyIn && item.AssemblyOut)
-                    ? Math.max(0, getDayDifference(item.AssemblyOut, item.AssemblyIn))
+                    ? Math.max(0, getWorkDayDifference(item.AssemblyOut, item.AssemblyIn))
                     : (parseInt(item.AssemblyDays, 10) || 0);
 
                 const metal = (item.MetalIn && item.MetalOut)
-                    ? Math.max(0, getDayDifference(item.MetalOut, item.MetalIn))
+                    ? Math.max(0, getWorkDayDifference(item.MetalOut, item.MetalIn))
                     : (parseInt(item.MetalDays, 10) || 0);
 
                 const upholstery = (item.UpholsteryIn && item.UpholsteryOut)
-                    ? Math.max(0, getDayDifference(item.UpholsteryOut, item.UpholsteryIn))
+                    ? Math.max(0, getWorkDayDifference(item.UpholsteryOut, item.UpholsteryIn))
                     : (parseInt(item.UpholsteryDays, 10) || 0);
 
                 const sand = (item.SandingIn && item.SandingOut)
-                    ? Math.max(0, getDayDifference(item.SandingOut, item.SandingIn))
+                    ? Math.max(0, getWorkDayDifference(item.SandingOut, item.SandingIn))
                     : (parseInt(item.SandingDays, 10) || 0);
 
                 const polish = (item.PolishIn && item.PolishOut)
-                    ? Math.max(0, getDayDifference(item.PolishOut, item.PolishIn))
+                    ? Math.max(0, getWorkDayDifference(item.PolishOut, item.PolishIn))
                     : (parseInt(item.PolishDays, 10) || 0);
 
                 const fit = (item.FittingIn && item.FittingOut)
-                    ? Math.max(0, getDayDifference(item.FittingOut, item.FittingIn))
+                    ? Math.max(0, getWorkDayDifference(item.FittingOut, item.FittingIn))
                     : (parseInt(item.FittingDays, 10) || 0);
 
                 const qc = (item.QcIn && item.QcOut)
-                    ? Math.max(0, getDayDifference(item.QcOut, item.QcIn))
+                    ? Math.max(0, getWorkDayDifference(item.QcOut, item.QcIn))
                     : (parseInt(item.QcDays, 10) || 0);
 
                 const finalQc = (item.FinalQcIn && item.FinalQcOut)
-                    ? Math.max(0, getDayDifference(item.FinalQcOut, item.FinalQcIn))
+                    ? Math.max(0, getWorkDayDifference(item.FinalQcOut, item.FinalQcIn))
                     : (parseInt(item.FinalQcDays, 10) || 0);
 
                 const pack = (item.PackingIn && item.PackingOut)
-                    ? Math.max(0, getDayDifference(item.PackingOut, item.PackingIn))
+                    ? Math.max(0, getWorkDayDifference(item.PackingOut, item.PackingIn))
                     : (parseInt(item.PackingDays, 10) || 0);
 
                 // TOTAL LEAD DAYS INCLUDES OutSourceDays as requested, dates unaffected
@@ -955,7 +1111,7 @@ export const ProductionPlanningModal = ({
 
                 let daysWithBuffer = 0;
                 if (item.PackingOut && item.WoodIssueIn) {
-                    daysWithBuffer = getDayDifference(item.PackingOut, item.WoodIssueIn);
+                    daysWithBuffer = getWorkDayDifference(item.PackingOut, item.WoodIssueIn);
                 }
 
                 return {
@@ -1430,6 +1586,8 @@ export const ProductionPlanningModal = ({
                                                         const colIdx = dateIdx + 15; // 15 to 40
                                                         const rawVal = item[dateCol.key];
                                                         const dateVal = rawVal ? String(rawVal).split('T')[0] : '';
+                                                        const isLateFinalQc = dateCol.key === 'FinalQcOut' && item.InspectionDate && dateVal && dateVal > String(item.InspectionDate).split('T')[0];
+
                                                         return (
                                                             <td key={dateCol.key} style={{ border: '1px solid #e2e8f0', padding: '1px 2px' }}>
                                                                 <input 
@@ -1445,13 +1603,15 @@ export const ProductionPlanningModal = ({
                                                                         minWidth: '95px',
                                                                         height: '22px', 
                                                                         fontSize: '11px', 
-                                                                        border: '1px solid #cbd5e1', 
+                                                                        border: isLateFinalQc ? '2px solid #ef4444' : '1px solid #cbd5e1', 
                                                                         borderRadius: '2px',
                                                                         padding: '1px 2px',
-                                                                        backgroundColor: '#fff',
+                                                                        backgroundColor: isLateFinalQc ? '#fef2f2' : '#fff',
+                                                                        color: isLateFinalQc ? '#b91c1c' : '#0f172a',
+                                                                        fontWeight: isLateFinalQc ? 600 : 'normal',
                                                                         textAlign: 'center'
                                                                     }}
-                                                                    title={`${dateCol.label} - Click to change date`}
+                                                                    title={isLateFinalQc ? `⚠️ Final QC Date (${dateVal}) must be <= Inspection Date (${String(item.InspectionDate).split('T')[0]})!` : `${dateCol.label} - Click to change date`}
                                                                 />
                                                             </td>
                                                         );
@@ -1464,7 +1624,11 @@ export const ProductionPlanningModal = ({
 
                                                     {/* Status Badge */}
                                                     <td style={{ textAlign: 'center', border: '1px solid #e2e8f0', backgroundColor: '#f8fafc' }}>
-                                                        {item.TotalLeadDays > 0 ? (
+                                                        {item.IsFinalQcDelayed ? (
+                                                            <span className="badge" style={{ backgroundColor: '#ef4444', color: '#fff', fontSize: '10px', padding: '3px 6px' }} title="Final QC Date exceeds Target Inspection Date!">
+                                                                ⚠️ QC Late
+                                                            </span>
+                                                        ) : item.TotalLeadDays > 0 ? (
                                                             <span style={{ color: '#15803d', fontWeight: 600, fontSize: '10px' }}>
                                                                 OK
                                                             </span>
@@ -1488,7 +1652,7 @@ export const ProductionPlanningModal = ({
             <Modal.Footer style={{ background: '#f8fafc', padding: '6px 16px', borderTop: '1px solid #e2e8f0' }}>
                 <div className="d-flex align-items-center justify-content-between w-100 flex-wrap gap-2">
                     <span style={{ fontSize: '11px', color: '#475569' }}>
-                        ⌨️ <strong>Navigation:</strong> <kbd>↑</kbd><kbd>↓</kbd><kbd>←</kbd><kbd>→</kbd> Move cells | <kbd>Enter</kbd> Down | <kbd>Tab</kbd> Right | <kbd>Ctrl+D</kbd> Fill Down | <kbd>Ctrl+S</kbd> Save Plan | <em>*Dates &amp; Days match automatically. Outsource days are added in Total Days, dates remain unaffected.</em>
+                        ⌨️ <strong>Navigation:</strong> <kbd>↑</kbd><kbd>↓</kbd><kbd>←</kbd><kbd>→</kbd> Move cells | <kbd>Enter</kbd> Down | <kbd>Tab</kbd> Right | <kbd>Ctrl+D</kbd> Fill Down | <kbd>Ctrl+S</kbd> Save Plan | <em>*Sundays are automatically skipped. Final QC Date is scheduled on or before Target Inspection Date (Final QC ≤ Inspection).</em>
                     </span>
                     <div className="d-flex gap-2">
                         <Button 
