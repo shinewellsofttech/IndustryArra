@@ -421,7 +421,9 @@ export const ProductionPlanningModal = ({
             preCutIn = addWorkDays(woodIssueOut, 1);
             preCutOut = getStageOut(preCutIn, preCutDays);
 
-            machIn = addWorkDays(preCutOut, 1);
+            // Machine IN Date = Precutting OUT Date + No of Outsource days (skipping Sunday)
+            const outSourceGap = outSourceDays > 0 ? outSourceDays : 1;
+            machIn = addWorkDays(preCutOut, outSourceGap);
             machOut = getStageOut(machIn, machDays);
 
             compStoreIn = addWorkDays(machOut, 1);
@@ -482,7 +484,9 @@ export const ProductionPlanningModal = ({
             machOut = addWorkDays(compStoreIn, -1);
             machIn = getStageIn(machOut, machDays);
 
-            preCutOut = addWorkDays(machIn, -1);
+            // Precutting OUT Date = Machine IN Date - No of Outsource days (skipping Sunday)
+            const outSourceGap = outSourceDays > 0 ? outSourceDays : 1;
+            preCutOut = addWorkDays(machIn, -outSourceGap);
             preCutIn = getStageIn(preCutOut, preCutDays);
 
             woodIssueOut = addWorkDays(preCutIn, -1);
@@ -729,7 +733,10 @@ export const ProductionPlanningModal = ({
                 for (let i = changedStageIdx + 1; i < serialStages.length; i++) {
                     const stage = serialStages[i];
                     if (prevOut) {
-                        updated[stage.inKey] = addWorkDays(prevOut, 1);
+                        const gap = (stage.key === 'Machining')
+                            ? ((parseInt(updated.OutSourceDays, 10) || 0) > 0 ? parseInt(updated.OutSourceDays, 10) : 1)
+                            : 1;
+                        updated[stage.inKey] = addWorkDays(prevOut, gap);
                         updated[stage.outKey] = getStageOut(updated[stage.inKey], updated[stage.daysKey]);
                         prevOut = updated[stage.outKey];
 
@@ -1029,8 +1036,8 @@ export const ProductionPlanningModal = ({
             // Col Y: Pre Cutting OUT = IF(H{r}<=1, X{r}, WORKDAY.INTL(X${r}, H${r}-1, 11))
             addDateCell('Y', `IF(H${r}<=1, X${r}, WORKDAY.INTL(X${r}, H${r}-1, 11))`, item.PreCuttingOut);
 
-            // Col Z: Machining IN = WORKDAY.INTL(Y{r}, 1, 11)
-            addDateCell('Z', `WORKDAY.INTL(Y${r}, 1, 11)`, item.MachiningIn);
+            // Col Z: Machining IN = Pre Cutting OUT + OutSource Days (skipping Sunday)
+            addDateCell('Z', `WORKDAY.INTL(Y${r}, IF(I${r}>0, I${r}, 1), 11)`, item.MachiningIn);
 
             // Col AA: Machining OUT = IF(J{r}<=1, Z{r}, WORKDAY.INTL(Z${r}, J${r}-1, 11))
             addDateCell('AA', `IF(J${r}<=1, Z${r}, WORKDAY.INTL(Z${r}, J${r}-1, 11))`, item.MachiningOut);
