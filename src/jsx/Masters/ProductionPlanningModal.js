@@ -9,14 +9,62 @@ import axios from 'axios';
 import { toast } from 'react-toastify';
 import { API_WEB_URLS } from '../../constants/constAPI';
 
-// Local Date parser & formatter to avoid UTC offset issues
+// Local Date parser & formatter to avoid UTC offset issues & robustly handle all date formats
 const parseLocalDate = (dateInput) => {
     if (!dateInput) return null;
-    if (dateInput instanceof Date) return new Date(dateInput.getFullYear(), dateInput.getMonth(), dateInput.getDate());
-    const str = String(dateInput).split('T')[0];
-    const parts = str.split('-').map(Number);
-    if (parts.length < 3 || isNaN(parts[0])) return null;
-    return new Date(parts[0], parts[1] - 1, parts[2]);
+    if (dateInput instanceof Date) {
+        if (isNaN(dateInput.getTime())) return null;
+        return new Date(dateInput.getFullYear(), dateInput.getMonth(), dateInput.getDate());
+    }
+
+    const str = String(dateInput).trim();
+    if (!str || str.toLowerCase() === 'null' || str.toLowerCase() === 'undefined') return null;
+
+    // Remove any time part (e.g., ' 00:00:00' or 'T00:00:00...')
+    const datePart = str.split(/[ T]/)[0].trim();
+
+    // Check for YYYY-MM-DD or YYYY/MM/DD
+    const isoMatch = datePart.match(/^(\d{4})[-/](\d{1,2})[-/](\d{1,2})$/);
+    if (isoMatch) {
+        const y = parseInt(isoMatch[1], 10);
+        const m = parseInt(isoMatch[2], 10);
+        const d = parseInt(isoMatch[3], 10);
+        if (y > 1900 && m >= 1 && m <= 12 && d >= 1 && d <= 31) {
+            return new Date(y, m - 1, d);
+        }
+    }
+
+    // Check for MM/DD/YYYY or DD/MM/YYYY
+    const slashMatch = datePart.match(/^(\d{1,2})[-/](\d{1,2})[-/](\d{4})$/);
+    if (slashMatch) {
+        let p1 = parseInt(slashMatch[1], 10);
+        let p2 = parseInt(slashMatch[2], 10);
+        const y = parseInt(slashMatch[3], 10);
+
+        let m, d;
+        if (p1 > 12) {
+            d = p1;
+            m = p2;
+        } else if (p2 > 12) {
+            m = p1;
+            d = p2;
+        } else {
+            // Default to MM/DD/YYYY from SQL Server
+            m = p1;
+            d = p2;
+        }
+
+        if (y > 1900 && m >= 1 && m <= 12 && d >= 1 && d <= 31) {
+            return new Date(y, m - 1, d);
+        }
+    }
+
+    const parsed = new Date(str);
+    if (!isNaN(parsed.getTime()) && parsed.getFullYear() > 1900) {
+        return new Date(parsed.getFullYear(), parsed.getMonth(), parsed.getDate());
+    }
+
+    return null;
 };
 
 const formatLocalDate = (dateObj) => {
@@ -25,6 +73,11 @@ const formatLocalDate = (dateObj) => {
     const m = String(dateObj.getMonth() + 1).padStart(2, '0');
     const d = String(dateObj.getDate()).padStart(2, '0');
     return `${y}-${m}-${d}`;
+};
+
+const toStandardDateStr = (dateInput) => {
+    const d = parseLocalDate(dateInput);
+    return d ? formatLocalDate(d) : null;
 };
 
 // Check if a date falls on a Sunday (day 0)
@@ -134,51 +187,51 @@ const STAGE_ORDER = [
 // 41 Editable columns specification for desktop keyboard navigation (Arrow keys, Tab, Enter, Ctrl+D)
 const EDITABLE_COLS = [
     // Col 0: Target Date
-    { key: 'InspectionDate', label: 'Insp Date', isDate: true },
+    { key: 'InspectionDate', label: 'Insp Date', isDate: true, width: '115px' },
 
     // Cols 1 to 14: Department Days (14 columns)
-    { key: 'WoodIssueDays', label: 'Wood Days', isDay: true },
-    { key: 'PreCuttingDays', label: 'PreCut Days', isDay: true },
-    { key: 'OutSourceDays', label: 'OutSrc Days', isDay: true, isInfo: true },
-    { key: 'MachiningDays', label: 'Mach Days', isDay: true },
-    { key: 'ComponentStoreDays', label: 'CompStore Days', isDay: true },
-    { key: 'AssemblyDays', label: 'Assem Days', isDay: true },
-    { key: 'MetalDays', label: 'Metal Days', isDay: true },
-    { key: 'UpholsteryDays', label: 'Upholstery Days', isDay: true },
-    { key: 'SandingDays', label: 'Sand Days', isDay: true },
-    { key: 'PolishDays', label: 'Polish Days', isDay: true },
-    { key: 'FittingDays', label: 'Fit Days', isDay: true },
-    { key: 'QcDays', label: 'QC Days', isDay: true },
-    { key: 'FinalQcDays', label: 'FinalQC Days', isDay: true },
-    { key: 'PackingDays', label: 'Pack Days', isDay: true },
+    { key: 'WoodIssueDays', label: 'Wood Days', isDay: true, width: '54px' },
+    { key: 'PreCuttingDays', label: 'PreCut Days', isDay: true, width: '54px' },
+    { key: 'OutSourceDays', label: 'OutSrc Days', isDay: true, isInfo: true, width: '54px' },
+    { key: 'MachiningDays', label: 'Mach Days', isDay: true, width: '54px' },
+    { key: 'ComponentStoreDays', label: 'CompStore Days', isDay: true, width: '72px' },
+    { key: 'AssemblyDays', label: 'Assem Days', isDay: true, width: '54px' },
+    { key: 'MetalDays', label: 'Metal Days', isDay: true, width: '54px' },
+    { key: 'UpholsteryDays', label: 'Upholstery Days', isDay: true, width: '74px' },
+    { key: 'SandingDays', label: 'Sand Days', isDay: true, width: '54px' },
+    { key: 'PolishDays', label: 'Polish Days', isDay: true, width: '54px' },
+    { key: 'FittingDays', label: 'Fit Days', isDay: true, width: '54px' },
+    { key: 'QcDays', label: 'QC Days', isDay: true, width: '54px' },
+    { key: 'FinalQcDays', label: 'FinalQC Days', isDay: true, width: '64px' },
+    { key: 'PackingDays', label: 'Pack Days', isDay: true, width: '54px' },
 
     // Cols 15 to 40: Department Dates (13 stages IN & OUT = 26 columns)
-    { key: 'WoodIssueIn', label: 'Wood IN', isDate: true },
-    { key: 'WoodIssueOut', label: 'Wood OUT', isDate: true },
-    { key: 'PreCuttingIn', label: 'PreCut IN', isDate: true },
-    { key: 'PreCuttingOut', label: 'PreCut OUT', isDate: true },
-    { key: 'MachiningIn', label: 'Mach IN', isDate: true },
-    { key: 'MachiningOut', label: 'Mach OUT', isDate: true },
-    { key: 'ComponentStoreIn', label: 'CompStore IN', isDate: true },
-    { key: 'ComponentStoreOut', label: 'CompStore OUT', isDate: true },
-    { key: 'AssemblyIn', label: 'Assem IN', isDate: true },
-    { key: 'AssemblyOut', label: 'Assem OUT', isDate: true },
-    { key: 'MetalIn', label: 'Metal IN', isDate: true },
-    { key: 'MetalOut', label: 'Metal OUT', isDate: true },
-    { key: 'UpholsteryIn', label: 'Upholstery IN', isDate: true },
-    { key: 'UpholsteryOut', label: 'Upholstery OUT', isDate: true },
-    { key: 'SandingIn', label: 'Sand IN', isDate: true },
-    { key: 'SandingOut', label: 'Sand OUT', isDate: true },
-    { key: 'PolishIn', label: 'Polish IN', isDate: true },
-    { key: 'PolishOut', label: 'Polish OUT', isDate: true },
-    { key: 'FittingIn', label: 'Fit IN', isDate: true },
-    { key: 'FittingOut', label: 'Fit OUT', isDate: true },
-    { key: 'QcIn', label: 'QC IN', isDate: true },
-    { key: 'QcOut', label: 'QC OUT', isDate: true },
-    { key: 'FinalQcIn', label: 'FinalQC IN', isDate: true },
-    { key: 'FinalQcOut', label: 'FinalQC OUT', isDate: true },
-    { key: 'PackingIn', label: 'Pack IN', isDate: true },
-    { key: 'PackingOut', label: 'Pack OUT', isDate: true },
+    { key: 'WoodIssueIn', label: 'Wood IN', isDate: true, width: '115px' },
+    { key: 'WoodIssueOut', label: 'Wood OUT', isDate: true, width: '115px' },
+    { key: 'PreCuttingIn', label: 'PreCut IN', isDate: true, width: '115px' },
+    { key: 'PreCuttingOut', label: 'PreCut OUT', isDate: true, width: '115px' },
+    { key: 'MachiningIn', label: 'Mach IN', isDate: true, width: '115px' },
+    { key: 'MachiningOut', label: 'Mach OUT', isDate: true, width: '115px' },
+    { key: 'ComponentStoreIn', label: 'CompStore IN', isDate: true, width: '115px' },
+    { key: 'ComponentStoreOut', label: 'CompStore OUT', isDate: true, width: '115px' },
+    { key: 'AssemblyIn', label: 'Assem IN', isDate: true, width: '115px' },
+    { key: 'AssemblyOut', label: 'Assem OUT', isDate: true, width: '115px' },
+    { key: 'MetalIn', label: 'Metal IN', isDate: true, width: '115px' },
+    { key: 'MetalOut', label: 'Metal OUT', isDate: true, width: '115px' },
+    { key: 'UpholsteryIn', label: 'Upholstery IN', isDate: true, width: '115px' },
+    { key: 'UpholsteryOut', label: 'Upholstery OUT', isDate: true, width: '115px' },
+    { key: 'SandingIn', label: 'Sand IN', isDate: true, width: '115px' },
+    { key: 'SandingOut', label: 'Sand OUT', isDate: true, width: '115px' },
+    { key: 'PolishIn', label: 'Polish IN', isDate: true, width: '115px' },
+    { key: 'PolishOut', label: 'Polish OUT', isDate: true, width: '115px' },
+    { key: 'FittingIn', label: 'Fit IN', isDate: true, width: '115px' },
+    { key: 'FittingOut', label: 'Fit OUT', isDate: true, width: '115px' },
+    { key: 'QcIn', label: 'QC IN', isDate: true, width: '115px' },
+    { key: 'QcOut', label: 'QC OUT', isDate: true, width: '115px' },
+    { key: 'FinalQcIn', label: 'FinalQC IN', isDate: true, width: '115px' },
+    { key: 'FinalQcOut', label: 'FinalQC OUT', isDate: true, width: '115px' },
+    { key: 'PackingIn', label: 'Pack IN', isDate: true, width: '115px' },
+    { key: 'PackingOut', label: 'Pack OUT', isDate: true, width: '115px' },
 ];
 
 export const ProductionPlanningModal = ({
@@ -237,11 +290,13 @@ export const ProductionPlanningModal = ({
             }
 
             // Merge selected items with existing saved plans
-            const merged = selectedItems.map(item => {
-                const lineId = String(item.F_ContainerMasterL || item.ContainerMasterLId || item.Id || '');
+            const merged = selectedItems.map((item, idx) => {
+                const lineId = String(item.F_ContainerMasterL || item.ContainerMasterLId || item.Id || item.RowNum || '');
+                const rowKey = String(item.F_ContainerMasterL || item.ContainerMasterLId || item.Id || item.RowNum || `item-${idx}`);
                 const saved = existingSavedMap.get(lineId) || {};
 
                 const initialObj = {
+                    _rowKey: rowKey,
                     ContainerMasterLId: parseInt(lineId, 10) || 0,
                     ContainerId: item.F_ContainerMaster || item.ContainerId || saved.ContainerId || 0,
                     ContainerNumber: item.ContainerNumber || saved.ContainerNumber || 'N/A',
@@ -249,7 +304,7 @@ export const ProductionPlanningModal = ({
                     ItemCode: item.ItemCode || saved.ItemCode || '',
                     ItemName: item.ItemName || saved.ItemName || '',
                     Quantity: item.Quantity || saved.Quantity || 0,
-                    InspectionDate: item.InspectionDate || saved.InspectionDate || null,
+                    InspectionDate: toStandardDateStr(item.InspectionDate || saved.InspectionDate),
                     WoodIssueDays: saved.WoodIssueDays !== undefined ? saved.WoodIssueDays : 0,
                     PreCuttingDays: saved.PreCuttingDays !== undefined ? saved.PreCuttingDays : 0,
                     OutSourceDays: saved.OutSourceDays !== undefined ? saved.OutSourceDays : 0,
@@ -264,32 +319,32 @@ export const ProductionPlanningModal = ({
                     QcDays: saved.QcDays !== undefined ? saved.QcDays : 0,
                     FinalQcDays: saved.FinalQcDays !== undefined ? saved.FinalQcDays : 0,
                     PackingDays: saved.PackingDays !== undefined ? saved.PackingDays : 0,
-                    WoodIssueIn: saved.WoodIssueIn ? String(saved.WoodIssueIn).split('T')[0] : null,
-                    WoodIssueOut: saved.WoodIssueOut ? String(saved.WoodIssueOut).split('T')[0] : null,
-                    PreCuttingIn: saved.PreCuttingIn ? String(saved.PreCuttingIn).split('T')[0] : null,
-                    PreCuttingOut: saved.PreCuttingOut ? String(saved.PreCuttingOut).split('T')[0] : null,
-                    MachiningIn: saved.MachiningIn ? String(saved.MachiningIn).split('T')[0] : null,
-                    MachiningOut: saved.MachiningOut ? String(saved.MachiningOut).split('T')[0] : null,
-                    ComponentStoreIn: saved.ComponentStoreIn ? String(saved.ComponentStoreIn).split('T')[0] : null,
-                    ComponentStoreOut: saved.ComponentStoreOut ? String(saved.ComponentStoreOut).split('T')[0] : null,
-                    AssemblyIn: saved.AssemblyIn ? String(saved.AssemblyIn).split('T')[0] : null,
-                    AssemblyOut: saved.AssemblyOut ? String(saved.AssemblyOut).split('T')[0] : null,
-                    MetalIn: saved.MetalIn ? String(saved.MetalIn).split('T')[0] : null,
-                    MetalOut: saved.MetalOut ? String(saved.MetalOut).split('T')[0] : null,
-                    UpholsteryIn: saved.UpholsteryIn ? String(saved.UpholsteryIn).split('T')[0] : null,
-                    UpholsteryOut: saved.UpholsteryOut ? String(saved.UpholsteryOut).split('T')[0] : null,
-                    SandingIn: saved.SandingIn ? String(saved.SandingIn).split('T')[0] : null,
-                    SandingOut: saved.SandingOut ? String(saved.SandingOut).split('T')[0] : null,
-                    PolishIn: saved.PolishIn ? String(saved.PolishIn).split('T')[0] : null,
-                    PolishOut: saved.PolishOut ? String(saved.PolishOut).split('T')[0] : null,
-                    FittingIn: saved.FittingIn ? String(saved.FittingIn).split('T')[0] : null,
-                    FittingOut: saved.FittingOut ? String(saved.FittingOut).split('T')[0] : null,
-                    QcIn: saved.QcIn ? String(saved.QcIn).split('T')[0] : null,
-                    QcOut: saved.QcOut ? String(saved.QcOut).split('T')[0] : null,
-                    FinalQcIn: saved.FinalQcIn ? String(saved.FinalQcIn).split('T')[0] : null,
-                    FinalQcOut: saved.FinalQcOut ? String(saved.FinalQcOut).split('T')[0] : null,
-                    PackingIn: saved.PackingIn ? String(saved.PackingIn).split('T')[0] : null,
-                    PackingOut: saved.PackingOut ? String(saved.PackingOut).split('T')[0] : null,
+                    WoodIssueIn: toStandardDateStr(saved.WoodIssueIn),
+                    WoodIssueOut: toStandardDateStr(saved.WoodIssueOut),
+                    PreCuttingIn: toStandardDateStr(saved.PreCuttingIn),
+                    PreCuttingOut: toStandardDateStr(saved.PreCuttingOut),
+                    MachiningIn: toStandardDateStr(saved.MachiningIn),
+                    MachiningOut: toStandardDateStr(saved.MachiningOut),
+                    ComponentStoreIn: toStandardDateStr(saved.ComponentStoreIn),
+                    ComponentStoreOut: toStandardDateStr(saved.ComponentStoreOut),
+                    AssemblyIn: toStandardDateStr(saved.AssemblyIn),
+                    AssemblyOut: toStandardDateStr(saved.AssemblyOut),
+                    MetalIn: toStandardDateStr(saved.MetalIn),
+                    MetalOut: toStandardDateStr(saved.MetalOut),
+                    UpholsteryIn: toStandardDateStr(saved.UpholsteryIn),
+                    UpholsteryOut: toStandardDateStr(saved.UpholsteryOut),
+                    SandingIn: toStandardDateStr(saved.SandingIn),
+                    SandingOut: toStandardDateStr(saved.SandingOut),
+                    PolishIn: toStandardDateStr(saved.PolishIn),
+                    PolishOut: toStandardDateStr(saved.PolishOut),
+                    FittingIn: toStandardDateStr(saved.FittingIn),
+                    FittingOut: toStandardDateStr(saved.FittingOut),
+                    QcIn: toStandardDateStr(saved.QcIn),
+                    QcOut: toStandardDateStr(saved.QcOut),
+                    FinalQcIn: toStandardDateStr(saved.FinalQcIn),
+                    FinalQcOut: toStandardDateStr(saved.FinalQcOut),
+                    PackingIn: toStandardDateStr(saved.PackingIn),
+                    PackingOut: toStandardDateStr(saved.PackingOut),
                 };
 
                 return calculateScheduleFromDays(initialObj);
@@ -316,20 +371,22 @@ export const ProductionPlanningModal = ({
      *   but strictly excluded from stage date cascades (dates remain unaffected).
      */
     const calculateScheduleFromDays = (item) => {
-        const woodDays = parseInt(item.WoodIssueDays, 10) || 0;
-        const preCutDays = parseInt(item.PreCuttingDays, 10) || 0;
-        const outSourceDays = parseInt(item.OutSourceDays, 10) || 0;
-        const machDays = parseInt(item.MachiningDays, 10) || 0;
-        const compStoreDays = parseInt(item.ComponentStoreDays, 10) || 0;
-        const assemDays = parseInt(item.AssemblyDays, 10) || 0;
-        const metalDays = parseInt(item.MetalDays, 10) || 0;
-        const upholsteryDays = parseInt(item.UpholsteryDays, 10) || 0;
-        const sandDays = parseInt(item.SandingDays, 10) || 0;
-        const polishDays = parseInt(item.PolishDays, 10) || 0;
-        const fitDays = parseInt(item.FittingDays, 10) || 0;
-        const qcDays = parseInt(item.QcDays, 10) || 0;
-        const finalQcDays = parseInt(item.FinalQcDays, 10) || 0;
-        const packDays = parseInt(item.PackingDays, 10) || 0;
+        const parseDays = (v) => (v === '' || v === null || v === undefined) ? 0 : (parseInt(v, 10) || 0);
+
+        const woodDays = parseDays(item.WoodIssueDays);
+        const preCutDays = parseDays(item.PreCuttingDays);
+        const outSourceDays = parseDays(item.OutSourceDays);
+        const machDays = parseDays(item.MachiningDays);
+        const compStoreDays = parseDays(item.ComponentStoreDays);
+        const assemDays = parseDays(item.AssemblyDays);
+        const metalDays = parseDays(item.MetalDays);
+        const upholsteryDays = parseDays(item.UpholsteryDays);
+        const sandDays = parseDays(item.SandingDays);
+        const polishDays = parseDays(item.PolishDays);
+        const fitDays = parseDays(item.FittingDays);
+        const qcDays = parseDays(item.QcDays);
+        const finalQcDays = parseDays(item.FinalQcDays);
+        const packDays = parseDays(item.PackingDays);
 
         // Serial production lead days (strictly excludes OutSourceDays and parallel Metal/Upholstery):
         const serialProductionDays = woodDays + preCutDays + machDays + compStoreDays + assemDays + sandDays + 
@@ -338,7 +395,8 @@ export const ProductionPlanningModal = ({
         // Total Lead Days displayed in the Total column before dates (includes OutSourceDays as requested):
         const totalLeadDays = serialProductionDays + outSourceDays;
 
-        const inspectionDate = item.InspectionDate ? String(item.InspectionDate).split('T')[0] : null;
+        const inspectionDate = toStandardDateStr(item.InspectionDate);
+        const woodIssueInAnchor = toStandardDateStr(item.WoodIssueIn);
 
         let woodIssueIn = null, woodIssueOut = null;
         let preCutIn = null, preCutOut = null;
@@ -356,8 +414,8 @@ export const ProductionPlanningModal = ({
 
         // Primary scheduling mode: If user has explicitly provided WoodIssueIn, forward schedule from WoodIssueIn.
         // Otherwise, reverse schedule from InspectionDate so FinalQcOut <= InspectionDate.
-        if (item.WoodIssueIn) {
-            woodIssueIn = getNextWorkDay(item.WoodIssueIn);
+        if (woodIssueInAnchor) {
+            woodIssueIn = getNextWorkDay(woodIssueInAnchor);
             woodIssueOut = getStageOut(woodIssueIn, woodDays);
 
             preCutIn = addWorkDays(woodIssueOut, 1);
@@ -453,25 +511,26 @@ export const ProductionPlanningModal = ({
 
         return {
             ...item,
-            WoodIssueDays: woodDays,
-            PreCuttingDays: preCutDays,
-            OutSourceDays: outSourceDays,
-            MachiningDays: machDays,
-            ComponentStoreDays: compStoreDays,
-            AssemblyDays: assemDays,
-            MetalDays: metalDays,
-            UpholsteryDays: upholsteryDays,
-            SandingDays: sandDays,
-            PolishDays: polishDays,
-            FittingDays: fitDays,
-            QcDays: qcDays,
-            FinalQcDays: finalQcDays,
-            PackingDays: packDays,
+            WoodIssueDays: item.WoodIssueDays === '' ? '' : woodDays,
+            PreCuttingDays: item.PreCuttingDays === '' ? '' : preCutDays,
+            OutSourceDays: item.OutSourceDays === '' ? '' : outSourceDays,
+            MachiningDays: item.MachiningDays === '' ? '' : machDays,
+            ComponentStoreDays: item.ComponentStoreDays === '' ? '' : compStoreDays,
+            AssemblyDays: item.AssemblyDays === '' ? '' : assemDays,
+            MetalDays: item.MetalDays === '' ? '' : metalDays,
+            UpholsteryDays: item.UpholsteryDays === '' ? '' : upholsteryDays,
+            SandingDays: item.SandingDays === '' ? '' : sandDays,
+            PolishDays: item.PolishDays === '' ? '' : polishDays,
+            FittingDays: item.FittingDays === '' ? '' : fitDays,
+            QcDays: item.QcDays === '' ? '' : qcDays,
+            FinalQcDays: item.FinalQcDays === '' ? '' : finalQcDays,
+            PackingDays: item.PackingDays === '' ? '' : packDays,
             TotalLeadDays: totalLeadDays,
             DaysWithBuffer: daysWithBuffer,
             IsFinalQcDelayed: isFinalQcDelayed,
             IsDeadlineExceeded: isFinalQcDelayed,
             OverdueDays: 0,
+            InspectionDate: inspectionDate,
             WoodIssueIn: woodIssueIn,
             WoodIssueOut: woodIssueOut,
             PreCuttingIn: preCutIn,
@@ -505,7 +564,10 @@ export const ProductionPlanningModal = ({
     const handleDayChange = (itemKey, field, value) => {
         const val = value === '' ? '' : Math.max(0, parseInt(value, 10) || 0);
         setPlanItems(prev => prev.map(p => {
-            if (p.ContainerMasterLId === itemKey) {
+            const isMatch = String(p._rowKey) === String(itemKey) || 
+                            String(p.ContainerMasterLId) === String(itemKey) || 
+                            String(p.Id) === String(itemKey);
+            if (isMatch) {
                 return calculateScheduleFromDays({ ...p, [field]: val });
             }
             return p;
@@ -521,9 +583,12 @@ export const ProductionPlanningModal = ({
      */
     const handleDateCellChange = (itemKey, fieldKey, newDateValue) => {
         setPlanItems(prev => prev.map(p => {
-            if (p.ContainerMasterLId !== itemKey) return p;
+            const isMatch = String(p._rowKey) === String(itemKey) || 
+                            String(p.ContainerMasterLId) === String(itemKey) || 
+                            String(p.Id) === String(itemKey);
+            if (!isMatch) return p;
 
-            let val = newDateValue ? String(newDateValue).split('T')[0] : null;
+            let val = toStandardDateStr(newDateValue);
             if (val && isSunday(val)) {
                 val = getNextWorkDay(val);
             }
@@ -537,58 +602,7 @@ export const ProductionPlanningModal = ({
 
             // 2. If user changes WoodIssueIn directly:
             if (fieldKey === 'WoodIssueIn') {
-                const woodDays = parseInt(updated.WoodIssueDays, 10) || 0;
-                const preCutDays = parseInt(updated.PreCuttingDays, 10) || 0;
-                const machDays = parseInt(updated.MachiningDays, 10) || 0;
-                const compStoreDays = parseInt(updated.ComponentStoreDays, 10) || 0;
-                const assemDays = parseInt(updated.AssemblyDays, 10) || 0;
-                const metalDays = parseInt(updated.MetalDays, 10) || 0;
-                const upholsteryDays = parseInt(updated.UpholsteryDays, 10) || 0;
-                const sandDays = parseInt(updated.SandingDays, 10) || 0;
-                const polishDays = parseInt(updated.PolishDays, 10) || 0;
-                const fitDays = parseInt(updated.FittingDays, 10) || 0;
-                const qcDays = parseInt(updated.QcDays, 10) || 0;
-                const finalQcDays = parseInt(updated.FinalQcDays, 10) || 0;
-                const packDays = parseInt(updated.PackingDays, 10) || 0;
-
-                if (val) {
-                    updated.WoodIssueOut = getStageOut(val, woodDays);
-                    updated.PreCuttingIn = addWorkDays(updated.WoodIssueOut, 1);
-                    updated.PreCuttingOut = getStageOut(updated.PreCuttingIn, preCutDays);
-                    updated.MachiningIn = addWorkDays(updated.PreCuttingOut, 1);
-                    updated.MachiningOut = getStageOut(updated.MachiningIn, machDays);
-                    updated.ComponentStoreIn = addWorkDays(updated.MachiningOut, 1);
-                    updated.ComponentStoreOut = getStageOut(updated.ComponentStoreIn, compStoreDays);
-                    updated.AssemblyIn = addWorkDays(updated.ComponentStoreOut, 1);
-                    updated.AssemblyOut = getStageOut(updated.AssemblyIn, assemDays);
-                    updated.SandingIn = addWorkDays(updated.AssemblyOut, 1);
-                    updated.SandingOut = getStageOut(updated.SandingIn, sandDays);
-                    updated.PolishIn = addWorkDays(updated.SandingOut, 1);
-                    updated.PolishOut = getStageOut(updated.PolishIn, polishDays);
-                    updated.FittingIn = addWorkDays(updated.PolishOut, 1);
-                    updated.FittingOut = getStageOut(updated.FittingIn, fitDays);
-                    updated.QcIn = addWorkDays(updated.FittingOut, 1);
-                    updated.QcOut = getStageOut(updated.QcIn, qcDays);
-                    updated.FinalQcIn = addWorkDays(updated.QcOut, 1);
-                    updated.FinalQcOut = getStageOut(updated.FinalQcIn, finalQcDays);
-                    updated.PackingIn = addWorkDays(updated.FinalQcOut, 1);
-                    updated.PackingOut = getStageOut(updated.PackingIn, packDays);
-
-                    // Metal start date = Machine start date
-                    updated.MetalIn = updated.MachiningIn;
-                    updated.MetalOut = getStageOut(updated.MetalIn, metalDays);
-
-                    // Upholstery start date = Assembly start date
-                    updated.UpholsteryIn = updated.AssemblyIn;
-                    updated.UpholsteryOut = getStageOut(updated.UpholsteryIn, upholsteryDays);
-
-                    if (updated.PackingOut && updated.WoodIssueIn) {
-                        updated.DaysWithBuffer = getWorkDaysCount(updated.PackingOut, updated.WoodIssueIn);
-                    }
-                    updated.IsFinalQcDelayed = (updated.InspectionDate && updated.FinalQcOut) ? (updated.FinalQcOut > updated.InspectionDate) : false;
-                    updated.IsDeadlineExceeded = updated.IsFinalQcDelayed;
-                }
-                return updated;
+                return calculateScheduleFromDays(updated);
             }
 
             // 3. Parallel stage dates: Metal & Upholstery
@@ -1032,7 +1046,7 @@ export const ProductionPlanningModal = ({
 
                         if ((matchContract || matchItem) && matchShip) {
                             matchedCount++;
-                            const inspDate = row[5] ? String(row[5]).trim().split('T')[0] : item.InspectionDate;
+                            const inspDate = row[5] ? toStandardDateStr(row[5]) : item.InspectionDate;
                             const woodDays = parseInt(row[6], 10) || 0;
                             const preCutDays = parseInt(row[7], 10) || 0;
                             const outSourceDays = parseInt(row[8], 10) || 0; // Excluded from calculation
@@ -1048,11 +1062,11 @@ export const ProductionPlanningModal = ({
                             const finalQcDays = parseInt(row[18], 10) || 0;
                             const packDays = parseInt(row[19], 10) || 0;
 
-                            const woodIn = row[21] ? String(row[21]).trim().split('T')[0] : item.WoodIssueIn;
-                            const metalIn = row[31] ? String(row[31]).trim().split('T')[0] : item.MetalIn;
-                            const metalOut = row[32] ? String(row[32]).trim().split('T')[0] : item.MetalOut;
-                            const upholsteryIn = row[33] ? String(row[33]).trim().split('T')[0] : item.UpholsteryIn;
-                            const upholsteryOut = row[34] ? String(row[34]).trim().split('T')[0] : item.UpholsteryOut;
+                            const woodIn = row[21] ? toStandardDateStr(row[21]) : item.WoodIssueIn;
+                            const metalIn = row[31] ? toStandardDateStr(row[31]) : item.MetalIn;
+                            const metalOut = row[32] ? toStandardDateStr(row[32]) : item.MetalOut;
+                            const upholsteryIn = row[33] ? toStandardDateStr(row[33]) : item.UpholsteryIn;
+                            const upholsteryOut = row[34] ? toStandardDateStr(row[34]) : item.UpholsteryOut;
 
                             return calculateScheduleFromDays({
                                 ...item,
@@ -1106,9 +1120,11 @@ export const ProductionPlanningModal = ({
         }
 
         // Strict Validation: Final QC Date must be on or before Target Inspection Date
-        const lateQcItems = planItems.filter(item => 
-            item.InspectionDate && item.FinalQcOut && item.FinalQcOut > String(item.InspectionDate).split('T')[0]
-        );
+        const lateQcItems = planItems.filter(item => {
+            const insp = toStandardDateStr(item.InspectionDate);
+            const qc = toStandardDateStr(item.FinalQcOut);
+            return insp && qc && qc > insp;
+        });
 
         if (lateQcItems.length > 0) {
             toast.error(
@@ -1275,6 +1291,16 @@ export const ProductionPlanningModal = ({
                 }
                 .desktop-cell-input {
                     transition: outline 0.1s ease-in-out;
+                    box-sizing: border-box;
+                }
+                /* Hide number input spinners for clean ERP grid data entry */
+                .desktop-cell-input[type=number]::-webkit-inner-spin-button, 
+                .desktop-cell-input[type=number]::-webkit-outer-spin-button { 
+                    -webkit-appearance: none; 
+                    margin: 0; 
+                }
+                .desktop-cell-input[type=number] { 
+                    -moz-appearance: textfield; 
                 }
             `}</style>
 
@@ -1430,7 +1456,8 @@ export const ProductionPlanningModal = ({
                             <table 
                                 className="table-bordered"
                                 style={{ 
-                                    width: '100%', 
+                                    width: 'max-content', 
+                                    minWidth: '100%',
                                     borderCollapse: 'collapse', 
                                     fontSize: '11px', 
                                     color: '#0f172a',
@@ -1448,20 +1475,20 @@ export const ProductionPlanningModal = ({
                                 >
                                     {/* Level 1 Header */}
                                     <tr style={{ backgroundColor: '#e2e8f0', color: '#1e293b' }}>
-                                        <th rowSpan="2" style={{ padding: '4px 6px', border: '1px solid #cbd5e1', textAlign: 'center', width: '32px' }}>#</th>
-                                        <th rowSpan="2" style={{ padding: '4px 6px', border: '1px solid #cbd5e1', textAlign: 'left', width: '80px' }}>Shipment</th>
-                                        <th rowSpan="2" style={{ padding: '4px 6px', border: '1px solid #cbd5e1', textAlign: 'left', width: '90px' }}>Contract</th>
-                                        <th rowSpan="2" style={{ padding: '4px 6px', border: '1px solid #cbd5e1', textAlign: 'left', width: '80px' }}>Item Code</th>
-                                        <th rowSpan="2" style={{ padding: '4px 6px', border: '1px solid #cbd5e1', textAlign: 'left', minWidth: '160px' }}>Description</th>
-                                        <th rowSpan="2" style={{ padding: '4px 6px', border: '1px solid #cbd5e1', textAlign: 'center', width: '45px' }}>Qty</th>
-                                        <th rowSpan="2" style={{ padding: '4px 6px', border: '1px solid #cbd5e1', textAlign: 'center', width: '105px' }}>Insp Date</th>
+                                        <th rowSpan="2" style={{ padding: '4px 6px', border: '1px solid #cbd5e1', textAlign: 'center', width: '35px', minWidth: '35px' }}>#</th>
+                                        <th rowSpan="2" style={{ padding: '4px 6px', border: '1px solid #cbd5e1', textAlign: 'left', width: '130px', minWidth: '130px' }}>Shipment</th>
+                                        <th rowSpan="2" style={{ padding: '4px 6px', border: '1px solid #cbd5e1', textAlign: 'left', width: '100px', minWidth: '100px' }}>Contract</th>
+                                        <th rowSpan="2" style={{ padding: '4px 6px', border: '1px solid #cbd5e1', textAlign: 'left', width: '90px', minWidth: '90px' }}>Item Code</th>
+                                        <th rowSpan="2" style={{ padding: '4px 6px', border: '1px solid #cbd5e1', textAlign: 'left', minWidth: '220px' }}>Description</th>
+                                        <th rowSpan="2" style={{ padding: '4px 6px', border: '1px solid #cbd5e1', textAlign: 'center', width: '50px', minWidth: '50px' }}>Qty</th>
+                                        <th rowSpan="2" style={{ padding: '4px 6px', border: '1px solid #cbd5e1', textAlign: 'center', width: '115px', minWidth: '115px' }}>Insp Date</th>
                                         
                                         {/* Department Days Group (ColSpan 14) */}
-                                        <th colSpan="14" style={{ padding: '4px 6px', border: '1px solid #cbd5e1', textAlign: 'center', backgroundColor: '#e2e8f0' }}>
+                                        <th colSpan="14" style={{ padding: '4px 6px', border: '1px solid #cbd5e1', textAlign: 'center', backgroundColor: '#e2e8f0', whiteSpace: 'nowrap' }}>
                                             Department Lead Times (Days)
                                         </th>
                                         
-                                        <th rowSpan="2" style={{ padding: '4px 6px', border: '1px solid #cbd5e1', textAlign: 'center', width: '50px', backgroundColor: '#f1f5f9' }}>Total</th>
+                                        <th rowSpan="2" style={{ padding: '4px 6px', border: '1px solid #cbd5e1', textAlign: 'center', width: '55px', minWidth: '55px', backgroundColor: '#f1f5f9' }}>Total</th>
 
                                         {/* 13 Department Stage Dates (IN & OUT - ColSpan 26) */}
                                         <th colSpan="2" style={{ padding: '4px 6px', border: '1px solid #cbd5e1', textAlign: 'center', backgroundColor: '#e2e8f0' }}>Wood Issue</th>
@@ -1478,54 +1505,54 @@ export const ProductionPlanningModal = ({
                                         <th colSpan="2" style={{ padding: '4px 6px', border: '1px solid #cbd5e1', textAlign: 'center', backgroundColor: '#e2e8f0' }}>Final QC</th>
                                         <th colSpan="2" style={{ padding: '4px 6px', border: '1px solid #cbd5e1', textAlign: 'center', backgroundColor: '#e2e8f0' }}>Packing</th>
 
-                                        <th rowSpan="2" style={{ padding: '4px 6px', border: '1px solid #cbd5e1', textAlign: 'center', width: '55px', backgroundColor: '#f1f5f9' }}>Buffer</th>
-                                        <th rowSpan="2" style={{ padding: '4px 6px', border: '1px solid #cbd5e1', textAlign: 'center', width: '75px', backgroundColor: '#f1f5f9' }}>Status</th>
+                                        <th rowSpan="2" style={{ padding: '4px 6px', border: '1px solid #cbd5e1', textAlign: 'center', width: '60px', minWidth: '60px', backgroundColor: '#f1f5f9' }}>Buffer</th>
+                                        <th rowSpan="2" style={{ padding: '4px 6px', border: '1px solid #cbd5e1', textAlign: 'center', width: '85px', minWidth: '85px', backgroundColor: '#f1f5f9' }}>Status</th>
                                     </tr>
 
                                     {/* Level 2 Subheaders */}
                                     <tr style={{ backgroundColor: '#f1f5f9', color: '#475569', fontSize: '10px' }}>
-                                        <th style={{ padding: '3px 4px', border: '1px solid #cbd5e1', textAlign: 'center', width: '42px' }}>Wood</th>
-                                        <th style={{ padding: '3px 4px', border: '1px solid #cbd5e1', textAlign: 'center', width: '42px' }}>PreCut</th>
-                                        <th style={{ padding: '3px 4px', border: '1px solid #cbd5e1', textAlign: 'center', width: '45px' }} title="Outsource Days (Included in Total Days, dates unaffected)">OutSrc</th>
-                                        <th style={{ padding: '3px 4px', border: '1px solid #cbd5e1', textAlign: 'center', width: '42px' }}>Mach</th>
-                                        <th style={{ padding: '3px 4px', border: '1px solid #cbd5e1', textAlign: 'center', width: '48px' }}>CompStore</th>
-                                        <th style={{ padding: '3px 4px', border: '1px solid #cbd5e1', textAlign: 'center', width: '42px' }}>Assem</th>
-                                        <th style={{ padding: '3px 4px', border: '1px solid #cbd5e1', textAlign: 'center', width: '42px' }}>Metal</th>
-                                        <th style={{ padding: '3px 4px', border: '1px solid #cbd5e1', textAlign: 'center', width: '48px' }}>Upholstery</th>
-                                        <th style={{ padding: '3px 4px', border: '1px solid #cbd5e1', textAlign: 'center', width: '42px' }}>Sand</th>
-                                        <th style={{ padding: '3px 4px', border: '1px solid #cbd5e1', textAlign: 'center', width: '42px' }}>Polish</th>
-                                        <th style={{ padding: '3px 4px', border: '1px solid #cbd5e1', textAlign: 'center', width: '42px' }}>Fit</th>
-                                        <th style={{ padding: '3px 4px', border: '1px solid #cbd5e1', textAlign: 'center', width: '42px' }}>QC</th>
-                                        <th style={{ padding: '3px 4px', border: '1px solid #cbd5e1', textAlign: 'center', width: '45px' }}>FinalQC</th>
-                                        <th style={{ padding: '3px 4px', border: '1px solid #cbd5e1', textAlign: 'center', width: '42px' }}>Pack</th>
+                                        <th style={{ padding: '3px 4px', border: '1px solid #cbd5e1', textAlign: 'center', width: '54px', minWidth: '54px' }}>Wood</th>
+                                        <th style={{ padding: '3px 4px', border: '1px solid #cbd5e1', textAlign: 'center', width: '54px', minWidth: '54px' }}>PreCut</th>
+                                        <th style={{ padding: '3px 4px', border: '1px solid #cbd5e1', textAlign: 'center', width: '54px', minWidth: '54px' }} title="Outsource Days (Included in Total Days, dates unaffected)">OutSrc</th>
+                                        <th style={{ padding: '3px 4px', border: '1px solid #cbd5e1', textAlign: 'center', width: '54px', minWidth: '54px' }}>Mach</th>
+                                        <th style={{ padding: '3px 4px', border: '1px solid #cbd5e1', textAlign: 'center', width: '72px', minWidth: '72px' }}>CompStore</th>
+                                        <th style={{ padding: '3px 4px', border: '1px solid #cbd5e1', textAlign: 'center', width: '54px', minWidth: '54px' }}>Assem</th>
+                                        <th style={{ padding: '3px 4px', border: '1px solid #cbd5e1', textAlign: 'center', width: '54px', minWidth: '54px' }}>Metal</th>
+                                        <th style={{ padding: '3px 4px', border: '1px solid #cbd5e1', textAlign: 'center', width: '74px', minWidth: '74px' }}>Upholstery</th>
+                                        <th style={{ padding: '3px 4px', border: '1px solid #cbd5e1', textAlign: 'center', width: '54px', minWidth: '54px' }}>Sand</th>
+                                        <th style={{ padding: '3px 4px', border: '1px solid #cbd5e1', textAlign: 'center', width: '54px', minWidth: '54px' }}>Polish</th>
+                                        <th style={{ padding: '3px 4px', border: '1px solid #cbd5e1', textAlign: 'center', width: '54px', minWidth: '54px' }}>Fit</th>
+                                        <th style={{ padding: '3px 4px', border: '1px solid #cbd5e1', textAlign: 'center', width: '54px', minWidth: '54px' }}>QC</th>
+                                        <th style={{ padding: '3px 4px', border: '1px solid #cbd5e1', textAlign: 'center', width: '64px', minWidth: '64px' }}>FinalQC</th>
+                                        <th style={{ padding: '3px 4px', border: '1px solid #cbd5e1', textAlign: 'center', width: '54px', minWidth: '54px' }}>Pack</th>
 
                                         {/* 13 Stages IN / OUT Headers (26 cols) */}
-                                        <th style={{ padding: '3px 4px', border: '1px solid #cbd5e1', textAlign: 'center', minWidth: '95px' }}>IN</th>
-                                        <th style={{ padding: '3px 4px', border: '1px solid #cbd5e1', textAlign: 'center', minWidth: '95px' }}>OUT</th>
-                                        <th style={{ padding: '3px 4px', border: '1px solid #cbd5e1', textAlign: 'center', minWidth: '95px' }}>IN</th>
-                                        <th style={{ padding: '3px 4px', border: '1px solid #cbd5e1', textAlign: 'center', minWidth: '95px' }}>OUT</th>
-                                        <th style={{ padding: '3px 4px', border: '1px solid #cbd5e1', textAlign: 'center', minWidth: '95px' }}>IN</th>
-                                        <th style={{ padding: '3px 4px', border: '1px solid #cbd5e1', textAlign: 'center', minWidth: '95px' }}>OUT</th>
-                                        <th style={{ padding: '3px 4px', border: '1px solid #cbd5e1', textAlign: 'center', minWidth: '95px' }}>IN</th>
-                                        <th style={{ padding: '3px 4px', border: '1px solid #cbd5e1', textAlign: 'center', minWidth: '95px' }}>OUT</th>
-                                        <th style={{ padding: '3px 4px', border: '1px solid #cbd5e1', textAlign: 'center', minWidth: '95px' }}>IN</th>
-                                        <th style={{ padding: '3px 4px', border: '1px solid #cbd5e1', textAlign: 'center', minWidth: '95px' }}>OUT</th>
-                                        <th style={{ padding: '3px 4px', border: '1px solid #cbd5e1', textAlign: 'center', minWidth: '95px' }}>IN</th>
-                                        <th style={{ padding: '3px 4px', border: '1px solid #cbd5e1', textAlign: 'center', minWidth: '95px' }}>OUT</th>
-                                        <th style={{ padding: '3px 4px', border: '1px solid #cbd5e1', textAlign: 'center', minWidth: '95px' }}>IN</th>
-                                        <th style={{ padding: '3px 4px', border: '1px solid #cbd5e1', textAlign: 'center', minWidth: '95px' }}>OUT</th>
-                                        <th style={{ padding: '3px 4px', border: '1px solid #cbd5e1', textAlign: 'center', minWidth: '95px' }}>IN</th>
-                                        <th style={{ padding: '3px 4px', border: '1px solid #cbd5e1', textAlign: 'center', minWidth: '95px' }}>OUT</th>
-                                        <th style={{ padding: '3px 4px', border: '1px solid #cbd5e1', textAlign: 'center', minWidth: '95px' }}>IN</th>
-                                        <th style={{ padding: '3px 4px', border: '1px solid #cbd5e1', textAlign: 'center', minWidth: '95px' }}>OUT</th>
-                                        <th style={{ padding: '3px 4px', border: '1px solid #cbd5e1', textAlign: 'center', minWidth: '95px' }}>IN</th>
-                                        <th style={{ padding: '3px 4px', border: '1px solid #cbd5e1', textAlign: 'center', minWidth: '95px' }}>OUT</th>
-                                        <th style={{ padding: '3px 4px', border: '1px solid #cbd5e1', textAlign: 'center', minWidth: '95px' }}>IN</th>
-                                        <th style={{ padding: '3px 4px', border: '1px solid #cbd5e1', textAlign: 'center', minWidth: '95px' }}>OUT</th>
-                                        <th style={{ padding: '3px 4px', border: '1px solid #cbd5e1', textAlign: 'center', minWidth: '95px' }}>IN</th>
-                                        <th style={{ padding: '3px 4px', border: '1px solid #cbd5e1', textAlign: 'center', minWidth: '95px' }}>OUT</th>
-                                        <th style={{ padding: '3px 4px', border: '1px solid #cbd5e1', textAlign: 'center', minWidth: '95px' }}>IN</th>
-                                        <th style={{ padding: '3px 4px', border: '1px solid #cbd5e1', textAlign: 'center', minWidth: '95px' }}>OUT</th>
+                                        <th style={{ padding: '3px 4px', border: '1px solid #cbd5e1', textAlign: 'center', width: '115px', minWidth: '115px' }}>IN</th>
+                                        <th style={{ padding: '3px 4px', border: '1px solid #cbd5e1', textAlign: 'center', width: '115px', minWidth: '115px' }}>OUT</th>
+                                        <th style={{ padding: '3px 4px', border: '1px solid #cbd5e1', textAlign: 'center', width: '115px', minWidth: '115px' }}>IN</th>
+                                        <th style={{ padding: '3px 4px', border: '1px solid #cbd5e1', textAlign: 'center', width: '115px', minWidth: '115px' }}>OUT</th>
+                                        <th style={{ padding: '3px 4px', border: '1px solid #cbd5e1', textAlign: 'center', width: '115px', minWidth: '115px' }}>IN</th>
+                                        <th style={{ padding: '3px 4px', border: '1px solid #cbd5e1', textAlign: 'center', width: '115px', minWidth: '115px' }}>OUT</th>
+                                        <th style={{ padding: '3px 4px', border: '1px solid #cbd5e1', textAlign: 'center', width: '115px', minWidth: '115px' }}>IN</th>
+                                        <th style={{ padding: '3px 4px', border: '1px solid #cbd5e1', textAlign: 'center', width: '115px', minWidth: '115px' }}>OUT</th>
+                                        <th style={{ padding: '3px 4px', border: '1px solid #cbd5e1', textAlign: 'center', width: '115px', minWidth: '115px' }}>IN</th>
+                                        <th style={{ padding: '3px 4px', border: '1px solid #cbd5e1', textAlign: 'center', width: '115px', minWidth: '115px' }}>OUT</th>
+                                        <th style={{ padding: '3px 4px', border: '1px solid #cbd5e1', textAlign: 'center', width: '115px', minWidth: '115px' }}>IN</th>
+                                        <th style={{ padding: '3px 4px', border: '1px solid #cbd5e1', textAlign: 'center', width: '115px', minWidth: '115px' }}>OUT</th>
+                                        <th style={{ padding: '3px 4px', border: '1px solid #cbd5e1', textAlign: 'center', width: '115px', minWidth: '115px' }}>IN</th>
+                                        <th style={{ padding: '3px 4px', border: '1px solid #cbd5e1', textAlign: 'center', width: '115px', minWidth: '115px' }}>OUT</th>
+                                        <th style={{ padding: '3px 4px', border: '1px solid #cbd5e1', textAlign: 'center', width: '115px', minWidth: '115px' }}>IN</th>
+                                        <th style={{ padding: '3px 4px', border: '1px solid #cbd5e1', textAlign: 'center', width: '115px', minWidth: '115px' }}>OUT</th>
+                                        <th style={{ padding: '3px 4px', border: '1px solid #cbd5e1', textAlign: 'center', width: '115px', minWidth: '115px' }}>IN</th>
+                                        <th style={{ padding: '3px 4px', border: '1px solid #cbd5e1', textAlign: 'center', width: '115px', minWidth: '115px' }}>OUT</th>
+                                        <th style={{ padding: '3px 4px', border: '1px solid #cbd5e1', textAlign: 'center', width: '115px', minWidth: '115px' }}>IN</th>
+                                        <th style={{ padding: '3px 4px', border: '1px solid #cbd5e1', textAlign: 'center', width: '115px', minWidth: '115px' }}>OUT</th>
+                                        <th style={{ padding: '3px 4px', border: '1px solid #cbd5e1', textAlign: 'center', width: '115px', minWidth: '115px' }}>IN</th>
+                                        <th style={{ padding: '3px 4px', border: '1px solid #cbd5e1', textAlign: 'center', width: '115px', minWidth: '115px' }}>OUT</th>
+                                        <th style={{ padding: '3px 4px', border: '1px solid #cbd5e1', textAlign: 'center', width: '115px', minWidth: '115px' }}>IN</th>
+                                        <th style={{ padding: '3px 4px', border: '1px solid #cbd5e1', textAlign: 'center', width: '115px', minWidth: '115px' }}>OUT</th>
+                                        <th style={{ padding: '3px 4px', border: '1px solid #cbd5e1', textAlign: 'center', width: '115px', minWidth: '115px' }}>IN</th>
+                                        <th style={{ padding: '3px 4px', border: '1px solid #cbd5e1', textAlign: 'center', width: '115px', minWidth: '115px' }}>OUT</th>
                                     </tr>
                                 </thead>
 
@@ -1542,41 +1569,41 @@ export const ProductionPlanningModal = ({
 
                                             return (
                                                 <tr 
-                                                    key={item.ContainerMasterLId || idx}
+                                                    key={item._rowKey || item.ContainerMasterLId || idx}
                                                     style={{ backgroundColor: rowBg, height: '28px' }}
                                                 >
-                                                    <td style={{ textAlign: 'center', border: '1px solid #e2e8f0', color: '#64748b', fontSize: '10px' }}>
+                                                    <td style={{ textAlign: 'center', border: '1px solid #e2e8f0', color: '#64748b', fontSize: '10px', width: '35px', minWidth: '35px' }}>
                                                         {idx + 1}
                                                     </td>
-                                                    <td style={{ border: '1px solid #e2e8f0', fontWeight: 600, color: '#334155' }}>
+                                                    <td style={{ border: '1px solid #e2e8f0', fontWeight: 600, color: '#334155', width: '130px', minWidth: '130px', padding: '3px 6px', wordBreak: 'break-word' }} title={item.ContainerNumber}>
                                                         {item.ContainerNumber || '-'}
                                                     </td>
-                                                    <td style={{ border: '1px solid #e2e8f0', color: '#1e293b' }}>
+                                                    <td style={{ border: '1px solid #e2e8f0', color: '#1e293b', width: '100px', minWidth: '100px', padding: '3px 6px', whiteSpace: 'nowrap' }} title={item.ContractNo}>
                                                         {item.ContractNo || '-'}
                                                     </td>
-                                                    <td style={{ border: '1px solid #e2e8f0', fontFamily: 'monospace', color: '#0f172a' }}>
+                                                    <td style={{ border: '1px solid #e2e8f0', fontFamily: 'monospace', color: '#0f172a', width: '90px', minWidth: '90px', padding: '3px 6px', whiteSpace: 'nowrap' }}>
                                                         {item.ItemCode || '-'}
                                                     </td>
-                                                    <td style={{ border: '1px solid #e2e8f0', maxWidth: '200px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={item.ItemName}>
+                                                    <td style={{ border: '1px solid #e2e8f0', minWidth: '220px', maxWidth: '280px', padding: '3px 6px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={item.ItemName}>
                                                         {item.ItemName || '-'}
                                                     </td>
-                                                    <td style={{ textAlign: 'center', border: '1px solid #e2e8f0', fontWeight: 600 }}>
+                                                    <td style={{ textAlign: 'center', border: '1px solid #e2e8f0', fontWeight: 600, width: '50px', minWidth: '50px', padding: '3px 4px' }}>
                                                         {item.Quantity || 0}
                                                     </td>
 
                                                     {/* Inspection Date Cell (Col Index 0) */}
-                                                    <td style={{ border: '1px solid #e2e8f0', padding: '1px 2px' }}>
+                                                    <td style={{ border: '1px solid #e2e8f0', padding: '1px 2px', width: '115px', minWidth: '115px' }}>
                                                         <input 
                                                             id={`cell-${idx}-0`}
                                                             type="date"
-                                                            value={item.InspectionDate ? String(item.InspectionDate).split('T')[0] : ''}
-                                                            onChange={e => handleDateCellChange(item.ContainerMasterLId, 'InspectionDate', e.target.value)}
+                                                            value={toStandardDateStr(item.InspectionDate) || ''}
+                                                            onChange={e => handleDateCellChange(item._rowKey || item.ContainerMasterLId, 'InspectionDate', e.target.value)}
                                                             onFocus={e => e.target.select()}
                                                             onKeyDown={e => handleCellKeyDown(e, idx, 0, filteredItems.length)}
                                                             className="desktop-cell-input"
                                                             style={{ 
                                                                 width: '100%', 
-                                                                minWidth: '95px',
+                                                                minWidth: '110px',
                                                                 height: '22px', 
                                                                 fontSize: '11px', 
                                                                 border: '1px solid #cbd5e1', 
@@ -1592,19 +1619,29 @@ export const ProductionPlanningModal = ({
                                                     {/* Department Inputs: Wood to Pack (Col Indices 1 to 14) */}
                                                     {EDITABLE_COLS.slice(1, 15).map((dept, deptIdx) => {
                                                         const colIdx = deptIdx + 1; // 1 to 14
+                                                        const colWidth = dept.width || '54px';
                                                         return (
-                                                            <td key={dept.key} style={{ border: '1px solid #e2e8f0', padding: '1px 2px' }}>
+                                                            <td 
+                                                                key={dept.key} 
+                                                                style={{ 
+                                                                    border: '1px solid #e2e8f0', 
+                                                                    padding: '1px 2px',
+                                                                    width: colWidth,
+                                                                    minWidth: colWidth
+                                                                }}
+                                                            >
                                                                 <input 
                                                                     id={`cell-${idx}-${colIdx}`}
                                                                     type="number"
                                                                     min="0"
-                                                                    value={item[dept.key] === 0 ? 0 : item[dept.key]}
-                                                                    onChange={e => handleDayChange(item.ContainerMasterLId, dept.key, e.target.value)}
+                                                                    value={item[dept.key] !== undefined && item[dept.key] !== null ? item[dept.key] : ''}
+                                                                    onChange={e => handleDayChange(item._rowKey || item.ContainerMasterLId, dept.key, e.target.value)}
                                                                     onFocus={e => e.target.select()}
                                                                     onKeyDown={e => handleCellKeyDown(e, idx, colIdx, filteredItems.length)}
                                                                     className="desktop-cell-input"
                                                                     style={{ 
                                                                         width: '100%', 
+                                                                        minWidth: '40px',
                                                                         height: '22px', 
                                                                         textAlign: 'center', 
                                                                         fontSize: '11px', 
@@ -1620,30 +1657,38 @@ export const ProductionPlanningModal = ({
                                                     })}
 
                                                     {/* Computed Output Total Days */}
-                                                    <td style={{ textAlign: 'center', border: '1px solid #e2e8f0', fontWeight: 600, backgroundColor: '#f8fafc' }}>
+                                                    <td style={{ textAlign: 'center', border: '1px solid #e2e8f0', fontWeight: 600, backgroundColor: '#f8fafc', width: '55px', minWidth: '55px', whiteSpace: 'nowrap' }}>
                                                         {item.TotalLeadDays}d
                                                     </td>
 
                                                     {/* Department Date Inputs (Col Indices 15 to 40) */}
                                                     {EDITABLE_COLS.slice(15).map((dateCol, dateIdx) => {
                                                         const colIdx = dateIdx + 15; // 15 to 40
-                                                        const rawVal = item[dateCol.key];
-                                                        const dateVal = rawVal ? String(rawVal).split('T')[0] : '';
-                                                        const isLateFinalQc = dateCol.key === 'FinalQcOut' && item.InspectionDate && dateVal && dateVal > String(item.InspectionDate).split('T')[0];
+                                                        const dateVal = toStandardDateStr(item[dateCol.key]) || '';
+                                                        const targetInsp = toStandardDateStr(item.InspectionDate);
+                                                        const isLateFinalQc = dateCol.key === 'FinalQcOut' && targetInsp && dateVal && dateVal > targetInsp;
 
                                                         return (
-                                                            <td key={dateCol.key} style={{ border: '1px solid #e2e8f0', padding: '1px 2px' }}>
+                                                            <td 
+                                                                key={dateCol.key} 
+                                                                style={{ 
+                                                                    border: '1px solid #e2e8f0', 
+                                                                    padding: '1px 2px',
+                                                                    width: '115px',
+                                                                    minWidth: '115px'
+                                                                }}
+                                                            >
                                                                 <input 
                                                                     id={`cell-${idx}-${colIdx}`}
                                                                     type="date"
                                                                     value={dateVal}
-                                                                    onChange={e => handleDateCellChange(item.ContainerMasterLId, dateCol.key, e.target.value)}
+                                                                    onChange={e => handleDateCellChange(item._rowKey || item.ContainerMasterLId, dateCol.key, e.target.value)}
                                                                     onFocus={e => e.target.select()}
                                                                     onKeyDown={e => handleCellKeyDown(e, idx, colIdx, filteredItems.length)}
                                                                     className="desktop-cell-input"
                                                                     style={{ 
                                                                         width: '100%', 
-                                                                        minWidth: '95px',
+                                                                        minWidth: '110px',
                                                                         height: '22px', 
                                                                         fontSize: '11px', 
                                                                         border: isLateFinalQc ? '2px solid #ef4444' : '1px solid #cbd5e1', 
@@ -1654,19 +1699,19 @@ export const ProductionPlanningModal = ({
                                                                         fontWeight: isLateFinalQc ? 600 : 'normal',
                                                                         textAlign: 'center'
                                                                     }}
-                                                                    title={isLateFinalQc ? `⚠️ Final QC Date (${dateVal}) must be <= Inspection Date (${String(item.InspectionDate).split('T')[0]})!` : `${dateCol.label} - Click to change date`}
+                                                                    title={isLateFinalQc ? `⚠️ Final QC Date (${dateVal}) must be <= Inspection Date (${targetInsp})!` : `${dateCol.label} - Click to change date`}
                                                                 />
                                                             </td>
                                                         );
                                                     })}
 
                                                     {/* Days With Buffer */}
-                                                    <td style={{ textAlign: 'center', border: '1px solid #e2e8f0', backgroundColor: '#f8fafc', color: '#475569' }}>
+                                                    <td style={{ textAlign: 'center', border: '1px solid #e2e8f0', backgroundColor: '#f8fafc', color: '#475569', width: '60px', minWidth: '60px', whiteSpace: 'nowrap' }}>
                                                         {item.DaysWithBuffer ? `${item.DaysWithBuffer}d` : '-'}
                                                     </td>
 
                                                     {/* Status Badge */}
-                                                    <td style={{ textAlign: 'center', border: '1px solid #e2e8f0', backgroundColor: '#f8fafc' }}>
+                                                    <td style={{ textAlign: 'center', border: '1px solid #e2e8f0', backgroundColor: '#f8fafc', width: '85px', minWidth: '85px', whiteSpace: 'nowrap' }}>
                                                         {item.IsFinalQcDelayed ? (
                                                             <span className="badge" style={{ backgroundColor: '#ef4444', color: '#fff', fontSize: '10px', padding: '3px 6px' }} title="Final QC Date exceeds Target Inspection Date!">
                                                                 ⚠️ QC Late
