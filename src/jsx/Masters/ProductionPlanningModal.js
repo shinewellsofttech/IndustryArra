@@ -105,16 +105,6 @@ const getNextWorkDay = (dateInput) => {
     return formatLocalDate(d);
 };
 
-// Previous working day skipping Sunday (e.g., Sunday -> Saturday)
-const getPrevWorkDay = (dateInput) => {
-    let d = parseLocalDate(dateInput);
-    if (!d) return null;
-    while (d.getDay() === 0) {
-        d.setDate(d.getDate() - 1);
-    }
-    return formatLocalDate(d);
-};
-
 // Add or subtract work days, strictly skipping Sundays
 const addWorkDays = (dateInput, days) => {
     if (!dateInput) return null;
@@ -165,15 +155,6 @@ const getStageOut = (stageIn, days) => {
     const validIn = getNextWorkDay(stageIn);
     if (d <= 0) return validIn;
     return addWorkDays(validIn, d - 1);
-};
-
-// Backward stage date calculator (Inclusive: Last day is stageOut, First day is stageOut - (days-1) work days)
-const getStageIn = (stageOut, days) => {
-    if (!stageOut) return null;
-    const d = parseInt(days || 0, 10);
-    const validOut = getPrevWorkDay(stageOut);
-    if (d <= 0) return validOut;
-    return addWorkDays(validOut, -(d - 1));
 };
 
 // 13 Active Production Stages (including new Component Store, Metal & Upholstery)
@@ -422,10 +403,16 @@ export const ProductionPlanningModal = ({
         let metalIn = null, metalOut = null;
         let upholsteryIn = null, upholsteryOut = null;
 
-        // Primary scheduling mode: If user has explicitly provided WoodIssueIn manually, forward schedule from WoodIssueIn.
-        // Otherwise, reverse schedule from InspectionDate so FinalQcOut <= InspectionDate.
+        // Core Formula: WoodIssue In Date = Inspection Date - Total Days (skipping Sundays)
         if (item.IsManualWoodIssueIn && woodIssueInAnchor) {
             woodIssueIn = getNextWorkDay(woodIssueInAnchor);
+        } else if (inspectionDate) {
+            woodIssueIn = addWorkDays(inspectionDate, -totalLeadDays);
+        } else if (woodIssueInAnchor) {
+            woodIssueIn = getNextWorkDay(woodIssueInAnchor);
+        }
+
+        if (woodIssueIn) {
             woodIssueOut = getStageOut(woodIssueIn, woodDays);
 
             preCutIn = addWorkDays(woodIssueOut, 1);
@@ -448,92 +435,6 @@ export const ProductionPlanningModal = ({
             metalOut = getStageOut(metalIn, metalDays);
 
             // 2. Upholstery start date = Assembly start date
-            upholsteryIn = assemIn;
-            upholsteryOut = getStageOut(upholsteryIn, upholsteryDays);
-
-            sandIn = addWorkDays(assemOut, 1);
-            sandOut = getStageOut(sandIn, sandDays);
-
-            polishIn = addWorkDays(sandOut, 1);
-            polishOut = getStageOut(polishIn, polishDays);
-
-            fitIn = addWorkDays(polishOut, 1);
-            fitOut = getStageOut(fitIn, fitDays);
-
-            qcIn = addWorkDays(fitOut, 1);
-            qcOut = getStageOut(qcIn, qcDays);
-
-            finalQcIn = addWorkDays(qcOut, 1);
-            finalQcOut = getStageOut(finalQcIn, finalQcDays);
-
-            packIn = addWorkDays(finalQcOut, 1);
-            packOut = getStageOut(packIn, packDays);
-        } else if (inspectionDate) {
-            // Reverse schedule from InspectionDate so FinalQcOut <= InspectionDate
-            finalQcOut = getPrevWorkDay(inspectionDate);
-            finalQcIn = getStageIn(finalQcOut, finalQcDays);
-
-            qcOut = addWorkDays(finalQcIn, -1);
-            qcIn = getStageIn(qcOut, qcDays);
-
-            fitOut = addWorkDays(qcIn, -1);
-            fitIn = getStageIn(fitOut, fitDays);
-
-            polishOut = addWorkDays(fitIn, -1);
-            polishIn = getStageIn(polishOut, polishDays);
-
-            sandOut = addWorkDays(polishIn, -1);
-            sandIn = getStageIn(sandOut, sandDays);
-
-            assemOut = addWorkDays(sandIn, -1);
-            assemIn = getStageIn(assemOut, assemDays);
-
-            compStoreOut = addWorkDays(assemIn, -1);
-            compStoreIn = getStageIn(compStoreOut, compStoreDays);
-
-            machOut = addWorkDays(compStoreIn, -1);
-            machIn = getStageIn(machOut, machDays);
-
-            // Precutting OUT Date = Machine IN Date - No of Outsource days (skipping Sunday)
-            const outSourceGap = outSourceDays > 0 ? outSourceDays : 1;
-            preCutOut = addWorkDays(machIn, -outSourceGap);
-            preCutIn = getStageIn(preCutOut, preCutDays);
-
-            woodIssueOut = addWorkDays(preCutIn, -1);
-            woodIssueIn = getStageIn(woodIssueOut, woodDays);
-
-            // Forward Packing stage (after Final QC):
-            packIn = addWorkDays(finalQcOut, 1);
-            packOut = getStageOut(packIn, packDays);
-
-            // Parallel branches:
-            // 1. Metal start date = Machine start date
-            metalIn = machIn;
-            metalOut = getStageOut(metalIn, metalDays);
-
-            // 2. Upholstery start date = Assembly start date
-            upholsteryIn = assemIn;
-            upholsteryOut = getStageOut(upholsteryIn, upholsteryDays);
-        } else if (woodIssueInAnchor) {
-            woodIssueIn = getNextWorkDay(woodIssueInAnchor);
-            woodIssueOut = getStageOut(woodIssueIn, woodDays);
-
-            preCutIn = addWorkDays(woodIssueOut, 1);
-            preCutOut = getStageOut(preCutIn, preCutDays);
-
-            const outSourceGap = outSourceDays > 0 ? outSourceDays : 1;
-            machIn = addWorkDays(preCutOut, outSourceGap);
-            machOut = getStageOut(machIn, machDays);
-
-            compStoreIn = addWorkDays(machOut, 1);
-            compStoreOut = getStageOut(compStoreIn, compStoreDays);
-
-            assemIn = addWorkDays(compStoreOut, 1);
-            assemOut = getStageOut(assemIn, assemDays);
-
-            metalIn = machIn;
-            metalOut = getStageOut(metalIn, metalDays);
-
             upholsteryIn = assemIn;
             upholsteryOut = getStageOut(upholsteryIn, upholsteryDays);
 
