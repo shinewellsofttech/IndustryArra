@@ -202,12 +202,13 @@ export const ProductionPlanningModal = ({
      * Scheduling Engine (Days -> Dates):
      * Reverse schedules from InspectionDate to determine WoodIssueIn,
      * then cascades forward through all 10 stages with +1 day buffer.
-     * OUT SOURCE JOB is strictly informational and excluded from date calculations.
+     * OUT SOURCE JOB days are added to TotalLeadDays as requested,
+     * but strictly excluded from stage date cascades (dates remain unaffected).
      */
     const calculateScheduleFromDays = (item) => {
         const woodDays = parseInt(item.WoodIssueDays, 10) || 0;
         const preCutDays = parseInt(item.PreCuttingDays, 10) || 0;
-        const outSourceDays = parseInt(item.OutSourceDays, 10) || 0; // Excluded from calculation
+        const outSourceDays = parseInt(item.OutSourceDays, 10) || 0;
         const machDays = parseInt(item.MachiningDays, 10) || 0;
         const assemDays = parseInt(item.AssemblyDays, 10) || 0;
         const sandDays = parseInt(item.SandingDays, 10) || 0;
@@ -217,18 +218,22 @@ export const ProductionPlanningModal = ({
         const finalQcDays = parseInt(item.FinalQcDays, 10) || 0;
         const packDays = parseInt(item.PackingDays, 10) || 0;
 
-        // Total Lead Days excludes OutSourceDays as instructed
-        const totalLeadDays = woodDays + preCutDays + machDays + assemDays + sandDays + 
+        // Internal production lead days used ONLY for stage date cascading & reverse scheduling (strictly excludes OutSourceDays so dates are NOT affected):
+        const productionLeadDays = woodDays + preCutDays + machDays + assemDays + sandDays + 
                               polishDays + fitDays + qcDays + finalQcDays + packDays;
+
+        // Total Lead Days displayed in the Total column before dates (includes OutSourceDays as requested):
+        const totalLeadDays = productionLeadDays + outSourceDays;
 
         const inspectionDate = item.InspectionDate ? String(item.InspectionDate).split('T')[0] : null;
 
         let woodIssueIn = item.WoodIssueIn ? String(item.WoodIssueIn).split('T')[0] : null;
 
-        // Reverse scheduling: Wood Issue IN = InspectionDate - TotalLeadDays
-        if (inspectionDate && totalLeadDays > 0) {
+        // Reverse scheduling: Wood Issue IN = InspectionDate - productionLeadDays
+        // (Dates par koi farak nahi padega - Outsource days is NOT subtracted from InspectionDate!)
+        if (inspectionDate && productionLeadDays > 0) {
             if (!woodIssueIn) {
-                woodIssueIn = addDays(inspectionDate, -totalLeadDays);
+                woodIssueIn = addDays(inspectionDate, -productionLeadDays);
             }
         }
 
@@ -354,9 +359,20 @@ export const ProductionPlanningModal = ({
 
             // 1. If user changes Target Inspection Date:
             if (fieldKey === 'InspectionDate') {
-                const totalDays = updated.TotalLeadDays || 0;
-                if (val && totalDays > 0) {
-                    updated.WoodIssueIn = addDays(val, -totalDays);
+                const prodDays = 
+                    (parseInt(updated.WoodIssueDays, 10) || 0) +
+                    (parseInt(updated.PreCuttingDays, 10) || 0) +
+                    (parseInt(updated.MachiningDays, 10) || 0) +
+                    (parseInt(updated.AssemblyDays, 10) || 0) +
+                    (parseInt(updated.SandingDays, 10) || 0) +
+                    (parseInt(updated.PolishDays, 10) || 0) +
+                    (parseInt(updated.FittingDays, 10) || 0) +
+                    (parseInt(updated.QcDays, 10) || 0) +
+                    (parseInt(updated.FinalQcDays, 10) || 0) +
+                    (parseInt(updated.PackingDays, 10) || 0);
+
+                if (val && prodDays > 0) {
+                    updated.WoodIssueIn = addDays(val, -prodDays);
                 }
                 return calculateScheduleFromDays(updated);
             }
@@ -402,8 +418,8 @@ export const ProductionPlanningModal = ({
                     }
                 }
 
-                // Re-calculate total days (STRICTLY EXCLUDING OutSourceDays)
-                const total = 
+                // Re-calculate total days (INCLUDES OutSourceDays in total lead days, dates unaffected)
+                const prodTotal = 
                     (parseInt(updated.WoodIssueDays, 10) || 0) +
                     (parseInt(updated.PreCuttingDays, 10) || 0) +
                     (parseInt(updated.MachiningDays, 10) || 0) +
@@ -415,7 +431,8 @@ export const ProductionPlanningModal = ({
                     (parseInt(updated.FinalQcDays, 10) || 0) +
                     (parseInt(updated.PackingDays, 10) || 0);
 
-                updated.TotalLeadDays = total;
+                const outSourceDays = parseInt(updated.OutSourceDays, 10) || 0;
+                updated.TotalLeadDays = prodTotal + outSourceDays;
 
                 if (updated.PackingOut && updated.WoodIssueIn) {
                     updated.DaysWithBuffer = getDayDifference(updated.PackingOut, updated.WoodIssueIn);
@@ -801,8 +818,8 @@ export const ProductionPlanningModal = ({
                     ? Math.max(0, getDayDifference(item.PackingOut, item.PackingIn))
                     : (parseInt(item.PackingDays, 10) || 0);
 
-                // TOTAL LEAD DAYS STRICTLY EXCLUDES OutSourceDays
-                const totalLead = wood + preCut + mach + assem + sand + polish + fit + qc + finalQc + pack;
+                // TOTAL LEAD DAYS INCLUDES OutSourceDays as requested, dates unaffected
+                const totalLead = wood + preCut + outSource + mach + assem + sand + polish + fit + qc + finalQc + pack;
 
                 let daysWithBuffer = 0;
                 if (item.PackingOut && item.WoodIssueIn) {
@@ -1138,7 +1155,7 @@ export const ProductionPlanningModal = ({
                                     <tr style={{ backgroundColor: '#f1f5f9', color: '#475569', fontSize: '10px' }}>
                                         <th style={{ padding: '3px 4px', border: '1px solid #cbd5e1', textAlign: 'center', width: '42px' }}>Wood</th>
                                         <th style={{ padding: '3px 4px', border: '1px solid #cbd5e1', textAlign: 'center', width: '42px' }}>PreCut</th>
-                                        <th style={{ padding: '3px 4px', border: '1px solid #cbd5e1', textAlign: 'center', width: '45px', color: '#64748b' }} title="Outsource Job (Informational save only, dates unaffected)">OutSrc*</th>
+                                        <th style={{ padding: '3px 4px', border: '1px solid #cbd5e1', textAlign: 'center', width: '45px' }} title="Outsource Days (Included in Total Days, dates unaffected)">OutSrc</th>
                                         <th style={{ padding: '3px 4px', border: '1px solid #cbd5e1', textAlign: 'center', width: '42px' }}>Mach</th>
                                         <th style={{ padding: '3px 4px', border: '1px solid #cbd5e1', textAlign: 'center', width: '42px' }}>Assem</th>
                                         <th style={{ padding: '3px 4px', border: '1px solid #cbd5e1', textAlign: 'center', width: '42px' }}>Sand</th>
@@ -1254,10 +1271,10 @@ export const ProductionPlanningModal = ({
                                                                         fontSize: '11px', 
                                                                         border: '1px solid #cbd5e1', 
                                                                         borderRadius: '2px',
-                                                                        backgroundColor: dept.isInfo ? '#f8fafc' : '#fff',
-                                                                        color: dept.isInfo ? '#64748b' : '#0f172a'
+                                                                        backgroundColor: '#fff',
+                                                                        color: '#0f172a'
                                                                     }}
-                                                                    title={dept.isInfo ? 'Outsource Job (Informational save only - excluded from lead days)' : dept.label}
+                                                                    title={dept.key === 'OutSourceDays' ? 'Outsource Days (Included in Total Days - dates unaffected)' : dept.label}
                                                                 />
                                                             </td>
                                                         );
@@ -1335,7 +1352,7 @@ export const ProductionPlanningModal = ({
             <Modal.Footer style={{ background: '#f8fafc', padding: '6px 16px', borderTop: '1px solid #e2e8f0' }}>
                 <div className="d-flex align-items-center justify-content-between w-100 flex-wrap gap-2">
                     <span style={{ fontSize: '11px', color: '#475569' }}>
-                        ⌨️ <strong>Navigation:</strong> <kbd>↑</kbd><kbd>↓</kbd><kbd>←</kbd><kbd>→</kbd> Move cells | <kbd>Enter</kbd> Down | <kbd>Tab</kbd> Right | <kbd>Ctrl+D</kbd> Fill Down | <kbd>Ctrl+S</kbd> Save Plan | <em>*Dates &amp; Days match automatically. Outsource Job is excluded from lead calculation.</em>
+                        ⌨️ <strong>Navigation:</strong> <kbd>↑</kbd><kbd>↓</kbd><kbd>←</kbd><kbd>→</kbd> Move cells | <kbd>Enter</kbd> Down | <kbd>Tab</kbd> Right | <kbd>Ctrl+D</kbd> Fill Down | <kbd>Ctrl+S</kbd> Save Plan | <em>*Dates &amp; Days match automatically. Outsource days are added in Total Days, dates remain unaffected.</em>
                     </span>
                     <div className="d-flex gap-2">
                         <Button 
