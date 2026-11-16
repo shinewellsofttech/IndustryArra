@@ -224,6 +224,40 @@ const EDITABLE_COLS = [
     { key: 'PackingOut', label: 'Pack OUT', isDate: true, width: '115px' },
 ];
 
+// Helper to reliably retrieve JWT auth token and User ID from authUser/userDetails/localStorage
+const getAuthDetails = () => {
+    try {
+        const authUser = JSON.parse(localStorage.getItem('authUser') || '{}');
+        const userDetails = JSON.parse(localStorage.getItem('userDetails') || '{}');
+        
+        const token = authUser?.jwtToken || authUser?.token || authUser?.accessToken || authUser?.UserToken || authUser?.UserTokenNew ||
+                      userDetails?.idToken || userDetails?.token ||
+                      localStorage.getItem('token') || localStorage.getItem('authToken') || localStorage.getItem('userToken') || localStorage.getItem('jwtToken') || '';
+
+        const userId = authUser?.id || authUser?.Id || authUser?.ID || authUser?.UserId || authUser?.userId ||
+                       userDetails?.id || userDetails?.userId ||
+                       localStorage.getItem('userId') || '0';
+
+        return {
+            token: String(token || '').trim(),
+            userId: String(userId || '0').trim()
+        };
+    } catch (e) {
+        return {
+            token: String(localStorage.getItem('token') || '').trim(),
+            userId: String(localStorage.getItem('userId') || '0').trim()
+        };
+    }
+};
+
+const getAuthHeaders = () => {
+    const { token } = getAuthDetails();
+    return {
+        'Content-Type': 'application/json',
+        ...(token ? { Authorization: token.startsWith('Bearer ') ? token : `Bearer ${token}` } : {})
+    };
+};
+
 export const ProductionPlanningModal = ({
     show,
     onHide,
@@ -250,8 +284,7 @@ export const ProductionPlanningModal = ({
     const loadPlanningForSelectedItems = async () => {
         setLoading(true);
         try {
-            const token = localStorage.getItem('token') || localStorage.getItem('authToken') || '';
-            const userId = localStorage.getItem('userId') || '0';
+            const { userId } = getAuthDetails();
 
             // Collect unique container IDs
             const containerIds = Array.from(new Set(
@@ -264,7 +297,7 @@ export const ProductionPlanningModal = ({
                 try {
                     const url = `${API_WEB_URLS.BASE}ShipmentPlanning/GetPlan/0/${userId}/token?containerIds=${containerIds}`;
                     const res = await axios.get(url, {
-                        headers: { Authorization: token ? `Bearer ${token}` : '' }
+                        headers: getAuthHeaders()
                     });
 
                     if (res.data && res.data.Success && Array.isArray(res.data.Data)) {
@@ -281,9 +314,9 @@ export const ProductionPlanningModal = ({
 
             // Merge selected items with existing saved plans
             const merged = selectedItems.map((item, idx) => {
-                const lineId = String(item.F_ContainerMasterL || item.ContainerMasterLId || item.Id || item.RowNum || '');
-                const rowKey = String(item.F_ContainerMasterL || item.ContainerMasterLId || item.Id || item.RowNum || `item-${idx}`);
-                const saved = existingSavedMap.get(lineId) || {};
+                const lineId = String(item.F_ContainerMasterL || item.ContainerMasterLId || item.Id || '');
+                const rowKey = String(item.F_ContainerMasterL || item.ContainerMasterLId || item.Id || `item-${idx}`);
+                const saved = (lineId && existingSavedMap.get(lineId)) || {};
 
                 const initialObj = {
                     _rowKey: rowKey,
@@ -415,18 +448,18 @@ export const ProductionPlanningModal = ({
         if (woodIssueIn) {
             woodIssueOut = getStageOut(woodIssueIn, woodDays);
 
-            preCutIn = addWorkDays(woodIssueOut, 1);
+            preCutIn = preCutDays > 0 ? addWorkDays(woodIssueOut, 1) : woodIssueOut;
             preCutOut = getStageOut(preCutIn, preCutDays);
 
             // Machine IN Date = Precutting OUT Date + No of Outsource days (skipping Sunday)
             const outSourceGap = outSourceDays > 0 ? outSourceDays : 1;
-            machIn = addWorkDays(preCutOut, outSourceGap);
+            machIn = machDays > 0 ? addWorkDays(preCutOut, outSourceGap) : preCutOut;
             machOut = getStageOut(machIn, machDays);
 
-            compStoreIn = addWorkDays(machOut, 1);
+            compStoreIn = compStoreDays > 0 ? addWorkDays(machOut, 1) : machOut;
             compStoreOut = getStageOut(compStoreIn, compStoreDays);
 
-            assemIn = addWorkDays(compStoreOut, 1);
+            assemIn = assemDays > 0 ? addWorkDays(compStoreOut, 1) : compStoreOut;
             assemOut = getStageOut(assemIn, assemDays);
 
             // Parallel branches:
@@ -438,22 +471,22 @@ export const ProductionPlanningModal = ({
             upholsteryIn = assemIn;
             upholsteryOut = getStageOut(upholsteryIn, upholsteryDays);
 
-            sandIn = addWorkDays(assemOut, 1);
+            sandIn = sandDays > 0 ? addWorkDays(assemOut, 1) : assemOut;
             sandOut = getStageOut(sandIn, sandDays);
 
-            polishIn = addWorkDays(sandOut, 1);
+            polishIn = polishDays > 0 ? addWorkDays(sandOut, 1) : sandOut;
             polishOut = getStageOut(polishIn, polishDays);
 
-            fitIn = addWorkDays(polishOut, 1);
+            fitIn = fitDays > 0 ? addWorkDays(polishOut, 1) : polishOut;
             fitOut = getStageOut(fitIn, fitDays);
 
-            qcIn = addWorkDays(fitOut, 1);
+            qcIn = qcDays > 0 ? addWorkDays(fitOut, 1) : fitOut;
             qcOut = getStageOut(qcIn, qcDays);
 
-            finalQcIn = addWorkDays(qcOut, 1);
+            finalQcIn = finalQcDays > 0 ? addWorkDays(qcOut, 1) : qcOut;
             finalQcOut = getStageOut(finalQcIn, finalQcDays);
 
-            packIn = addWorkDays(finalQcOut, 1);
+            packIn = packDays > 0 ? addWorkDays(finalQcOut, 1) : finalQcOut;
             packOut = getStageOut(packIn, packDays);
         }
 
@@ -578,8 +611,9 @@ export const ProductionPlanningModal = ({
                     for (let i = machIdx + 1; i < serialStages.length; i++) {
                         const stage = serialStages[i];
                         if (prevOut) {
-                            updated[stage.inKey] = addWorkDays(prevOut, 1);
-                            updated[stage.outKey] = getStageOut(updated[stage.inKey], updated[stage.daysKey]);
+                            const stageDays = parseInt(updated[stage.daysKey], 10) || 0;
+                            updated[stage.inKey] = stageDays > 0 ? addWorkDays(prevOut, 1) : prevOut;
+                            updated[stage.outKey] = getStageOut(updated[stage.inKey], stageDays);
                             prevOut = updated[stage.outKey];
                         }
                     }
@@ -621,8 +655,9 @@ export const ProductionPlanningModal = ({
                     for (let i = assemIdx + 1; i < serialStages.length; i++) {
                         const stage = serialStages[i];
                         if (prevOut) {
-                            updated[stage.inKey] = addWorkDays(prevOut, 1);
-                            updated[stage.outKey] = getStageOut(updated[stage.inKey], updated[stage.daysKey]);
+                            const stageDays = parseInt(updated[stage.daysKey], 10) || 0;
+                            updated[stage.inKey] = stageDays > 0 ? addWorkDays(prevOut, 1) : prevOut;
+                            updated[stage.outKey] = getStageOut(updated[stage.inKey], stageDays);
                             prevOut = updated[stage.outKey];
                         }
                     }
@@ -680,16 +715,21 @@ export const ProductionPlanningModal = ({
                     updated.UpholsteryOut = getStageOut(updated.UpholsteryIn, updated.UpholsteryDays);
                 }
 
-                // Cascade forward to all subsequent serial stages (+1 work day buffer)
+                // Cascade forward to all subsequent serial stages (+1 work day buffer only if stageDays > 0)
                 let prevOut = updated[currentStage.outKey];
                 for (let i = changedStageIdx + 1; i < serialStages.length; i++) {
                     const stage = serialStages[i];
                     if (prevOut) {
-                        const gap = (stage.key === 'Machining')
-                            ? ((parseInt(updated.OutSourceDays, 10) || 0) > 0 ? parseInt(updated.OutSourceDays, 10) : 1)
-                            : 1;
-                        updated[stage.inKey] = addWorkDays(prevOut, gap);
-                        updated[stage.outKey] = getStageOut(updated[stage.inKey], updated[stage.daysKey]);
+                        const stageDays = parseInt(updated[stage.daysKey], 10) || 0;
+                        if (stageDays > 0) {
+                            const gap = (stage.key === 'Machining')
+                                ? ((parseInt(updated.OutSourceDays, 10) || 0) > 0 ? parseInt(updated.OutSourceDays, 10) : 1)
+                                : 1;
+                            updated[stage.inKey] = addWorkDays(prevOut, gap);
+                        } else {
+                            updated[stage.inKey] = prevOut;
+                        }
+                        updated[stage.outKey] = getStageOut(updated[stage.inKey], stageDays);
                         prevOut = updated[stage.outKey];
 
                         // Keep Metal aligned to Machine start date
@@ -983,26 +1023,26 @@ export const ProductionPlanningModal = ({
             // Col W: Wood Issue OUT = IF(G{r}<=1, V{r}, WORKDAY.INTL(V{r}, G${r}-1, 11))
             addDateCell('W', `IF(G${r}<=1, V${r}, WORKDAY.INTL(V${r}, G${r}-1, 11))`, item.WoodIssueOut);
 
-            // Col X: Pre Cutting IN = WORKDAY.INTL(W{r}, 1, 11) (+1 workday buffer)
-            addDateCell('X', `WORKDAY.INTL(W${r}, 1, 11)`, item.PreCuttingIn);
+            // Col X: Pre Cutting IN = IF(H{r}>0, WORKDAY.INTL(W{r}, 1, 11), W{r})
+            addDateCell('X', `IF(H${r}>0, WORKDAY.INTL(W${r}, 1, 11), W${r})`, item.PreCuttingIn);
 
             // Col Y: Pre Cutting OUT = IF(H{r}<=1, X{r}, WORKDAY.INTL(X${r}, H${r}-1, 11))
             addDateCell('Y', `IF(H${r}<=1, X${r}, WORKDAY.INTL(X${r}, H${r}-1, 11))`, item.PreCuttingOut);
 
-            // Col Z: Machining IN = Pre Cutting OUT + OutSource Days (skipping Sunday)
-            addDateCell('Z', `WORKDAY.INTL(Y${r}, IF(I${r}>0, I${r}, 1), 11)`, item.MachiningIn);
+            // Col Z: Machining IN = IF(J{r}>0, WORKDAY.INTL(Y{r}, IF(I{r}>0, I{r}, 1), 11), Y{r})
+            addDateCell('Z', `IF(J${r}>0, WORKDAY.INTL(Y${r}, IF(I${r}>0, I${r}, 1), 11), Y${r})`, item.MachiningIn);
 
             // Col AA: Machining OUT = IF(J{r}<=1, Z{r}, WORKDAY.INTL(Z${r}, J${r}-1, 11))
             addDateCell('AA', `IF(J${r}<=1, Z${r}, WORKDAY.INTL(Z${r}, J${r}-1, 11))`, item.MachiningOut);
 
-            // Col AB: Component Store IN = WORKDAY.INTL(AA{r}, 1, 11)
-            addDateCell('AB', `WORKDAY.INTL(AA${r}, 1, 11)`, item.ComponentStoreIn);
+            // Col AB: Component Store IN = IF(K{r}>0, WORKDAY.INTL(AA{r}, 1, 11), AA{r})
+            addDateCell('AB', `IF(K${r}>0, WORKDAY.INTL(AA${r}, 1, 11), AA${r})`, item.ComponentStoreIn);
 
             // Col AC: Component Store OUT = IF(K{r}<=1, AB${r}, WORKDAY.INTL(AB${r}, K${r}-1, 11))
             addDateCell('AC', `IF(K${r}<=1, AB${r}, WORKDAY.INTL(AB${r}, K${r}-1, 11))`, item.ComponentStoreOut);
 
-            // Col AD: Assembly IN = WORKDAY.INTL(AC{r}, 1, 11)
-            addDateCell('AD', `WORKDAY.INTL(AC${r}, 1, 11)`, item.AssemblyIn);
+            // Col AD: Assembly IN = IF(L{r}>0, WORKDAY.INTL(AC{r}, 1, 11), AC{r})
+            addDateCell('AD', `IF(L${r}>0, WORKDAY.INTL(AC${r}, 1, 11), AC${r})`, item.AssemblyIn);
 
             // Col AE: Assembly OUT = IF(L{r}<=1, AD${r}, WORKDAY.INTL(AD${r}, L${r}-1, 11))
             addDateCell('AE', `IF(L${r}<=1, AD${r}, WORKDAY.INTL(AD${r}, L${r}-1, 11))`, item.AssemblyOut);
@@ -1021,38 +1061,38 @@ export const ProductionPlanningModal = ({
             // Col AI: Upholstery OUT = IF(N{r}<=1, AH${r}, WORKDAY.INTL(AH${r}, N${r}-1, 11))
             addDateCell('AI', `IF(N${r}<=1, AH${r}, WORKDAY.INTL(AH${r}, N${r}-1, 11))`, item.UpholsteryOut);
 
-            // Col AJ: Sanding IN = WORKDAY.INTL(AE{r}, 1, 11) (After Assembly OUT)
-            addDateCell('AJ', `WORKDAY.INTL(AE${r}, 1, 11)`, item.SandingIn);
+            // Col AJ: Sanding IN = IF(O{r}>0, WORKDAY.INTL(AE{r}, 1, 11), AE{r})
+            addDateCell('AJ', `IF(O${r}>0, WORKDAY.INTL(AE${r}, 1, 11), AE${r})`, item.SandingIn);
 
             // Col AK: Sanding OUT = IF(O{r}<=1, AJ${r}, WORKDAY.INTL(AJ${r}, O${r}-1, 11))
             addDateCell('AK', `IF(O${r}<=1, AJ${r}, WORKDAY.INTL(AJ${r}, O${r}-1, 11))`, item.SandingOut);
 
-            // Col AL: Polish IN = WORKDAY.INTL(AK{r}, 1, 11)
-            addDateCell('AL', `WORKDAY.INTL(AK${r}, 1, 11)`, item.PolishIn);
+            // Col AL: Polish IN = IF(P{r}>0, WORKDAY.INTL(AK{r}, 1, 11), AK${r})
+            addDateCell('AL', `IF(P${r}>0, WORKDAY.INTL(AK${r}, 1, 11), AK${r})`, item.PolishIn);
 
             // Col AM: Polish OUT = IF(P{r}<=1, AL${r}, WORKDAY.INTL(AL${r}, P${r}-1, 11))
             addDateCell('AM', `IF(P${r}<=1, AL${r}, WORKDAY.INTL(AL${r}, P${r}-1, 11))`, item.PolishOut);
 
-            // Col AN: Fitting IN = WORKDAY.INTL(AM{r}, 1, 11)
-            addDateCell('AN', `WORKDAY.INTL(AM${r}, 1, 11)`, item.FittingIn);
+            // Col AN: Fitting IN = IF(Q{r}>0, WORKDAY.INTL(AM{r}, 1, 11), AM{r})
+            addDateCell('AN', `IF(Q${r}>0, WORKDAY.INTL(AM${r}, 1, 11), AM${r})`, item.FittingIn);
 
             // Col AO: Fitting OUT = IF(Q{r}<=1, AN${r}, WORKDAY.INTL(AN${r}, Q${r}-1, 11))
             addDateCell('AO', `IF(Q${r}<=1, AN${r}, WORKDAY.INTL(AN${r}, Q${r}-1, 11))`, item.FittingOut);
 
-            // Col AP: QC IN = WORKDAY.INTL(AO{r}, 1, 11)
-            addDateCell('AP', `WORKDAY.INTL(AO${r}, 1, 11)`, item.QcIn);
+            // Col AP: QC IN = IF(R{r}>0, WORKDAY.INTL(AO{r}, 1, 11), AO{r})
+            addDateCell('AP', `IF(R${r}>0, WORKDAY.INTL(AO${r}, 1, 11), AO${r})`, item.QcIn);
 
             // Col AQ: QC OUT = IF(R{r}<=1, AP{r}, WORKDAY.INTL(AP${r}, R{r}-1, 11))
             addDateCell('AQ', `IF(R${r}<=1, AP${r}, WORKDAY.INTL(AP${r}, R${r}-1, 11))`, item.QcOut);
 
-            // Col AR: Final QC IN = WORKDAY.INTL(AQ{r}, 1, 11)
-            addDateCell('AR', `WORKDAY.INTL(AQ${r}, 1, 11)`, item.FinalQcIn);
+            // Col AR: Final QC IN = IF(S{r}>0, WORKDAY.INTL(AQ{r}, 1, 11), AQ{r})
+            addDateCell('AR', `IF(S${r}>0, WORKDAY.INTL(AQ${r}, 1, 11), AQ${r})`, item.FinalQcIn);
 
             // Col AS: Final QC OUT = IF(S{r}<=1, AR{r}, WORKDAY.INTL(AR${r}, S{r}-1, 11))
             addDateCell('AS', `IF(S${r}<=1, AR${r}, WORKDAY.INTL(AR${r}, S${r}-1, 11))`, item.FinalQcOut);
 
-            // Col AT: Packing IN = WORKDAY.INTL(AS{r}, 1, 11)
-            addDateCell('AT', `WORKDAY.INTL(AS${r}, 1, 11)`, item.PackingIn);
+            // Col AT: Packing IN = IF(T{r}>0, WORKDAY.INTL(AS{r}, 1, 11), AS{r})
+            addDateCell('AT', `IF(T${r}>0, WORKDAY.INTL(AS${r}, 1, 11), AS${r})`, item.PackingIn);
 
             // Col AU: Packing OUT = IF(T{r}<=1, AT${r}, WORKDAY.INTL(AT${r}, T${r}-1, 11))
             addDateCell('AU', `IF(T${r}<=1, AT${r}, WORKDAY.INTL(AT${r}, T${r}-1, 11))`, item.PackingOut);
@@ -1187,7 +1227,7 @@ export const ProductionPlanningModal = ({
             return;
         }
 
-        // Strict Validation: Final QC Date must be on or before Target Inspection Date
+        // Check if any item has Final QC exceeding Inspection Date
         const lateQcItems = planItems.filter(item => {
             const insp = toStandardDateStr(item.InspectionDate);
             const qc = toStandardDateStr(item.FinalQcOut);
@@ -1195,16 +1235,17 @@ export const ProductionPlanningModal = ({
         });
 
         if (lateQcItems.length > 0) {
-            toast.error(
-                `❌ Validation Failed: Final QC Date must be on or before Inspection Date! Found ${lateQcItems.length} item(s) where Final QC exceeds Inspection Date. Please adjust dates before saving.`
+            const proceed = window.confirm(
+                `⚠️ Note: In ${lateQcItems.length} item(s), Final QC Date is after the Inspection Date (Target Deadline Exceeded).\n\nDo you want to save anyway?`
             );
-            return;
+            if (!proceed) {
+                return;
+            }
         }
 
         setSaving(true);
         try {
-            const token = localStorage.getItem('token') || localStorage.getItem('authToken') || '';
-            const userId = localStorage.getItem('userId') || '0';
+            const { userId } = getAuthDetails();
             const url = `${API_WEB_URLS.BASE}ShipmentPlanning/SavePlan/${userId}/token`;
 
             const getEffectiveDays = (inDate, outDate, currentDays) => {
@@ -1216,7 +1257,14 @@ export const ProductionPlanningModal = ({
                 return raw;
             };
 
-            const payloadData = planItems.map(item => {
+            const payloadData = [];
+            for (const item of planItems) {
+                const lineId = parseInt(item.ContainerMasterLId || item.F_ContainerMasterL || item.Id, 10);
+                if (!lineId || lineId <= 0) {
+                    console.warn('Skipping item without valid ContainerMasterLId:', item);
+                    continue;
+                }
+
                 // Ensure days match dates if both IN and OUT are set (inclusive working days, excluding Sundays)
                 const wood = getEffectiveDays(item.WoodIssueIn, item.WoodIssueOut, item.WoodIssueDays);
                 const preCut = getEffectiveDays(item.PreCuttingIn, item.PreCuttingOut, item.PreCuttingDays);
@@ -1241,9 +1289,11 @@ export const ProductionPlanningModal = ({
                     daysWithBuffer = getWorkDaysCount(item.PackingOut, item.WoodIssueIn);
                 }
 
-                return {
-                    ContainerMasterLId: item.ContainerMasterLId,
-                    ContainerId: item.ContainerId,
+                const isExceeded = (item.InspectionDate && item.FinalQcOut) ? (item.FinalQcOut > item.InspectionDate) : false;
+
+                payloadData.push({
+                    ContainerMasterLId: lineId,
+                    ContainerId: parseInt(item.ContainerId || item.F_ContainerMaster, 10) || 0,
                     WoodIssueDays: wood,
                     PreCuttingDays: preCut,
                     OutSourceDays: outSource,
@@ -1260,7 +1310,7 @@ export const ProductionPlanningModal = ({
                     PackingDays: pack,
                     TotalLeadDays: totalLead,
                     DaysWithBuffer: daysWithBuffer,
-                    IsDeadlineExceeded: false,
+                    IsDeadlineExceeded: isExceeded,
                     WoodIssueIn: item.WoodIssueIn,
                     WoodIssueOut: item.WoodIssueOut,
                     PreCuttingIn: item.PreCuttingIn,
@@ -1287,18 +1337,22 @@ export const ProductionPlanningModal = ({
                     FinalQcOut: item.FinalQcOut,
                     PackingIn: item.PackingIn,
                     PackingOut: item.PackingOut
-                };
-            });
+                });
+            }
 
-            const res = await axios.post(url, { Data: JSON.stringify(payloadData) }, {
-                headers: {
-                    Authorization: token ? `Bearer ${token}` : '',
-                    'Content-Type': 'application/json'
-                }
-            });
+            if (payloadData.length === 0) {
+                toast.error('❌ Cannot save: No valid shipment lines found with ContainerMasterL ID.');
+                return;
+            }
+
+            const res = await axios.post(
+                url,
+                { Data: JSON.stringify(payloadData) },
+                { headers: getAuthHeaders() }
+            );
 
             if (res.data && res.data.Success) {
-                toast.success(`✅ Saved ${planItems.length} items across all shipments successfully!`);
+                toast.success(`✅ Saved ${payloadData.length} items across all shipments successfully!`);
                 setOriginalItems(JSON.parse(JSON.stringify(planItems)));
                 if (onSuccess) onSuccess();
             } else {
@@ -1306,7 +1360,8 @@ export const ProductionPlanningModal = ({
             }
         } catch (err) {
             console.error('Error saving multi-shipment plan:', err);
-            toast.error('Error saving plan: ' + (err.response?.data?.Message || err.message));
+            const errMsg = err.response?.data?.Message || err.message;
+            toast.error('❌ Error saving plan: ' + errMsg);
         } finally {
             setSaving(false);
         }
