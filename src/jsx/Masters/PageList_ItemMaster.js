@@ -306,16 +306,16 @@ export const PageList_ItemMaster = () => {
 					  columnCount[trimmed] = (columnCount[trimmed] || 0) + 1;
 					  return `${trimmed}${columnCount[trimmed]}`;
 					}
-					if (upper.startsWith("L1")) return "L1";
-					if (upper.startsWith("W1")) return "W1";
-					if (upper.startsWith("T1")) return "T1";
-					if (upper.startsWith("QTY1")) return "QTY1";
-					if (upper.startsWith("L2")) return "L2";
-					if (upper.startsWith("W2")) return "W2";
-					if (upper.startsWith("T2")) return "T2";
-					if (upper.startsWith("QTY2") || upper.includes("REQ SHEET")) return "QTY2";
-					if (upper.includes("COMPONENT")) return "COMPONENT NAME";
-					if (upper.includes("CATEGORY")) return "CATEGORY";
+					if (upper === "L1" || upper.startsWith("L1 ")) return "L1";
+					if (upper === "W1" || upper.startsWith("W1 ")) return "W1";
+					if (upper === "T1" || upper.startsWith("T1 ")) return "T1";
+					if (upper === "QTY1" || upper.startsWith("QTY1 ")) return "QTY1";
+					if (upper === "L2" || upper.startsWith("L2 ")) return "L2";
+					if (upper === "W2" || upper.startsWith("W2 ")) return "W2";
+					if (upper === "T2" || upper.startsWith("T2 ")) return "T2";
+					if (upper === "QTY2" || upper.startsWith("QTY2 ") || upper.includes("REQ SHEET")) return "QTY2";
+					if (upper === "COMPONENT NAME" || upper === "COMPONENT" || upper === "COMPONENTNAME") return "COMPONENT NAME";
+					if (upper === "CATEGORY") return "CATEGORY";
 					if (upper.includes("PICTURE")) return "PICTURE";
 					return trimmed;
 				  });
@@ -614,8 +614,8 @@ export const PageList_ItemMaster = () => {
 					Status
 					<br />
 					<a 
-						href={`${process.env.PUBLIC_URL}/TEMPLATE_Item_Upload.xlsx`}
-						download="TEMPLATE_Item_Upload.xlsx"
+						href={`${process.env.PUBLIC_URL}/TEMPLATE_Item_Upload.xlsm`}
+						download="TEMPLATE_Item_Upload.xlsm"
 						className="badge bg-info text-decoration-none mt-1"
 						style={{ fontSize: '0.75rem', cursor: 'pointer' }}
 					>
