@@ -258,6 +258,32 @@ const getAuthHeaders = () => {
     };
 };
 
+// Helper to calculate problem status, overdue workdays, and friendly warning descriptions
+const enrichProblemStatus = (item) => {
+    if (!item) return item;
+    const insp = toStandardDateStr(item.InspectionDate);
+    const finalQc = toStandardDateStr(item.FinalQcOut);
+    const isDelayed = (insp && finalQc) ? (finalQc > insp) : false;
+    let overdueDays = 0;
+    let errorReason = '';
+    if (isDelayed && insp && finalQc) {
+        overdueDays = Math.max(1, getWorkDaysCount(finalQc, insp) - 1);
+        errorReason = `Final QC (${finalQc}) exceeds Insp Date (${insp}) by ${overdueDays} work day(s)`;
+    } else if (!insp) {
+        errorReason = 'Missing Inspection Date';
+    }
+    const hasProblem = isDelayed || !insp;
+
+    return {
+        ...item,
+        IsFinalQcDelayed: isDelayed,
+        IsDeadlineExceeded: isDelayed,
+        OverdueDays: overdueDays,
+        ErrorReason: errorReason,
+        HasProblem: hasProblem,
+    };
+};
+
 export const ProductionPlanningModal = ({
     show,
     onHide,
@@ -270,6 +296,7 @@ export const ProductionPlanningModal = ({
     const [originalItems, setOriginalItems] = useState([]);
     const [searchTerm, setSearchTerm] = useState('');
     const [selectedShipmentFilter, setSelectedShipmentFilter] = useState('ALL');
+    const [showOnlyProblems, setShowOnlyProblems] = useState(false);
 
     // Fetch existing planning data from DB for all selected container IDs
     useEffect(() => {
@@ -509,6 +536,15 @@ export const ProductionPlanningModal = ({
         }
 
         const isFinalQcDelayed = (inspectionDate && finalQcOut) ? (finalQcOut > inspectionDate) : false;
+        let overdueDays = 0;
+        let errorReason = '';
+        if (isFinalQcDelayed && inspectionDate && finalQcOut) {
+            overdueDays = Math.max(1, getWorkDaysCount(finalQcOut, inspectionDate) - 1);
+            errorReason = `Final QC (${finalQcOut}) exceeds Insp Date (${inspectionDate}) by ${overdueDays} work day(s)`;
+        } else if (!inspectionDate) {
+            errorReason = 'Missing Inspection Date';
+        }
+        const hasProblem = isFinalQcDelayed || !inspectionDate;
 
         return {
             ...item,
@@ -530,7 +566,9 @@ export const ProductionPlanningModal = ({
             DaysWithBuffer: daysWithBuffer,
             IsFinalQcDelayed: isFinalQcDelayed,
             IsDeadlineExceeded: isFinalQcDelayed,
-            OverdueDays: 0,
+            OverdueDays: overdueDays,
+            ErrorReason: errorReason,
+            HasProblem: hasProblem,
             IsManualWoodIssueIn: !!item.IsManualWoodIssueIn,
             InspectionDate: inspectionDate,
             WoodIssueIn: woodIssueIn,
@@ -639,9 +677,7 @@ export const ProductionPlanningModal = ({
                 if (updated.PackingOut && updated.WoodIssueIn) {
                     updated.DaysWithBuffer = getWorkDaysCount(updated.PackingOut, updated.WoodIssueIn);
                 }
-                updated.IsFinalQcDelayed = (updated.InspectionDate && updated.FinalQcOut) ? (updated.FinalQcOut > updated.InspectionDate) : false;
-                updated.IsDeadlineExceeded = updated.IsFinalQcDelayed;
-                return updated;
+                return enrichProblemStatus(updated);
             }
 
             if (fieldKey === 'MetalOut') {
@@ -678,9 +714,7 @@ export const ProductionPlanningModal = ({
                 if (updated.PackingOut && updated.WoodIssueIn) {
                     updated.DaysWithBuffer = getWorkDaysCount(updated.PackingOut, updated.WoodIssueIn);
                 }
-                updated.IsFinalQcDelayed = (updated.InspectionDate && updated.FinalQcOut) ? (updated.FinalQcOut > updated.InspectionDate) : false;
-                updated.IsDeadlineExceeded = updated.IsFinalQcDelayed;
-                return updated;
+                return enrichProblemStatus(updated);
             }
 
             if (fieldKey === 'UpholsteryOut') {
@@ -779,10 +813,7 @@ export const ProductionPlanningModal = ({
                     updated.DaysWithBuffer = getWorkDaysCount(updated.PackingOut, updated.WoodIssueIn);
                 }
 
-                updated.IsFinalQcDelayed = (updated.InspectionDate && updated.FinalQcOut) ? (updated.FinalQcOut > updated.InspectionDate) : false;
-                updated.IsDeadlineExceeded = updated.IsFinalQcDelayed;
-
-                return updated;
+                return enrichProblemStatus(updated);
             }
 
             return calculateScheduleFromDays(updated);
@@ -1130,7 +1161,7 @@ export const ProductionPlanningModal = ({
         toast.success(`📥 Template downloaded with ${planItems.length} items with dynamic formulas!`);
     };
 
-    // Excel Upload Handler: Direct inline update into the table!
+    // Smart Dynamic Excel Upload Handler: Auto-detects columns, maps data into table, and calculates dates
     const handleFileUpload = (e) => {
         const file = e.target.files[0];
         if (!file) return;
@@ -1144,81 +1175,211 @@ export const ProductionPlanningModal = ({
                 const ws = wb.Sheets[firstSheetName];
 
                 const aoa = XLSX.utils.sheet_to_json(ws, { header: 1, raw: false });
-                if (!aoa || aoa.length < 3) {
-                    toast.error('Invalid Excel file format: Must have headers in rows 1-2 and data starting at row 3.');
+                if (!aoa || aoa.length < 2) {
+                    toast.error('Invalid Excel file format: Must have headers and data rows.');
                     return;
                 }
+
+                // Detect header row index (usually row 0, but check first 5 rows)
+                let hRowIdx = 0;
+                for (let i = 0; i < Math.min(5, aoa.length); i++) {
+                    const rowStr = (aoa[i] || []).join(' ').toLowerCase();
+                    if (rowStr.includes('item') || rowStr.includes('insp') || rowStr.includes('cont') || rowStr.includes('wood')) {
+                        hRowIdx = i;
+                        break;
+                    }
+                }
+
+                const r0 = aoa[hRowIdx] || [];
+                const r1 = aoa[hRowIdx + 1] || [];
+                const cleanH = (val) => String(val || '').replace(/[\r\n\t]+/g, ' ').replace(/\s+/g, ' ').trim().toLowerCase();
+                const hasSubheaders = r1.some(c => {
+                    const s = String(c || '').trim().toUpperCase();
+                    return s === 'IN' || s === 'OUT';
+                });
+                const dataStartRow = hasSubheaders ? hRowIdx + 2 : hRowIdx + 1;
+
+                // Smart Dynamic Column Detectors
+                const findCol = (pattern) => {
+                    for (let c = 0; c < r0.length; c++) {
+                        const h0 = cleanH(r0[c]);
+                        if (pattern.test(h0)) return c;
+                    }
+                    return -1;
+                };
+
+                const usedDayCols = new Set();
+                const findDayColSequential = (pattern, fallbackIdx) => {
+                    for (let c = 0; c < r0.length; c++) {
+                        if (usedDayCols.has(c)) continue;
+                        const h0 = cleanH(r0[c]);
+                        const h1 = hasSubheaders ? cleanH(r1[c]) : '';
+                        if (pattern.test(h0) && !h1.includes('in') && !h1.includes('out')) {
+                            usedDayCols.add(c);
+                            return c;
+                        }
+                    }
+                    usedDayCols.add(fallbackIdx);
+                    return fallbackIdx;
+                };
+
+                const findDateCol = (pattern, isOut, fallbackIdx) => {
+                    if (!hasSubheaders) return fallbackIdx;
+                    for (let c = 0; c < r0.length; c++) {
+                        const h0 = cleanH(r0[c]);
+                        const h1 = cleanH(r1[c]);
+                        if (pattern.test(h0)) {
+                            if (isOut && (h1 === 'out' || h1.includes('out'))) return c;
+                            if (!isOut && (h1 === 'in' || h1.includes('in'))) return c;
+                        }
+                    }
+                    return fallbackIdx;
+                };
+
+                // Column index mappings
+                const colShipment = findCol(/cont|shipment/i);
+                const colItemCode = findCol(/item\s*(no|code)/i);
+                const colContract = findCol(/contract/i);
+                const colInspDate = findCol(/insp/i);
+
+                const colWoodDays = findDayColSequential(/wood/i, 6);
+                const colPreCutDays = findDayColSequential(/pre\s*cut/i, 7);
+                const colOutSourceDays = findDayColSequential(/out\s*source/i, 8);
+                const colMachDays = findDayColSequential(/mach/i, 9);
+                const colCompStoreDays = findDayColSequential(/comp/i, 10);
+                const colAssemDays = findDayColSequential(/assem/i, 11);
+                const colMetalDays = findDayColSequential(/metal/i, 12);
+                const colUphDays = findDayColSequential(/uphol/i, 13);
+                const colSandDays = findDayColSequential(/sand/i, 14);
+                const colPolishDays = findDayColSequential(/polish/i, 15);
+                const colFitDays = findDayColSequential(/fit/i, 16);
+                const colQcDays = findDayColSequential(/^qc/i, 17);
+                const colFinalQcDays = findDayColSequential(/final\s*qc/i, 18);
+                const colPackDays = findDayColSequential(/pack/i, 19);
+
+                const colWoodIn = findDateCol(/wood/i, false, 21);
+                const colMetalIn = findDateCol(/metal/i, false, 31);
+                const colMetalOut = findDateCol(/metal/i, true, 32);
+                const colUphIn = findDateCol(/uphol/i, false, 33);
+                const colUphOut = findDateCol(/uphol/i, true, 34);
+
+                const cleanVal = (v) => String(v || '').replace(/[\r\n\t]+/g, ' ').trim();
+                const parseExcelDay = (val, currentVal) => {
+                    if (val === undefined || val === null || val === '') return currentVal;
+                    const num = parseInt(val, 10);
+                    return isNaN(num) ? currentVal : Math.max(0, num);
+                };
+                const parseExcelDate = (val, currentVal) => {
+                    if (val === undefined || val === null || val === '') return currentVal;
+                    const parsed = toStandardDateStr(val);
+                    return parsed || currentVal;
+                };
 
                 // Map uploaded data directly into existing items
                 let matchedCount = 0;
                 const updated = planItems.map(item => {
-                    for (let r = 2; r < aoa.length; r++) {
+                    let matchedRow = null;
+                    const itemCode = cleanVal(item.ItemCode).toLowerCase();
+                    const contractNo = cleanVal(item.ContractNo).toLowerCase();
+                    const shipNo = cleanVal(item.ContainerNumber).toLowerCase();
+
+                    for (let r = dataStartRow; r < aoa.length; r++) {
                         const row = aoa[r];
                         if (!row || row.length === 0) continue;
 
-                        const shipmentNo = String(row[0] || '').trim();
-                        const itemCode = String(row[1] || '').trim();
-                        const contractNo = String(row[2] || '').trim();
+                        const rowShip = cleanVal(colShipment >= 0 ? row[colShipment] : '').toLowerCase();
+                        const rowItemCode = cleanVal(colItemCode >= 0 ? row[colItemCode] : '').toLowerCase();
+                        const rowContract = cleanVal(colContract >= 0 ? row[colContract] : '').toLowerCase();
 
-                        const matchContract = contractNo && String(item.ContractNo).trim().toLowerCase() === contractNo.toLowerCase();
-                        const matchItem = itemCode && String(item.ItemCode).trim().toLowerCase() === itemCode.toLowerCase();
-                        const matchShip = !shipmentNo || String(item.ContainerNumber).trim().toLowerCase() === shipmentNo.toLowerCase();
-
-                        if ((matchContract || matchItem) && matchShip) {
-                            matchedCount++;
-                            const inspDate = row[5] ? toStandardDateStr(row[5]) : item.InspectionDate;
-                            const woodDays = parseInt(row[6], 10) || 0;
-                            const preCutDays = parseInt(row[7], 10) || 0;
-                            const outSourceDays = parseInt(row[8], 10) || 0; // Excluded from calculation
-                            const machDays = parseInt(row[9], 10) || 0;
-                            const compStoreDays = parseInt(row[10], 10) || 0;
-                            const assemDays = parseInt(row[11], 10) || 0;
-                            const metalDays = parseInt(row[12], 10) || 0;
-                            const upholsteryDays = parseInt(row[13], 10) || 0;
-                            const sandDays = parseInt(row[14], 10) || 0;
-                            const polishDays = parseInt(row[15], 10) || 0;
-                            const fitDays = parseInt(row[16], 10) || 0;
-                            const qcDays = parseInt(row[17], 10) || 0;
-                            const finalQcDays = parseInt(row[18], 10) || 0;
-                            const packDays = parseInt(row[19], 10) || 0;
-
-                            const woodIn = row[21] ? toStandardDateStr(row[21]) : item.WoodIssueIn;
-                            const metalIn = row[31] ? toStandardDateStr(row[31]) : item.MetalIn;
-                            const metalOut = row[32] ? toStandardDateStr(row[32]) : item.MetalOut;
-                            const upholsteryIn = row[33] ? toStandardDateStr(row[33]) : item.UpholsteryIn;
-                            const upholsteryOut = row[34] ? toStandardDateStr(row[34]) : item.UpholsteryOut;
-
-                            return calculateScheduleFromDays({
-                                ...item,
-                                InspectionDate: inspDate,
-                                WoodIssueDays: woodDays,
-                                PreCuttingDays: preCutDays,
-                                OutSourceDays: outSourceDays,
-                                MachiningDays: machDays,
-                                ComponentStoreDays: compStoreDays,
-                                AssemblyDays: assemDays,
-                                MetalDays: metalDays,
-                                UpholsteryDays: upholsteryDays,
-                                SandingDays: sandDays,
-                                PolishDays: polishDays,
-                                FittingDays: fitDays,
-                                QcDays: qcDays,
-                                FinalQcDays: finalQcDays,
-                                PackingDays: packDays,
-                                WoodIssueIn: woodIn,
-                                IsManualWoodIssueIn: false,
-                                MetalIn: metalIn,
-                                MetalOut: metalOut,
-                                UpholsteryIn: upholsteryIn,
-                                UpholsteryOut: upholsteryOut,
-                            });
+                        // Priority 1: Match on ItemCode and Shipment
+                        if (rowItemCode && itemCode && rowItemCode === itemCode) {
+                            if (!rowShip || !shipNo || rowShip === shipNo) {
+                                matchedRow = row;
+                                break;
+                            }
+                        }
+                        // Priority 2: Match on ItemCode and Contract
+                        if (rowItemCode && itemCode && rowItemCode === itemCode) {
+                            if (rowContract && contractNo && rowContract === contractNo) {
+                                matchedRow = row;
+                                break;
+                            }
+                        }
+                        // Priority 3: Fallback match on ItemCode alone
+                        if (rowItemCode && itemCode && rowItemCode === itemCode && !matchedRow) {
+                            matchedRow = row;
                         }
                     }
+
+                    if (matchedRow) {
+                        matchedCount++;
+                        const inspDate = parseExcelDate(colInspDate >= 0 ? matchedRow[colInspDate] : null, item.InspectionDate);
+                        const woodDays = parseExcelDay(colWoodDays >= 0 ? matchedRow[colWoodDays] : null, item.WoodIssueDays);
+                        const preCutDays = parseExcelDay(colPreCutDays >= 0 ? matchedRow[colPreCutDays] : null, item.PreCuttingDays);
+                        const outSourceDays = parseExcelDay(colOutSourceDays >= 0 ? matchedRow[colOutSourceDays] : null, item.OutSourceDays);
+                        const machDays = parseExcelDay(colMachDays >= 0 ? matchedRow[colMachDays] : null, item.MachiningDays);
+                        const compStoreDays = parseExcelDay(colCompStoreDays >= 0 ? matchedRow[colCompStoreDays] : null, item.ComponentStoreDays);
+                        const assemDays = parseExcelDay(colAssemDays >= 0 ? matchedRow[colAssemDays] : null, item.AssemblyDays);
+                        const metalDays = parseExcelDay(colMetalDays >= 0 ? matchedRow[colMetalDays] : null, item.MetalDays);
+                        const upholsteryDays = parseExcelDay(colUphDays >= 0 ? matchedRow[colUphDays] : null, item.UpholsteryDays);
+                        const sandDays = parseExcelDay(colSandDays >= 0 ? matchedRow[colSandDays] : null, item.SandingDays);
+                        const polishDays = parseExcelDay(colPolishDays >= 0 ? matchedRow[colPolishDays] : null, item.PolishDays);
+                        const fitDays = parseExcelDay(colFitDays >= 0 ? matchedRow[colFitDays] : null, item.FittingDays);
+                        const qcDays = parseExcelDay(colQcDays >= 0 ? matchedRow[colQcDays] : null, item.QcDays);
+                        const finalQcDays = parseExcelDay(colFinalQcDays >= 0 ? matchedRow[colFinalQcDays] : null, item.FinalQcDays);
+                        const packDays = parseExcelDay(colPackDays >= 0 ? matchedRow[colPackDays] : null, item.PackingDays);
+
+                        const woodIn = parseExcelDate(colWoodIn >= 0 ? matchedRow[colWoodIn] : null, item.WoodIssueIn);
+                        const metalIn = parseExcelDate(colMetalIn >= 0 ? matchedRow[colMetalIn] : null, item.MetalIn);
+                        const metalOut = parseExcelDate(colMetalOut >= 0 ? matchedRow[colMetalOut] : null, item.MetalOut);
+                        const upholsteryIn = parseExcelDate(colUphIn >= 0 ? matchedRow[colUphIn] : null, item.UpholsteryIn);
+                        const upholsteryOut = parseExcelDate(colUphOut >= 0 ? matchedRow[colUphOut] : null, item.UpholsteryOut);
+
+                        return calculateScheduleFromDays({
+                            ...item,
+                            InspectionDate: inspDate,
+                            WoodIssueDays: woodDays,
+                            PreCuttingDays: preCutDays,
+                            OutSourceDays: outSourceDays,
+                            MachiningDays: machDays,
+                            ComponentStoreDays: compStoreDays,
+                            AssemblyDays: assemDays,
+                            MetalDays: metalDays,
+                            UpholsteryDays: upholsteryDays,
+                            SandingDays: sandDays,
+                            PolishDays: polishDays,
+                            FittingDays: fitDays,
+                            QcDays: qcDays,
+                            FinalQcDays: finalQcDays,
+                            PackingDays: packDays,
+                            WoodIssueIn: woodIn,
+                            IsManualWoodIssueIn: false,
+                            MetalIn: metalIn,
+                            MetalOut: metalOut,
+                            UpholsteryIn: upholsteryIn,
+                            UpholsteryOut: upholsteryOut,
+                        });
+                    }
+
                     return item;
                 });
 
+                const problemCount = updated.filter(p => {
+                    const insp = toStandardDateStr(p.InspectionDate);
+                    const qc = toStandardDateStr(p.FinalQcOut);
+                    return (insp && qc && qc > insp) || p.IsFinalQcDelayed || !insp;
+                }).length;
+
                 setPlanItems(updated);
-                toast.success(`✅ Excel Uploaded: Updated ${matchedCount} items directly in the table! Review and save.`);
+
+                if (problemCount > 0) {
+                    toast.warn(
+                        `⚠️ Excel Uploaded: Updated ${matchedCount} items. ${problemCount} item(s) have deadline issues and are highlighted in red below.`,
+                        { autoClose: 7000 }
+                    );
+                } else {
+                    toast.success(`✅ Excel Uploaded: Updated ${matchedCount} items directly in the table! Review and save.`);
+                }
             } catch (err) {
                 console.error('Error reading excel:', err);
                 toast.error('Failed to parse Excel file: ' + err.message);
@@ -1401,9 +1562,16 @@ export const ProductionPlanningModal = ({
         return Array.from(set);
     }, [planItems]);
 
-    // Filter items based on search term & shipment dropdown
+    // Filter items based on search term, shipment dropdown, & problem rows toggle
     const filteredItems = useMemo(() => {
         let items = planItems;
+        if (showOnlyProblems) {
+            items = items.filter(p => {
+                const insp = toStandardDateStr(p.InspectionDate);
+                const finalQc = toStandardDateStr(p.FinalQcOut);
+                return (insp && finalQc && finalQc > insp) || p.IsFinalQcDelayed || p.HasProblem || !insp;
+            });
+        }
         if (selectedShipmentFilter !== 'ALL') {
             items = items.filter(p => p.ContainerNumber === selectedShipmentFilter);
         }
@@ -1413,18 +1581,24 @@ export const ProductionPlanningModal = ({
                 (item.ContainerNumber && item.ContainerNumber.toLowerCase().includes(lower)) ||
                 (item.ContractNo && item.ContractNo.toLowerCase().includes(lower)) ||
                 (item.ItemCode && item.ItemCode.toLowerCase().includes(lower)) ||
-                (item.ItemName && item.ItemName.toLowerCase().includes(lower))
+                (item.ItemName && item.ItemName.toLowerCase().includes(lower)) ||
+                (item.ErrorReason && item.ErrorReason.toLowerCase().includes(lower))
             );
         }
         return items;
-    }, [planItems, selectedShipmentFilter, searchTerm]);
+    }, [planItems, showOnlyProblems, selectedShipmentFilter, searchTerm]);
 
     // Statistics
     const stats = useMemo(() => {
         const total = planItems.length;
         const planned = planItems.filter(p => p.TotalLeadDays > 0).length;
+        const problemCount = planItems.filter(p => {
+            const insp = toStandardDateStr(p.InspectionDate);
+            const finalQc = toStandardDateStr(p.FinalQcOut);
+            return (insp && finalQc && finalQc > insp) || p.IsFinalQcDelayed || p.HasProblem || !insp;
+        }).length;
         const shipmentsCount = uniqueShipments.length;
-        return { total, planned, shipmentsCount };
+        return { total, planned, problemCount, shipmentsCount };
     }, [planItems, uniqueShipments]);
 
     return (
@@ -1475,6 +1649,26 @@ export const ProductionPlanningModal = ({
                         <span style={{ padding: '3px 8px', background: '#064e3b', color: '#6ee7b7', borderRadius: '3px', border: '1px solid #047857' }}>
                             Planned: <strong>{stats.planned}</strong>
                         </span>
+                        {stats.problemCount > 0 ? (
+                            <span 
+                                onClick={() => setShowOnlyProblems(prev => !prev)}
+                                style={{ 
+                                    padding: '3px 8px', 
+                                    background: '#7f1d1d', 
+                                    color: '#fca5a5', 
+                                    borderRadius: '3px', 
+                                    border: '1px solid #dc2626',
+                                    cursor: 'pointer'
+                                }}
+                                title="Click to filter and view problem rows"
+                            >
+                                ⚠️ Issues: <strong>{stats.problemCount}</strong>
+                            </span>
+                        ) : (
+                            <span style={{ padding: '3px 8px', background: '#064e3b', color: '#6ee7b7', borderRadius: '3px', border: '1px solid #047857' }}>
+                                ✓ 0 Issues
+                            </span>
+                        )}
                     </div>
                 </div>
             </Modal.Header>
@@ -1522,6 +1716,18 @@ export const ProductionPlanningModal = ({
                                 )}
 
                                 <Col lg={uniqueShipments.length > 1 ? 7 : 9} md={uniqueShipments.length > 1 ? 5 : 8} className="d-flex flex-wrap align-items-center justify-content-md-end gap-1">
+                                    {stats.problemCount > 0 && (
+                                        <button 
+                                            type="button"
+                                            className={`btn btn-sm ${showOnlyProblems ? 'btn-danger' : 'btn-outline-danger'}`}
+                                            onClick={() => setShowOnlyProblems(prev => !prev)}
+                                            style={{ fontSize: '11px', padding: '3px 10px', height: '28px', fontWeight: 600 }}
+                                            title={showOnlyProblems ? "Click to show all rows" : "Click to view ONLY rows with deadline issues"}
+                                        >
+                                            ⚠️ {showOnlyProblems ? `Showing Issues (${stats.problemCount})` : `Problem Rows (${stats.problemCount})`}
+                                        </button>
+                                    )}
+
                                     <button 
                                         type="button"
                                         className="btn btn-sm btn-outline-secondary"
@@ -1708,39 +1914,75 @@ export const ProductionPlanningModal = ({
                                     {filteredItems.length === 0 ? (
                                         <tr>
                                             <td colSpan="50" style={{ textAlign: 'center', padding: '20px', color: '#64748b' }}>
-                                                No items match your filter.
+                                                {showOnlyProblems ? '🎉 No problem rows found! All items have valid dates.' : 'No items match your filter.'}
                                             </td>
                                         </tr>
                                     ) : (
                                         filteredItems.map((item, idx) => {
-                                            const rowBg = idx % 2 === 0 ? '#ffffff' : '#f8fafc';
+                                            const targetInsp = toStandardDateStr(item.InspectionDate);
+                                            const finalQc = toStandardDateStr(item.FinalQcOut);
+                                            const isOverdue = (targetInsp && finalQc && finalQc > targetInsp) || item.IsFinalQcDelayed;
+                                            const isMissingInsp = !targetInsp;
+                                            const isRowProblem = isOverdue || isMissingInsp || item.HasProblem;
+
+                                            const rowErrorReason = item.ErrorReason || (
+                                                isOverdue 
+                                                    ? `Final QC (${finalQc}) exceeds Insp Date (${targetInsp}) by ${item.OverdueDays || 1} day(s)` 
+                                                    : (isMissingInsp ? 'Missing Inspection Date' : '')
+                                            );
+
+                                            const rowBg = isRowProblem 
+                                                ? '#fef2f2' 
+                                                : (idx % 2 === 0 ? '#ffffff' : '#f8fafc');
+
+                                            const cellBorder = isRowProblem ? '1px solid #fecaca' : '1px solid #e2e8f0';
 
                                             return (
                                                 <tr 
                                                     key={item._rowKey || item.ContainerMasterLId || idx}
-                                                    style={{ backgroundColor: rowBg, height: '28px' }}
+                                                    style={{ 
+                                                        backgroundColor: rowBg, 
+                                                        height: '30px',
+                                                        borderLeft: isRowProblem ? '5px solid #ef4444' : '1px solid #cbd5e1',
+                                                        boxShadow: isRowProblem ? 'inset 0 0 0 1px #fca5a5' : 'none',
+                                                        transition: 'background-color 0.15s ease'
+                                                    }}
                                                 >
-                                                    <td style={{ textAlign: 'center', border: '1px solid #e2e8f0', color: '#64748b', fontSize: '10px', width: '35px', minWidth: '35px' }}>
-                                                        {idx + 1}
+                                                    <td style={{ textAlign: 'center', border: cellBorder, color: isRowProblem ? '#dc2626' : '#64748b', fontSize: '10px', width: '38px', minWidth: '38px', fontWeight: isRowProblem ? 700 : 'normal' }}>
+                                                        {isRowProblem ? (
+                                                            <span title={rowErrorReason} style={{ cursor: 'help' }}>⚠️ {idx + 1}</span>
+                                                        ) : (
+                                                            idx + 1
+                                                        )}
                                                     </td>
-                                                    <td style={{ border: '1px solid #e2e8f0', fontWeight: 600, color: '#334155', width: '130px', minWidth: '130px', padding: '3px 6px', wordBreak: 'break-word' }} title={item.ContainerNumber}>
+                                                    <td style={{ border: cellBorder, fontWeight: 600, color: '#334155', width: '130px', minWidth: '130px', padding: '3px 6px', wordBreak: 'break-word' }} title={item.ContainerNumber}>
                                                         {item.ContainerNumber || '-'}
                                                     </td>
-                                                    <td style={{ border: '1px solid #e2e8f0', color: '#1e293b', width: '100px', minWidth: '100px', padding: '3px 6px', whiteSpace: 'nowrap' }} title={item.ContractNo}>
+                                                    <td style={{ border: cellBorder, color: '#1e293b', width: '100px', minWidth: '100px', padding: '3px 6px', whiteSpace: 'nowrap' }} title={item.ContractNo}>
                                                         {item.ContractNo || '-'}
                                                     </td>
-                                                    <td style={{ border: '1px solid #e2e8f0', fontFamily: 'monospace', color: '#0f172a', width: '90px', minWidth: '90px', padding: '3px 6px', whiteSpace: 'nowrap' }}>
+                                                    <td style={{ border: cellBorder, fontFamily: 'monospace', color: '#0f172a', width: '90px', minWidth: '90px', padding: '3px 6px', whiteSpace: 'nowrap' }}>
                                                         {item.ItemCode || '-'}
                                                     </td>
-                                                    <td style={{ border: '1px solid #e2e8f0', minWidth: '220px', maxWidth: '280px', padding: '3px 6px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={item.ItemName}>
-                                                        {item.ItemName || '-'}
+                                                    <td style={{ border: cellBorder, minWidth: '220px', maxWidth: '300px', padding: '3px 6px' }}>
+                                                        <div style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontWeight: isRowProblem ? 600 : 'normal', color: isRowProblem ? '#991b1b' : '#0f172a' }} title={item.ItemName}>
+                                                            {item.ItemName || '-'}
+                                                        </div>
+                                                        {isRowProblem && rowErrorReason && (
+                                                            <div style={{ fontSize: '10px', color: '#dc2626', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '3px', marginTop: '1px' }}>
+                                                                <span>⚠️</span>
+                                                                <span style={{ background: '#fee2e2', padding: '1px 5px', borderRadius: '3px', border: '1px solid #fca5a5' }}>
+                                                                    {rowErrorReason}
+                                                                </span>
+                                                            </div>
+                                                        )}
                                                     </td>
-                                                    <td style={{ textAlign: 'center', border: '1px solid #e2e8f0', fontWeight: 600, width: '50px', minWidth: '50px', padding: '3px 4px' }}>
+                                                    <td style={{ textAlign: 'center', border: cellBorder, fontWeight: 600, width: '50px', minWidth: '50px', padding: '3px 4px' }}>
                                                         {item.Quantity || 0}
                                                     </td>
 
                                                     {/* Inspection Date Cell (Col Index 0) */}
-                                                    <td style={{ border: '1px solid #e2e8f0', padding: '1px 2px', width: '115px', minWidth: '115px' }}>
+                                                    <td style={{ border: cellBorder, padding: '1px 2px', width: '115px', minWidth: '115px' }}>
                                                         <input 
                                                             id={`cell-${idx}-0`}
                                                             type="date"
@@ -1752,15 +1994,17 @@ export const ProductionPlanningModal = ({
                                                             style={{ 
                                                                 width: '100%', 
                                                                 minWidth: '110px',
-                                                                height: '22px', 
+                                                                height: '24px', 
                                                                 fontSize: '11px', 
-                                                                border: '1px solid #cbd5e1', 
+                                                                border: isRowProblem ? '1.5px solid #ef4444' : '1px solid #cbd5e1', 
                                                                 borderRadius: '2px',
                                                                 padding: '1px 2px',
-                                                                backgroundColor: '#fff',
+                                                                backgroundColor: isRowProblem ? '#fee2e2' : '#fff',
+                                                                color: isRowProblem ? '#991b1b' : '#0f172a',
+                                                                fontWeight: isRowProblem ? 600 : 'normal',
                                                                 textAlign: 'center'
                                                             }}
-                                                            title="Target Inspection Date"
+                                                            title={isRowProblem ? `⚠️ Target Inspection Date (${targetInsp || 'Not Set'})` : "Target Inspection Date"}
                                                         />
                                                     </td>
 
@@ -1772,7 +2016,7 @@ export const ProductionPlanningModal = ({
                                                             <td 
                                                                 key={dept.key} 
                                                                 style={{ 
-                                                                    border: '1px solid #e2e8f0', 
+                                                                    border: cellBorder, 
                                                                     padding: '1px 2px',
                                                                     width: colWidth,
                                                                     minWidth: colWidth
@@ -1805,7 +2049,7 @@ export const ProductionPlanningModal = ({
                                                     })}
 
                                                     {/* Computed Output Total Days */}
-                                                    <td style={{ textAlign: 'center', border: '1px solid #e2e8f0', fontWeight: 600, backgroundColor: '#f8fafc', width: '55px', minWidth: '55px', whiteSpace: 'nowrap' }}>
+                                                    <td style={{ textAlign: 'center', border: cellBorder, fontWeight: 600, backgroundColor: isRowProblem ? '#fef2f2' : '#f8fafc', width: '55px', minWidth: '55px', whiteSpace: 'nowrap' }}>
                                                         {item.TotalLeadDays}d
                                                     </td>
 
@@ -1813,14 +2057,13 @@ export const ProductionPlanningModal = ({
                                                     {EDITABLE_COLS.slice(15).map((dateCol, dateIdx) => {
                                                         const colIdx = dateIdx + 15; // 15 to 40
                                                         const dateVal = toStandardDateStr(item[dateCol.key]) || '';
-                                                        const targetInsp = toStandardDateStr(item.InspectionDate);
                                                         const isLateFinalQc = dateCol.key === 'FinalQcOut' && targetInsp && dateVal && dateVal > targetInsp;
 
                                                         return (
                                                             <td 
                                                                 key={dateCol.key} 
                                                                 style={{ 
-                                                                    border: '1px solid #e2e8f0', 
+                                                                    border: cellBorder, 
                                                                     padding: '1px 2px',
                                                                     width: '115px',
                                                                     minWidth: '115px'
@@ -1842,27 +2085,31 @@ export const ProductionPlanningModal = ({
                                                                         border: isLateFinalQc ? '2px solid #ef4444' : '1px solid #cbd5e1', 
                                                                         borderRadius: '2px',
                                                                         padding: '1px 2px',
-                                                                        backgroundColor: isLateFinalQc ? '#fef2f2' : '#fff',
+                                                                        backgroundColor: isLateFinalQc ? '#fee2e2' : '#fff',
                                                                         color: isLateFinalQc ? '#b91c1c' : '#0f172a',
-                                                                        fontWeight: isLateFinalQc ? 600 : 'normal',
+                                                                        fontWeight: isLateFinalQc ? 700 : 'normal',
                                                                         textAlign: 'center'
                                                                     }}
-                                                                    title={isLateFinalQc ? `⚠️ Final QC Date (${dateVal}) must be <= Inspection Date (${targetInsp})!` : `${dateCol.label} - Click to change date`}
+                                                                    title={isLateFinalQc ? `⚠️ Final QC Date (${dateVal}) must be <= Inspection Date (${targetInsp})! Exceeds by ${item.OverdueDays || 1} day(s)` : `${dateCol.label} - Click to change date`}
                                                                 />
                                                             </td>
                                                         );
                                                     })}
 
                                                     {/* Days With Buffer */}
-                                                    <td style={{ textAlign: 'center', border: '1px solid #e2e8f0', backgroundColor: '#f8fafc', color: '#475569', width: '60px', minWidth: '60px', whiteSpace: 'nowrap' }}>
+                                                    <td style={{ textAlign: 'center', border: cellBorder, backgroundColor: isRowProblem ? '#fef2f2' : '#f8fafc', color: '#475569', width: '60px', minWidth: '60px', whiteSpace: 'nowrap' }}>
                                                         {item.DaysWithBuffer ? `${item.DaysWithBuffer}d` : '-'}
                                                     </td>
 
                                                     {/* Status Badge */}
-                                                    <td style={{ textAlign: 'center', border: '1px solid #e2e8f0', backgroundColor: '#f8fafc', width: '85px', minWidth: '85px', whiteSpace: 'nowrap' }}>
-                                                        {item.IsFinalQcDelayed ? (
-                                                            <span className="badge" style={{ backgroundColor: '#ef4444', color: '#fff', fontSize: '10px', padding: '3px 6px' }} title="Final QC Date exceeds Target Inspection Date!">
-                                                                ⚠️ QC Late
+                                                    <td style={{ textAlign: 'center', border: cellBorder, backgroundColor: isRowProblem ? '#fee2e2' : '#f8fafc', width: '85px', minWidth: '85px', whiteSpace: 'nowrap' }}>
+                                                        {isRowProblem ? (
+                                                            <span 
+                                                                className="badge" 
+                                                                style={{ backgroundColor: '#ef4444', color: '#fff', fontSize: '10px', padding: '3px 6px', cursor: 'help' }} 
+                                                                title={rowErrorReason}
+                                                            >
+                                                                ⚠️ {isOverdue ? `Late (+${item.OverdueDays || 1}d)` : 'Issue'}
                                                             </span>
                                                         ) : item.TotalLeadDays > 0 ? (
                                                             <span style={{ color: '#15803d', fontWeight: 600, fontSize: '10px' }}>
