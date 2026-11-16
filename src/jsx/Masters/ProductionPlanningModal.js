@@ -300,10 +300,14 @@ export const ProductionPlanningModal = ({
                         headers: getAuthHeaders()
                     });
 
-                    if (res.data && res.data.Success && Array.isArray(res.data.Data)) {
-                        res.data.Data.forEach(savedItem => {
-                            if (savedItem.ContainerMasterLId) {
-                                existingSavedMap.set(String(savedItem.ContainerMasterLId), savedItem);
+                    const isSuccess = Boolean(res.data && (res.data.Success || res.data.success));
+                    const planList = res.data?.Data || res.data?.data;
+
+                    if (isSuccess && Array.isArray(planList)) {
+                        planList.forEach(savedItem => {
+                            const lId = savedItem.ContainerMasterLId || savedItem.containerMasterLId || savedItem.F_ContainerMasterL || savedItem.f_ContainerMasterL;
+                            if (lId) {
+                                existingSavedMap.set(String(lId), savedItem);
                             }
                         });
                     }
@@ -311,6 +315,15 @@ export const ProductionPlanningModal = ({
                     console.warn('Could not fetch existing saved plans from DB, will initialize from selection:', fetchErr);
                 }
             }
+
+            // Helper to get property value in either PascalCase or camelCase
+            const getVal = (obj, key, fallback = 0) => {
+                if (!obj) return fallback;
+                if (obj[key] !== undefined && obj[key] !== null) return obj[key];
+                const camel = key.charAt(0).toLowerCase() + key.slice(1);
+                if (obj[camel] !== undefined && obj[camel] !== null) return obj[camel];
+                return fallback;
+            };
 
             // Merge selected items with existing saved plans
             const merged = selectedItems.map((item, idx) => {
@@ -321,53 +334,53 @@ export const ProductionPlanningModal = ({
                 const initialObj = {
                     _rowKey: rowKey,
                     ContainerMasterLId: parseInt(lineId, 10) || 0,
-                    ContainerId: item.F_ContainerMaster || item.ContainerId || saved.ContainerId || 0,
-                    ContainerNumber: item.ContainerNumber || saved.ContainerNumber || 'N/A',
-                    ContractNo: item.ContractNo || saved.ContractNo || '',
-                    ItemCode: item.ItemCode || saved.ItemCode || '',
-                    ItemName: item.ItemName || saved.ItemName || '',
-                    Quantity: item.Quantity || saved.Quantity || 0,
-                    InspectionDate: toStandardDateStr(item.InspectionDate || saved.InspectionDate),
-                    WoodIssueDays: saved.WoodIssueDays !== undefined ? saved.WoodIssueDays : 0,
-                    PreCuttingDays: saved.PreCuttingDays !== undefined ? saved.PreCuttingDays : 0,
-                    OutSourceDays: saved.OutSourceDays !== undefined ? saved.OutSourceDays : 0,
-                    MachiningDays: saved.MachiningDays !== undefined ? saved.MachiningDays : 0,
-                    ComponentStoreDays: saved.ComponentStoreDays !== undefined ? saved.ComponentStoreDays : 0,
-                    AssemblyDays: saved.AssemblyDays !== undefined ? saved.AssemblyDays : 0,
-                    MetalDays: saved.MetalDays !== undefined ? saved.MetalDays : 0,
-                    UpholsteryDays: saved.UpholsteryDays !== undefined ? saved.UpholsteryDays : 0,
-                    SandingDays: saved.SandingDays !== undefined ? saved.SandingDays : 0,
-                    PolishDays: saved.PolishDays !== undefined ? saved.PolishDays : 0,
-                    FittingDays: saved.FittingDays !== undefined ? saved.FittingDays : 0,
-                    QcDays: saved.QcDays !== undefined ? saved.QcDays : 0,
-                    FinalQcDays: saved.FinalQcDays !== undefined ? saved.FinalQcDays : 0,
-                    PackingDays: saved.PackingDays !== undefined ? saved.PackingDays : 0,
-                    WoodIssueIn: toStandardDateStr(saved.WoodIssueIn),
-                    WoodIssueOut: toStandardDateStr(saved.WoodIssueOut),
-                    PreCuttingIn: toStandardDateStr(saved.PreCuttingIn),
-                    PreCuttingOut: toStandardDateStr(saved.PreCuttingOut),
-                    MachiningIn: toStandardDateStr(saved.MachiningIn),
-                    MachiningOut: toStandardDateStr(saved.MachiningOut),
-                    ComponentStoreIn: toStandardDateStr(saved.ComponentStoreIn),
-                    ComponentStoreOut: toStandardDateStr(saved.ComponentStoreOut),
-                    AssemblyIn: toStandardDateStr(saved.AssemblyIn),
-                    AssemblyOut: toStandardDateStr(saved.AssemblyOut),
-                    MetalIn: toStandardDateStr(saved.MetalIn),
-                    MetalOut: toStandardDateStr(saved.MetalOut),
-                    UpholsteryIn: toStandardDateStr(saved.UpholsteryIn),
-                    UpholsteryOut: toStandardDateStr(saved.UpholsteryOut),
-                    SandingIn: toStandardDateStr(saved.SandingIn),
-                    SandingOut: toStandardDateStr(saved.SandingOut),
-                    PolishIn: toStandardDateStr(saved.PolishIn),
-                    PolishOut: toStandardDateStr(saved.PolishOut),
-                    FittingIn: toStandardDateStr(saved.FittingIn),
-                    FittingOut: toStandardDateStr(saved.FittingOut),
-                    QcIn: toStandardDateStr(saved.QcIn),
-                    QcOut: toStandardDateStr(saved.QcOut),
-                    FinalQcIn: toStandardDateStr(saved.FinalQcIn),
-                    FinalQcOut: toStandardDateStr(saved.FinalQcOut),
-                    PackingIn: toStandardDateStr(saved.PackingIn),
-                    PackingOut: toStandardDateStr(saved.PackingOut),
+                    ContainerId: item.F_ContainerMaster || item.ContainerId || getVal(saved, 'ContainerId', 0),
+                    ContainerNumber: item.ContainerNumber || getVal(saved, 'ContainerNumber', 'N/A'),
+                    ContractNo: item.ContractNo || getVal(saved, 'ContractNo', ''),
+                    ItemCode: item.ItemCode || getVal(saved, 'ItemCode', ''),
+                    ItemName: item.ItemName || getVal(saved, 'ItemName', ''),
+                    Quantity: item.Quantity || getVal(saved, 'Quantity', 0),
+                    InspectionDate: toStandardDateStr(item.InspectionDate || getVal(saved, 'InspectionDate', null)),
+                    WoodIssueDays: getVal(saved, 'WoodIssueDays', 0),
+                    PreCuttingDays: getVal(saved, 'PreCuttingDays', 0),
+                    OutSourceDays: getVal(saved, 'OutSourceDays', 0),
+                    MachiningDays: getVal(saved, 'MachiningDays', 0),
+                    ComponentStoreDays: getVal(saved, 'ComponentStoreDays', 0),
+                    AssemblyDays: getVal(saved, 'AssemblyDays', 0),
+                    MetalDays: getVal(saved, 'MetalDays', 0),
+                    UpholsteryDays: getVal(saved, 'UpholsteryDays', 0),
+                    SandingDays: getVal(saved, 'SandingDays', 0),
+                    PolishDays: getVal(saved, 'PolishDays', 0),
+                    FittingDays: getVal(saved, 'FittingDays', 0),
+                    QcDays: getVal(saved, 'QcDays', 0),
+                    FinalQcDays: getVal(saved, 'FinalQcDays', 0),
+                    PackingDays: getVal(saved, 'PackingDays', 0),
+                    WoodIssueIn: toStandardDateStr(getVal(saved, 'WoodIssueIn', null)),
+                    WoodIssueOut: toStandardDateStr(getVal(saved, 'WoodIssueOut', null)),
+                    PreCuttingIn: toStandardDateStr(getVal(saved, 'PreCuttingIn', null)),
+                    PreCuttingOut: toStandardDateStr(getVal(saved, 'PreCuttingOut', null)),
+                    MachiningIn: toStandardDateStr(getVal(saved, 'MachiningIn', null)),
+                    MachiningOut: toStandardDateStr(getVal(saved, 'MachiningOut', null)),
+                    ComponentStoreIn: toStandardDateStr(getVal(saved, 'ComponentStoreIn', null)),
+                    ComponentStoreOut: toStandardDateStr(getVal(saved, 'ComponentStoreOut', null)),
+                    AssemblyIn: toStandardDateStr(getVal(saved, 'AssemblyIn', null)),
+                    AssemblyOut: toStandardDateStr(getVal(saved, 'AssemblyOut', null)),
+                    MetalIn: toStandardDateStr(getVal(saved, 'MetalIn', null)),
+                    MetalOut: toStandardDateStr(getVal(saved, 'MetalOut', null)),
+                    UpholsteryIn: toStandardDateStr(getVal(saved, 'UpholsteryIn', null)),
+                    UpholsteryOut: toStandardDateStr(getVal(saved, 'UpholsteryOut', null)),
+                    SandingIn: toStandardDateStr(getVal(saved, 'SandingIn', null)),
+                    SandingOut: toStandardDateStr(getVal(saved, 'SandingOut', null)),
+                    PolishIn: toStandardDateStr(getVal(saved, 'PolishIn', null)),
+                    PolishOut: toStandardDateStr(getVal(saved, 'PolishOut', null)),
+                    FittingIn: toStandardDateStr(getVal(saved, 'FittingIn', null)),
+                    FittingOut: toStandardDateStr(getVal(saved, 'FittingOut', null)),
+                    QcIn: toStandardDateStr(getVal(saved, 'QcIn', null)),
+                    QcOut: toStandardDateStr(getVal(saved, 'QcOut', null)),
+                    FinalQcIn: toStandardDateStr(getVal(saved, 'FinalQcIn', null)),
+                    FinalQcOut: toStandardDateStr(getVal(saved, 'FinalQcOut', null)),
+                    PackingIn: toStandardDateStr(getVal(saved, 'PackingIn', null)),
+                    PackingOut: toStandardDateStr(getVal(saved, 'PackingOut', null)),
                     IsManualWoodIssueIn: false,
                 };
 
@@ -1351,12 +1364,24 @@ export const ProductionPlanningModal = ({
                 { headers: getAuthHeaders() }
             );
 
-            if (res.data && res.data.Success) {
-                toast.success(`✅ Saved ${payloadData.length} items across all shipments successfully!`);
+            const isSuccess = Boolean(
+                res.data && (
+                    res.data.Success === true || 
+                    res.data.success === true || 
+                    res.data.status === 200 || 
+                    res.data.Status === 200 ||
+                    res.data.data?.Status === 1 || 
+                    res.data.Data?.Status === 1
+                )
+            );
+            const msg = res.data?.Message || res.data?.message || res.data?.data?.Message || res.data?.Data?.Message || `Saved ${payloadData.length} items across all shipments successfully!`;
+
+            if (isSuccess) {
+                toast.success(`✅ ${msg}`);
                 setOriginalItems(JSON.parse(JSON.stringify(planItems)));
                 if (onSuccess) onSuccess();
             } else {
-                toast.error(res.data?.Message || 'Failed to save production plan.');
+                toast.error(msg || 'Failed to save production plan.');
             }
         } catch (err) {
             console.error('Error saving multi-shipment plan:', err);
