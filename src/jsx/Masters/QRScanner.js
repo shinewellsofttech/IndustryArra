@@ -2851,8 +2851,9 @@ const QRScanner = () => {
   const [isCameraActive, setIsCameraActive] = useState(false);
   const [isTransitioning, setIsTransitioning] = useState(false);
   const [copiedId, setCopiedId] = useState(null);
-  const [cameraFacingMode, setCameraFacingMode] = useState("user"); // "user" (front) by default, or "environment" (back)
-  const cameraFacingModeRef = useRef("user");
+  const [cameraFacingMode, setCameraFacingMode] = useState("environment"); // "environment" (rear autofocus) by default
+  const cameraFacingModeRef = useRef("environment");
+  const [manualInputVal, setManualInputVal] = useState("");
 
   // ── Multi-session state ───────────────────────────────────────────────────────
   const [scannedSessions, setScannedSessions] = useState([]);
@@ -4154,9 +4155,16 @@ const QRScanner = () => {
     }
   };
 
-  // Initialize the Html5Qrcode scanner instance once on component mount
+  // Initialize the Html5Qrcode scanner instance once on component mount with native hardware barcode detector
   useEffect(() => {
-    qrCodeRef.current = new Html5Qrcode("reader");
+    try {
+      qrCodeRef.current = new Html5Qrcode("reader", {
+        experimentalFeatures: { useBarCodeDetectorIfSupported: true },
+        verbose: false
+      });
+    } catch (e) {
+      console.warn("Html5Qrcode init error:", e);
+    }
 
     return () => {
       if (qrCodeRef.current) {
@@ -4206,12 +4214,19 @@ const QRScanner = () => {
         );
       } catch (e) { /* no job cards */ }
 
-      // Filter to matching component/job card first
+      // Filter to matching component/job card (by JobCardNo or F_ComponentsMaster)
       const matchingCard = Array.isArray(jobCards)
-        ? jobCards.find(
-            (c) =>
-              String(c.F_ComponentsMaster) === String(ids.F_ComponentsMaster)
-          ) || jobCards[0]
+        ? (ids.JobCardNo 
+            ? jobCards.find(
+                (c) => String(c.JobCardNo || '').trim().toUpperCase() === String(ids.JobCardNo).trim().toUpperCase()
+              )
+            : null) ||
+          (ids.F_ComponentsMaster 
+            ? jobCards.find(
+                (c) => String(c.F_ComponentsMaster) === String(ids.F_ComponentsMaster)
+              )
+            : null) ||
+          jobCards[0]
         : null;
 
       setJobCardData(matchingCard || null);
@@ -4447,27 +4462,17 @@ const QRScanner = () => {
     };
   }, [fetchJobCardData]);
 
-  // Handler for successful scans
-  const handleScanSuccess = useCallback(async (decodedText) => {
-    if (!isScanningRef.current) {
-      console.log("Duplicate scan detected and ignored.");
-      return;
-    }
-    isScanningRef.current = false;
+  // Process any scanned or manually entered value (from camera, file, barcode gun, or manual search)
+  const processScannedValue = useCallback(async (decodedText) => {
+    if (!decodedText) return;
+    const cleanText = String(decodedText).trim();
+    if (!cleanText) return;
 
-    console.log("QR Code Scanned successfully! Decoded Text:", decodedText);
+    console.log("Processing Scanned / Entered Value:", cleanText);
     playBeepSound();
-    setLastScanned(decodedText);
+    setLastScanned(cleanText);
 
-    // Parse the 5 IDs from the scanned QR code
-    const ids = parseBarcodeValue(decodedText);
-    console.log("Parsed IDs from QR Code:", ids);
-    setParsedIds(ids);
-
-    // Set loading state immediately to display overlay and freeze inputs
-    setFetchLoading(true);
-
-    // Stop the camera
+    // Stop the camera if running
     if (qrCodeRef.current && isCameraActiveRef.current) {
       setIsTransitioning(true);
       try {
@@ -4481,13 +4486,65 @@ const QRScanner = () => {
       }
     }
 
-    // Fetch job card data if we have valid IDs
+    // Parse IDs from the scanned value
+    const ids = parseBarcodeValue(cleanText);
+    console.log("Parsed IDs from Code:", ids);
+    setParsedIds(ids);
+
     if (ids) {
+      setFetchLoading(true);
       fetchJobCardData(ids);
     } else {
       setFetchLoading(false);
+      setFetchError(`Could not identify Job Card from value: "${cleanText}". Please check the code or try manual search.`);
     }
   }, [fetchJobCardData]);
+
+  // Handler for successful camera scans
+  const handleScanSuccess = useCallback(async (decodedText) => {
+    if (!isScanningRef.current) {
+      console.log("Duplicate scan detected and ignored.");
+      return;
+    }
+    isScanningRef.current = false;
+    processScannedValue(decodedText);
+  }, [processScannedValue]);
+
+  // Handheld USB / Bluetooth Barcode Gun Scanner Support
+  useEffect(() => {
+    let barcodeBuffer = "";
+    let lastKeyTime = Date.now();
+
+    const handleKeyDown = (e) => {
+      const activeTag = document.activeElement ? document.activeElement.tagName.toLowerCase() : "";
+      if (activeTag === "input" || activeTag === "textarea" || activeTag === "select") {
+        return;
+      }
+
+      const currentTime = Date.now();
+      // Hardware barcode scanners send characters in rapid bursts (< 80ms)
+      if (currentTime - lastKeyTime > 150) {
+        barcodeBuffer = "";
+      }
+      lastKeyTime = currentTime;
+
+      if (e.key === "Enter") {
+        if (barcodeBuffer.trim().length >= 3) {
+          e.preventDefault();
+          const scannedText = barcodeBuffer.trim();
+          barcodeBuffer = "";
+          processScannedValue(scannedText);
+        }
+      } else if (e.key.length === 1) {
+        barcodeBuffer += e.key;
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [processScannedValue]);
 
   // Toggle between Camera and File scan modes
   const handleModeChange = async (mode) => {
@@ -4522,8 +4579,11 @@ const QRScanner = () => {
         document.body.appendChild(tempEl);
       }
 
-      // Always create a fresh instance for file scanning
-      const fileScanner = new Html5Qrcode(tempId);
+      // Always create a fresh instance for file scanning with hardware barcode detector
+      const fileScanner = new Html5Qrcode(tempId, {
+        experimentalFeatures: { useBarCodeDetectorIfSupported: true },
+        verbose: false
+      });
 
       isScanningRef.current = true;
       const decodedText = await fileScanner.scanFile(file, false);
@@ -4531,7 +4591,7 @@ const QRScanner = () => {
       // Clean up the temp instance
       try { await fileScanner.clear(); } catch (_) {}
 
-      await handleScanSuccess(decodedText);
+      await processScannedValue(decodedText);
     } catch (err) {
       console.error("Error scanning uploaded image:", err);
       isScanningRef.current = false;
@@ -4546,7 +4606,7 @@ const QRScanner = () => {
     if (!qrCodeRef.current || isTransitioning) return;
     setIsTransitioning(true);
 
-    const mode = targetFacingMode || cameraFacingModeRef.current || "user";
+    const mode = targetFacingMode || cameraFacingModeRef.current || "environment";
     setCameraFacingMode(mode);
     cameraFacingModeRef.current = mode;
 
@@ -4583,19 +4643,30 @@ const QRScanner = () => {
 
     try {
       isScanningRef.current = true;
-      await qrCodeRef.current.start(
-        { facingMode: mode },
-        {
-          fps: 15,
-          qrbox: (viewfinderWidth, viewfinderHeight) => {
-            const minEdge = Math.min(viewfinderWidth, viewfinderHeight);
-            const size = Math.max(250, Math.floor(minEdge * 0.7));
-            return { width: size, height: size };
-          }
-        },
-        handleScanSuccess,
-        () => {} // Silent failure
-      );
+
+      // High-definition constraints for sharp focus on compact 18mm QR codes
+      const cameraConstraints = {
+        facingMode: mode,
+        width: { ideal: 1920, min: 1280 },
+        height: { ideal: 1080, min: 720 }
+      };
+
+      const qrConfig = {
+        fps: 25,
+        qrbox: (viewfinderWidth, viewfinderHeight) => {
+          const minEdge = Math.min(viewfinderWidth, viewfinderHeight);
+          const size = Math.max(280, Math.floor(minEdge * 0.85));
+          return { width: size, height: size };
+        }
+      };
+
+      try {
+        await qrCodeRef.current.start(cameraConstraints, qrConfig, handleScanSuccess, () => {});
+      } catch (resErr) {
+        console.warn("HD camera constraints unavailable, falling back to basic facingMode:", resErr);
+        // Fallback for webcams or devices that reject custom resolution
+        await qrCodeRef.current.start({ facingMode: mode }, qrConfig, handleScanSuccess, () => {});
+      }
     } catch (err) {
       console.error("Failed to start camera:", err);
       setIsCameraActive(false);
@@ -5452,6 +5523,39 @@ const QRScanner = () => {
                     </button>
                   </div>
                 )}
+
+                {/* Manual Search & Handheld Scanner Gun Input */}
+                <div className="w-100 mt-3 pt-3" style={{ maxWidth: "400px", borderTop: "1px dashed #cbd5e1" }}>
+                  <form
+                    onSubmit={(e) => {
+                      e.preventDefault();
+                      if (!manualInputVal.trim()) return;
+                      processScannedValue(manualInputVal.trim());
+                    }}
+                    className="d-flex gap-2"
+                  >
+                    <input
+                      type="text"
+                      className="form-control form-control-sm"
+                      placeholder="Type Job Card No (or scan with gun)..."
+                      value={manualInputVal}
+                      onChange={(e) => setManualInputVal(e.target.value)}
+                      style={{ fontSize: "12px", borderRadius: "6px" }}
+                      disabled={isTransitioning}
+                    />
+                    <button
+                      type="submit"
+                      className="btn btn-sm btn-dark px-3"
+                      style={{ borderRadius: "6px", fontSize: "12px", whiteSpace: "nowrap" }}
+                      disabled={!manualInputVal.trim() || isTransitioning}
+                    >
+                      Find
+                    </button>
+                  </form>
+                  <div className="mt-1 text-muted" style={{ fontSize: "11px", textAlign: "center" }}>
+                    💡 USB / Bluetooth barcode guns scan directly into this screen automatically.
+                  </div>
+                </div>
               </div>
             </div>
           </div>

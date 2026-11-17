@@ -421,7 +421,7 @@ const WoodJobCard = ({
               <div class="space-calculator"></div>
               <div class="header" style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #065f46; padding-bottom: 1px; height: 20mm; margin-bottom: 2mm; overflow: visible;">
                 <span style="font-family: 'Copperplate Gothic Light'; font-size: 16px; font-weight: bold;">AARA DESIGN</span>
-                <div style="display: flex; align-items: center; padding-right: 2mm;">
+                <div style="display: flex; align-items: center; padding-right: 2mm; background: #ffffff; padding: 1mm; border-radius: 2px;">
                   ${generateQRCodeSVG(getBarcodeValue(jobCard, F_ContainerMasterL, F_ItemMaster, F_CategoryMaster))}
                 </div>
               </div>
@@ -555,7 +555,7 @@ const WoodJobCard = ({
             <div class="job-card page-break-before">
               <div class="header" style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #065f46; padding-bottom: 1px; height: 20mm; margin-bottom: 2mm; overflow: visible;">
                 <span style="font-family: 'Copperplate Gothic Light'; font-size: 16px; font-weight: bold;">AARA DESIGN</span>
-                <div style="display: flex; align-items: center; padding-right: 2mm;">
+                <div style="display: flex; align-items: center; padding-right: 2mm; background: #ffffff; padding: 1mm; border-radius: 2px;">
                   ${generateQRCodeSVG(getBarcodeValue(jobCard, F_ContainerMasterL, F_ItemMaster, F_CategoryMaster))}
                 </div>
               </div>
@@ -922,7 +922,7 @@ const WoodJobCard = ({
                     minHeight: "44px"
                   }}
                 >
-                  <div dangerouslySetInnerHTML={{ __html: generateQRCodeSVG(getBarcodeValue(jobCard, F_ContainerMasterL, F_ItemMaster, F_CategoryMaster)) }} />
+                  <div style={{ background: "#ffffff", padding: "1mm", borderRadius: "2px", display: "inline-block" }} dangerouslySetInnerHTML={{ __html: generateQRCodeSVG(getBarcodeValue(jobCard, F_ContainerMasterL, F_ItemMaster, F_CategoryMaster)) }} />
                 </Col>
               </Row>
 

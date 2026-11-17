@@ -119,7 +119,10 @@ const WoodIssueScanner = () => {
   // ─── Initialize Html5Qrcode Instance on Mount ──────────────────────────────
   useEffect(() => {
     try {
-      qrCodeRef.current = new Html5Qrcode("wood-issue-qr-reader");
+      qrCodeRef.current = new Html5Qrcode("wood-issue-qr-reader", {
+        experimentalFeatures: { useBarCodeDetectorIfSupported: true },
+        verbose: false
+      });
     } catch (e) {
       console.warn("Html5Qrcode init error:", e);
     }
@@ -159,19 +162,27 @@ const WoodIssueScanner = () => {
     await new Promise((resolve) => setTimeout(resolve, 200));
 
     try {
-      await qrCodeRef.current.start(
-        { facingMode: mode },
-        {
-          fps: 15,
-          qrbox: (w, h) => {
-            const edge = Math.min(w, h);
-            const size = Math.max(250, Math.floor(edge * 0.72));
-            return { width: size, height: size };
-          }
-        },
-        handleScanSuccess,
-        () => {} // silent frame discard
-      );
+      const cameraConstraints = {
+        facingMode: mode,
+        width: { ideal: 1920, min: 1280 },
+        height: { ideal: 1080, min: 720 }
+      };
+
+      const qrConfig = {
+        fps: 25,
+        qrbox: (w, h) => {
+          const edge = Math.min(w, h);
+          const size = Math.max(280, Math.floor(edge * 0.85));
+          return { width: size, height: size };
+        }
+      };
+
+      try {
+        await qrCodeRef.current.start(cameraConstraints, qrConfig, handleScanSuccess, () => {});
+      } catch (cErr) {
+        console.warn("HD camera constraints unavailable, falling back:", cErr);
+        await qrCodeRef.current.start({ facingMode: mode }, qrConfig, handleScanSuccess, () => {});
+      }
     } catch (err) {
       console.error("Camera start failed:", err);
       setIsCameraActive(false);
@@ -224,7 +235,10 @@ const WoodIssueScanner = () => {
         document.body.appendChild(tempEl);
       }
 
-      const fileScanner = new Html5Qrcode(tempId);
+      const fileScanner = new Html5Qrcode(tempId, {
+        experimentalFeatures: { useBarCodeDetectorIfSupported: true },
+        verbose: false
+      });
       isScanningRef.current = true;
       const decodedText = await fileScanner.scanFile(file, false);
       try { await fileScanner.clear(); } catch (_) {}

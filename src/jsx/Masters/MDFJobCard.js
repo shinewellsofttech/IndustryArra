@@ -666,7 +666,7 @@ const MDFJobCard = ({
             <div class="job-card" data-machine-rows="${machineDetails.length}">
               <div class="header" style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #000000; padding-bottom: 1px; height: 20mm; margin-bottom: 2mm; overflow: visible;">
                 <span style="font-size: 16px; font-weight: bold;">MDF JOB CARD</span>
-                <div style="display: flex; align-items: center; padding-right: 2mm;">
+                <div style="display: flex; align-items: center; padding-right: 2mm; background: #ffffff; padding: 1mm; border-radius: 2px;">
                   ${generateQRCodeSVG(getBarcodeValue(jobCard, F_ContainerMasterL, F_ItemMaster, F_CategoryMaster))}
                 </div>
               </div>
@@ -1142,7 +1142,7 @@ const MDFJobCard = ({
                   backgroundColor: "#f8f9fa",
                 }}
               >
-                <div dangerouslySetInnerHTML={{ __html: generateQRCodeSVG(getBarcodeValue(jobCard, F_ContainerMasterL, F_ItemMaster, F_CategoryMaster)) }} />
+                <div style={{ background: "#ffffff", padding: "1mm", borderRadius: "2px", display: "inline-block" }} dangerouslySetInnerHTML={{ __html: generateQRCodeSVG(getBarcodeValue(jobCard, F_ContainerMasterL, F_ItemMaster, F_CategoryMaster)) }} />
               </Col>
               <Col
                 xs={4}
