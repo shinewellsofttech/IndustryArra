@@ -1,11 +1,11 @@
-import React, { useContext } from "react";
+import React, { useContext, useState } from "react";
 
 import { Link } from "react-router-dom";
 /// Scroll
 import PerfectScrollbar from "react-perfect-scrollbar";
 
 /// Icons & Components
-import { FaUserCircle } from "react-icons/fa";
+import { FaUserCircle, FaSyncAlt } from "react-icons/fa";
 import avatar from "../../../images/avatar/1.jpg";
 import { Dropdown } from "react-bootstrap";
 import LogoutPage from './Logout';
@@ -63,15 +63,92 @@ const Header = ({ onNote }) => {
         changeBackground({ value: nextThemeValue, label: nextThemeValue === 'dark' ? 'Dark' : 'Light' });
     };
 
+    const [isRefreshing, setIsRefreshing] = useState(false);
+
+    // Hard Refresh & Clear Stored App Caches (PWAs, ServiceWorkers, CacheStorage, and HTTP cache)
+    const handleHardRefresh = async () => {
+      if (isRefreshing) return;
+      setIsRefreshing(true);
+
+      try {
+        // 1. Unregister all service workers so fresh bundles are loaded from server
+        if ("serviceWorker" in navigator) {
+          try {
+            const registrations = await navigator.serviceWorker.getRegistrations();
+            for (let registration of registrations) {
+              await registration.unregister();
+            }
+          } catch (swErr) {
+            console.warn("ServiceWorker unregister error:", swErr);
+          }
+        }
+
+        // 2. Clear all browser / PWA caches via CacheStorage API
+        if ("caches" in window) {
+          try {
+            const cacheKeys = await caches.keys();
+            await Promise.all(cacheKeys.map((key) => caches.delete(key)));
+          } catch (cacheErr) {
+            console.warn("CacheStorage delete error:", cacheErr);
+          }
+        }
+
+        // 3. Clear temporary sessionStorage
+        try {
+          sessionStorage.clear();
+        } catch (ssErr) {
+          console.warn("sessionStorage clear error:", ssErr);
+        }
+
+        // 4. Safely clear non-critical localStorage while preserving user login session
+        try {
+          Object.keys(localStorage).forEach((key) => {
+            if (
+              key !== "authUser" &&
+              key !== "token" &&
+              key !== "userToken" &&
+              key !== "theme" &&
+              !key.toLowerCase().includes("auth")
+            ) {
+              localStorage.removeItem(key);
+            }
+          });
+        } catch (lsErr) {
+          console.warn("localStorage clean error:", lsErr);
+        }
+
+        // 5. Brief pause to show spinning indicator to user
+        await new Promise((r) => setTimeout(r, 450));
+
+        // 6. Force reload with timestamp query param to completely defeat mobile WebView disk cache
+        const targetUrl = new URL(window.location.href);
+        targetUrl.searchParams.set("_hardRefresh", Date.now());
+        window.location.replace(targetUrl.toString());
+      } catch (err) {
+        console.error("Hard refresh error:", err);
+        window.location.reload(true);
+      }
+    };
+
   return (
     <div className="header">
+      <style>{`
+        @keyframes hardRefreshSpin {
+          from { transform: rotate(0deg); }
+          to { transform: rotate(360deg); }
+        }
+      `}</style>
       <div className="header-content">
         <nav className="navbar navbar-expand">
           <div className="collapse navbar-collapse justify-content-between">
             <div className="header-left">
               {/* User Role and Name Display */}
-              <div className="user-info" style={{ padding: '10px 15px' }}>
-                <span className="font-w600">
+              <div className="user-info" style={{ padding: '8px 12px' }}>
+                <span
+                  className="font-w600 text-truncate d-inline-block"
+                  style={{ maxWidth: 'min(350px, 38vw)' }}
+                  title={`${getRoleName(userData?.userType)} : ${userData?.name || ''}`}
+                >
                   {getRoleName(userData?.userType)} : {userData?.name}
                 </span>
               </div>
@@ -333,6 +410,44 @@ const Header = ({ onNote }) => {
                 </Dropdown.Menu>
               </Dropdown> */}
               
+              {/* Hard Refresh / Clear Cache Button (Prominent for Mobile App & Web) */}
+              <li className="nav-item me-1 me-sm-2 d-flex align-items-center">
+                <button
+                  type="button"
+                  onClick={handleHardRefresh}
+                  disabled={isRefreshing}
+                  className="btn btn-xs d-flex align-items-center gap-1 shadow-sm"
+                  style={{
+                    borderRadius: "20px",
+                    padding: "4px 10px",
+                    fontSize: "12px",
+                    fontWeight: 600,
+                    lineHeight: 1.2,
+                    cursor: isRefreshing ? "not-allowed" : "pointer",
+                    border: "1px solid #10b981",
+                    color: isRefreshing ? "#047857" : (background.value === 'dark' ? '#34d399' : '#059669'),
+                    backgroundColor: isRefreshing ? "#ecfdf5" : (background.value === 'dark' ? 'rgba(16, 185, 129, 0.15)' : '#f0fdf4'),
+                    transition: "all 0.2s"
+                  }}
+                  title="Clear Cache & Hard Refresh (App cache saaf karein aur reload karein)"
+                  aria-label="Hard Refresh & Clear Cache"
+                >
+                  <FaSyncAlt
+                    size={11}
+                    style={{
+                      animation: isRefreshing ? "hardRefreshSpin 0.7s linear infinite" : "none",
+                      color: isRefreshing ? "#047857" : "#10b981"
+                    }}
+                  />
+                  <span className="d-none d-sm-inline" style={{ marginLeft: "4px" }}>
+                    {isRefreshing ? "Refreshing..." : "Hard Refresh"}
+                  </span>
+                  <span className="d-inline d-sm-none" style={{ marginLeft: "2px", fontSize: "11px" }}>
+                    {isRefreshing ? "..." : "Refresh"}
+                  </span>
+                </button>
+              </li>
+
               <Dropdown as="li" className="nav-item dropdown header-profile">
                 <Dropdown.Toggle variant="" as="a" className="nav-link i-false c-pointer"
                   role="button" data-toggle="dropdown"
@@ -341,6 +456,22 @@ const Header = ({ onNote }) => {
                 </Dropdown.Toggle>
 
                 <Dropdown.Menu align="right" className="mt-3 dropdown-menu dropdown-menu-end">
+                  <button
+                    type="button"
+                    className="dropdown-item ai-icon text-success"
+                    onClick={handleHardRefresh}
+                    disabled={isRefreshing}
+                    style={{ cursor: "pointer", display: "flex", alignItems: "center" }}
+                  >
+                    <FaSyncAlt
+                      size={14}
+                      style={{
+                        animation: isRefreshing ? "hardRefreshSpin 0.7s linear infinite" : "none"
+                      }}
+                    />
+                    <span className="ms-2">Hard Refresh (Clear Cache)</span>
+                  </button>
+                  <div className="dropdown-divider"></div>
                   <LogoutPage />
                 </Dropdown.Menu>
               </Dropdown> 
