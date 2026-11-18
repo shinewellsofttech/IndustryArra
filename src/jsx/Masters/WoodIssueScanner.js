@@ -140,7 +140,7 @@ const WoodIssueScanner = () => {
 
   // ─── Camera Controls ───────────────────────────────────────────────────────
   const startCamera = async (targetFacingMode = null) => {
-    if (!qrCodeRef.current || isTransitioning) return;
+    if (isTransitioning) return;
     setIsTransitioning(true);
     setFetchError(null);
 
@@ -148,7 +148,7 @@ const WoodIssueScanner = () => {
     setCameraFacingMode(mode);
 
     try {
-      if (qrCodeRef.current.isScanning) {
+      if (qrCodeRef.current && qrCodeRef.current.isScanning) {
         await qrCodeRef.current.stop();
       }
     } catch (e) {
@@ -161,34 +161,112 @@ const WoodIssueScanner = () => {
 
     await new Promise((resolve) => setTimeout(resolve, 200));
 
-    try {
-      const cameraConstraints = {
-        facingMode: mode,
-        width: { ideal: 1920, min: 1280 },
-        height: { ideal: 1080, min: 720 }
-      };
-
-      const qrConfig = {
+    const getQrConfig = (includeHdConstraints) => {
+      const cfg = {
         fps: 25,
         qrbox: (w, h) => {
           const edge = Math.min(w, h);
-          const size = Math.max(280, Math.floor(edge * 0.85));
+          const size = Math.min(edge, Math.max(50, Math.floor(edge * 0.82)));
           return { width: size, height: size };
         }
       };
-
-      try {
-        await qrCodeRef.current.start(cameraConstraints, qrConfig, handleScanSuccess, () => {});
-      } catch (cErr) {
-        console.warn("HD camera constraints unavailable, falling back:", cErr);
-        await qrCodeRef.current.start({ facingMode: mode }, qrConfig, handleScanSuccess, () => {});
+      if (includeHdConstraints) {
+        cfg.videoConstraints = {
+          facingMode: mode,
+          width: { ideal: 1920 },
+          height: { ideal: 1080 }
+        };
       }
+      return cfg;
+    };
+
+    const resetScannerInstance = () => {
+      try {
+        const readerEl = document.getElementById("wood-issue-qr-reader");
+        if (readerEl) readerEl.innerHTML = "";
+        qrCodeRef.current = new Html5Qrcode("wood-issue-qr-reader", {
+          experimentalFeatures: { useBarCodeDetectorIfSupported: true },
+          verbose: false
+        });
+      } catch (e) {
+        console.warn("Could not recreate Html5Qrcode instance:", e);
+      }
+    };
+
+    try {
+      if (!qrCodeRef.current || (typeof qrCodeRef.current.getState === "function" && qrCodeRef.current.getState() !== 1)) {
+        resetScannerInstance();
+      }
+
+      let started = false;
+      let lastError = null;
+
+      // Attempt 1: facingMode + ideal HD videoConstraints (passed properly inside 2nd arg)
+      try {
+        await qrCodeRef.current.start({ facingMode: mode }, getQrConfig(true), handleScanSuccess, () => {});
+        started = true;
+      } catch (hdErr) {
+        console.warn("WoodIssueScanner Attempt 1 (HD) failed:", hdErr);
+        lastError = hdErr;
+      }
+
+      // Attempt 2: Fresh instance with plain facingMode
+      if (!started) {
+        try {
+          resetScannerInstance();
+          await qrCodeRef.current.start({ facingMode: mode }, getQrConfig(false), handleScanSuccess, () => {});
+          started = true;
+        } catch (basicErr) {
+          console.warn("WoodIssueScanner Attempt 2 (basic) failed:", basicErr);
+          lastError = basicErr;
+        }
+      }
+
+      // Attempt 3: Enumerate cameras and start by deviceId
+      if (!started) {
+        try {
+          const cameras = await Html5Qrcode.getCameras();
+          if (cameras && cameras.length > 0) {
+            const preferredCam = mode === "environment"
+              ? cameras.find((c) => /back|rear|environment/i.test(c.label || "")) || cameras[cameras.length - 1]
+              : cameras.find((c) => /front|user|selfie/i.test(c.label || "")) || cameras[0];
+
+            resetScannerInstance();
+            await qrCodeRef.current.start(preferredCam.id, getQrConfig(false), handleScanSuccess, () => {});
+            started = true;
+          }
+        } catch (enumErr) {
+          console.warn("WoodIssueScanner Attempt 3 (enumeration) failed:", enumErr);
+          lastError = enumErr;
+        }
+      }
+
+      if (!started) {
+        throw lastError || new Error("Unable to initialize camera.");
+      }
+
+      // Softly enable continuous autofocus if supported
+      try {
+        const capabilities = qrCodeRef.current.getRunningTrackCapabilities?.();
+        if (capabilities?.focusMode && capabilities.focusMode.includes("continuous")) {
+          await qrCodeRef.current.applyVideoConstraints({
+            advanced: [{ focusMode: "continuous" }]
+          });
+        }
+      } catch (_) {}
     } catch (err) {
       console.error("Camera start failed:", err);
       setIsCameraActive(false);
       isCameraActiveRef.current = false;
       isScanningRef.current = false;
-      setFetchError("Could not access camera. Please check camera permissions.");
+      const errMsg = typeof err === "string" ? err : (err?.message || String(err));
+      if (/NotAllowedError|Permission denied|denied/i.test(errMsg)) {
+        setFetchError("Camera permission denied. Please allow camera access in browser/app settings.");
+      } else if (/NotReadableError|TrackStartError|in use/i.test(errMsg)) {
+        setFetchError("Camera is currently in use by another app or tab.");
+      } else {
+        setFetchError(`Could not access camera: ${errMsg}`);
+      }
     } finally {
       setIsTransitioning(false);
     }

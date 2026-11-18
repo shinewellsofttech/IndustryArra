@@ -4603,7 +4603,7 @@ const QRScanner = () => {
   // Start the camera
   // preserveSessions=true: don't clear the sessions array (called from minimize)
   const startCamera = async (preserveSessions = false, targetFacingMode = null) => {
-    if (!qrCodeRef.current || isTransitioning) return;
+    if (isTransitioning) return;
     setIsTransitioning(true);
 
     const mode = targetFacingMode || cameraFacingModeRef.current || "environment";
@@ -4641,38 +4641,138 @@ const QRScanner = () => {
     // Wait a short moment (200ms) for React to render the visible reader container
     await new Promise((resolve) => setTimeout(resolve, 200));
 
-    try {
-      isScanningRef.current = true;
-
-      // High-definition constraints for sharp focus on compact 18mm QR codes
-      const cameraConstraints = {
-        facingMode: mode,
-        width: { ideal: 1920, min: 1280 },
-        height: { ideal: 1080, min: 720 }
-      };
-
-      const qrConfig = {
+    const getQrConfig = (includeHdConstraints) => {
+      const cfg = {
         fps: 25,
         qrbox: (viewfinderWidth, viewfinderHeight) => {
           const minEdge = Math.min(viewfinderWidth, viewfinderHeight);
-          const size = Math.max(280, Math.floor(minEdge * 0.85));
+          const size = Math.min(minEdge, Math.max(50, Math.floor(minEdge * 0.82)));
           return { width: size, height: size };
         }
       };
+      if (includeHdConstraints) {
+        // html5-qrcode requires custom resolution inside config.videoConstraints (2nd arg),
+        // NOT in cameraIdOrConfig (1st arg, which strictly allows only 1 key).
+        cfg.videoConstraints = {
+          facingMode: mode,
+          width: { ideal: 1920 },
+          height: { ideal: 1080 }
+        };
+      }
+      return cfg;
+    };
 
+    const resetScannerInstance = () => {
       try {
-        await qrCodeRef.current.start(cameraConstraints, qrConfig, handleScanSuccess, () => {});
-      } catch (resErr) {
-        console.warn("HD camera constraints unavailable, falling back to basic facingMode:", resErr);
-        // Fallback for webcams or devices that reject custom resolution
-        await qrCodeRef.current.start({ facingMode: mode }, qrConfig, handleScanSuccess, () => {});
+        const readerEl = document.getElementById("reader");
+        if (readerEl) readerEl.innerHTML = "";
+        qrCodeRef.current = new Html5Qrcode("reader", {
+          experimentalFeatures: { useBarCodeDetectorIfSupported: true },
+          verbose: false
+        });
+      } catch (e) {
+        console.warn("Could not recreate Html5Qrcode instance:", e);
+      }
+    };
+
+    try {
+      isScanningRef.current = true;
+
+      // Ensure a clean, non-transitioning scanner instance before starting
+      if (!qrCodeRef.current || (typeof qrCodeRef.current.getState === "function" && qrCodeRef.current.getState() !== 1)) {
+        resetScannerInstance();
+      }
+
+      let started = false;
+      let lastError = null;
+
+      // Attempt 1: Start with facingMode + ideal HD videoConstraints (properly inside 2nd arg)
+      try {
+        await qrCodeRef.current.start(
+          { facingMode: mode },
+          getQrConfig(true),
+          handleScanSuccess,
+          () => {}
+        );
+        started = true;
+      } catch (hdErr) {
+        console.warn("Attempt 1 (HD videoConstraints) failed:", hdErr);
+        lastError = hdErr;
+      }
+
+      // Attempt 2: Fallback with fresh instance and basic facingMode only
+      if (!started) {
+        try {
+          resetScannerInstance();
+          await qrCodeRef.current.start(
+            { facingMode: mode },
+            getQrConfig(false),
+            handleScanSuccess,
+            () => {}
+          );
+          started = true;
+        } catch (basicErr) {
+          console.warn("Attempt 2 (basic facingMode) failed:", basicErr);
+          lastError = basicErr;
+        }
+      }
+
+      // Attempt 3: Fallback by enumerating hardware cameras and starting via exact deviceId
+      if (!started) {
+        try {
+          const cameras = await Html5Qrcode.getCameras();
+          if (cameras && cameras.length > 0) {
+            const preferredCam = mode === "environment"
+              ? cameras.find((c) => /back|rear|environment/i.test(c.label || "")) || cameras[cameras.length - 1]
+              : cameras.find((c) => /front|user|selfie/i.test(c.label || "")) || cameras[0];
+
+            resetScannerInstance();
+            await qrCodeRef.current.start(
+              preferredCam.id,
+              getQrConfig(false),
+              handleScanSuccess,
+              () => {}
+            );
+            started = true;
+          }
+        } catch (enumErr) {
+          console.warn("Attempt 3 (camera enumeration) failed:", enumErr);
+          lastError = enumErr;
+        }
+      }
+
+      if (!started) {
+        throw lastError || new Error("Unable to initialize camera.");
+      }
+
+      // Softly enable continuous autofocus if supported by mobile rear camera hardware
+      try {
+        const capabilities = qrCodeRef.current.getRunningTrackCapabilities?.();
+        if (capabilities?.focusMode && capabilities.focusMode.includes("continuous")) {
+          await qrCodeRef.current.applyVideoConstraints({
+            advanced: [{ focusMode: "continuous" }]
+          });
+        }
+      } catch (_) {
+        // Ignore on devices that do not support focusMode constraint
       }
     } catch (err) {
       console.error("Failed to start camera:", err);
       setIsCameraActive(false);
       isCameraActiveRef.current = false;
       isScanningRef.current = false;
-      alert("Could not access camera. Please check camera permissions and make sure you are using HTTPS.");
+      const errMsg = typeof err === "string" ? err : (err?.message || String(err));
+      if (/NotAllowedError|Permission denied|denied/i.test(errMsg)) {
+        alert("Camera permission denied. Please allow camera access in browser/app settings and try again.");
+      } else if (/NotReadableError|TrackStartError|in use/i.test(errMsg)) {
+        alert("Camera is currently in use by another app or tab. Please close it and try again.");
+      } else if (/NotFoundError|no camera|DevicesNotFound/i.test(errMsg)) {
+        alert("No camera found on this device.");
+      } else if (!window.isSecureContext) {
+        alert("Camera requires a secure HTTPS connection.");
+      } else {
+        alert(`Could not access camera: ${errMsg}`);
+      }
     } finally {
       setIsTransitioning(false);
     }
@@ -5461,7 +5561,7 @@ const QRScanner = () => {
                   <button
                     className="btn btn-primary btn-block py-2.5 font-w700 fs-16 shadow-sm"
                     style={{ backgroundColor: "#065f46", borderColor: "#065f46", borderRadius: "6px", transition: "all 0.2s" }}
-                    onClick={startCamera}
+                    onClick={() => startCamera()}
                     disabled={isTransitioning}
                   >
                     {isTransitioning ? (
